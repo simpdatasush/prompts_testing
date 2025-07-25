@@ -239,7 +239,7 @@ def filter_gemini_response(text):
     return text
 
 # --- Gemini API interaction function (NOW SYNCHRONOUS) ---
-def ask_gemini_for_prompt(prompt_instruction, max_output_tokens=1024):
+def ask_gemini_for_prompt(prompt_instruction, max_output_tokens=512):
    if not GEMINI_API_CONFIGURED:
        # This check is also done in the endpoint, but kept here for robustness
        return "Gemini API Key is not configured or the AI model failed to initialize."
@@ -369,7 +369,8 @@ async def generate_reverse_prompt_async(input_text, language_code="en-US"):
         "Inferred Prompt:"
     )
 
-    app.logger.info(f"Sending reverse prompt instruction to Gemini (length: {len(reverse_prompt_instruction)} chars)}")
+    # Corrected f-string for logging: double the literal curly brace
+    app.logger.info(f"Sending reverse prompt instruction to Gemini (length: {len(reverse_prompt_instruction)} chars)}}")
 
     # Call synchronous ask_gemini_for_prompt in a separate thread
     reverse_prompt_result = await asyncio.to_thread(ask_gemini_for_prompt, reverse_prompt_instruction, max_output_tokens=512) # Use a reasonable max_output_tokens for a prompt
