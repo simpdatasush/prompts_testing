@@ -108,7 +108,7 @@
            padding: 15px;
            font-size: 1rem;
            min-height: 150px;
-           box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.08);
+           box-shadow: inset 0 11px 3px rgba(0, 0, 0, 0.08);
        }
 
        .input-controls {
@@ -526,7 +526,7 @@
         <div class="logo-section">
             <!-- Placeholder for a logo image. You can replace this with an actual image. -->
             <img src="https://placehold.co/40x40/007bff/ffffff?text=AI" alt="SuperPrompter Logo" class="app-logo">
-            <h1>SuperPrompter AI</h1>
+            <h1>SuperPrompter</h1>
         </div>
         <div class="auth-section">
             {% if current_user.is_authenticated %}
@@ -1010,22 +1010,20 @@
                appOutput.textContent = statusMessage;
                appOutput.className = `mt-4 ${messageType}`; // Update class for styling
 
+               // Only disable generate/reverse buttons based on canGenerate
                generateButton.disabled = !canGenerate;
                reversePromptButton.disabled = !canGenerate;
 
                // LLM action buttons (Save, Get, Download) and LLM website buttons
-               // should only be enabled if there's output AND generation is allowed (not on cooldown/limit)
+               // should only be enabled if there's output, regardless of cooldown/daily limit for generation
                const hasOutput = document.getElementById('polished_output').textContent.trim() !== '' ||
                                  document.getElementById('creative_output').textContent.trim() !== '' ||
                                  document.getElementById('technical_output').textContent.trim() !== '';
 
-               if (hasOutput && canGenerate) { // Only enable if output exists AND generation is permitted
-                   setSaveActionButtonsDisabled(false);
-                   setLLMWebsiteButtonsDisabled(false);
-               } else {
-                   setSaveActionButtonsDisabled(true);
-                   setLLMWebsiteButtonsDisabled(true);
-               }
+               // Enable/disable save/download buttons based ONLY on whether there's output
+               setSaveActionButtonsDisabled(!hasOutput);
+               // Enable/disable LLM website buttons based ONLY on whether there's output
+               setLLMWebsiteButtonsDisabled(!hasOutput);
 
            } catch (error) {
                console.error("Error checking cooldown/daily limit:", error);
@@ -1033,8 +1031,8 @@
                appOutput.className = 'mt-4 danger';
                generateButton.disabled = true;
                reversePromptButton.disabled = true;
-               setSaveActionButtonsDisabled(true);
-               setLLMWebsiteButtonsDisabled(true);
+               setSaveActionButtonsDisabled(true); // Disable on error
+               setLLMWebsiteButtonsDisabled(true); // Disable on error
            }
        }
 
@@ -1564,4 +1562,3 @@
    </script>
 </body>
 </html>
-
