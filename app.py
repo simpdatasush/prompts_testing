@@ -239,7 +239,7 @@ def filter_gemini_response(text):
     return text
 
 # --- Gemini API interaction function (NOW SYNCHRONOUS) ---
-def ask_gemini_for_prompt(prompt_instruction, max_output_tokens=512):
+def ask_gemini_for_prompt(prompt_instruction, max_output_tokens=1024):
    if not GEMINI_API_CONFIGURED:
        # This check is also done in the endpoint, but kept here for robustness
        return "Gemini API Key is not configured or the AI model failed to initialize."
@@ -358,14 +358,16 @@ async def generate_reverse_prompt_async(input_text, language_code="en-US"):
     escaped_input_text = input_text.replace('{', '{{').replace('}', '}}')
 
     # The core instruction for reverse prompting
-    reverse_prompt_instruction = language_instruction_prefix + f"""Given the following text or code, infer the most effective and concise prompt that would have generated it. Focus on the core instruction, any implied constraints, style requirements, or specific formats. Do not add conversational filler, explanations, or preambles. Provide only the inferred prompt.
-    
-    Input Text/Code:
-    ---
-    {escaped_input_text}
-    ---
-    
-    Inferred Prompt:"""
+    # Using concatenation to avoid f-string parsing issues with embedded user input
+    reverse_prompt_instruction = (
+        language_instruction_prefix +
+        "Given the following text or code, infer the most effective and concise prompt that would have generated it. Focus on the core instruction, any implied constraints, style requirements, or specific formats. Do not add conversational filler, explanations, or preambles. Provide only the inferred prompt.\n\n"
+        "Input Text/Code:\n"
+        "---\n"
+        + escaped_input_text +
+        "\n---\n\n"
+        "Inferred Prompt:"
+    )
 
     app.logger.info(f"Sending reverse prompt instruction to Gemini (length: {len(reverse_prompt_instruction)} chars)}")
 
