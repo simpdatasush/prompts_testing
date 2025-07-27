@@ -108,6 +108,36 @@
        .footer-content a:hover {
            text-decoration: underline;
        }
+       .suggestions-box {
+           background-color: #e9f7ef;
+           border: 1px solid #d4edda;
+           border-radius: 5px;
+           padding: 10px;
+           margin-top: 15px;
+       }
+       .suggestions-box h5 {
+           color: #28a745;
+           font-size: 1rem;
+           margin-bottom: 8px;
+       }
+       .suggestions-box ul {
+           list-style: none;
+           padding: 0;
+           margin: 0;
+       }
+       .suggestions-box li {
+           background-color: #d4edda;
+           border-radius: 3px;
+           padding: 5px 10px;
+           margin-bottom: 5px;
+           font-size: 0.9rem;
+           color: #155724;
+           cursor: pointer;
+           transition: background-color 0.2s ease;
+       }
+       .suggestions-box li:hover {
+           background-color: #c3e6cb;
+       }
        @media (max-width: 768px) {
            .app-header {
                flex-direction: column;
@@ -154,11 +184,11 @@
        <form method="POST">
            <div class="form-group">
                <label for="username">Username:</label>
-               <input type="text" class="form-control" id="username" name="username" required>
+               <input type="text" class="form-control" id="username" name="username" required value="{{ request.form.username if request.form.username }}">
            </div>
            <div class="form-group">
                <label for="email">Email:</label>
-               <input type="email" class="form-control" id="email" name="email" required>
+               <input type="email" class="form-control" id="email" name="email" required value="{{ request.form.email if request.form.email }}">
            </div>
            <div class="form-group">
                <label for="password">Password:</label>
@@ -167,6 +197,18 @@
            <button type="submit" class="btn btn-primary btn-block">Register</button>
            <p class="text-center mt-3">Already have an account? <a href="{{ url_for('login') }}">Login here</a></p>
        </form>
+
+
+       {% if suggestions %}
+       <div class="suggestions-box">
+           <h5>Suggested Usernames:</h5>
+           <ul id="username_suggestions_list">
+               {% for suggestion in suggestions %}
+               <li onclick="applySuggestion('{{ suggestion }}')">{{ suggestion }}</li>
+               {% endfor %}
+           </ul>
+       </div>
+       {% endif %}
    </div>
 
 
@@ -175,5 +217,17 @@
           This is developed by Sushrut Kulkarni &nbsp; Email: <a href="mailto:info@promptsgenerator.ai">info@promptsgenerator.ai</a>
       </div>
    </footer>
+
+
+   <script>
+       function applySuggestion(suggestion) {
+           document.getElementById('username').value = suggestion;
+           // Optionally hide suggestions after selection
+           const suggestionsBox = document.querySelector('.suggestions-box');
+           if (suggestionsBox) {
+               suggestionsBox.style.display = 'none';
+           }
+       }
+   </script>
 </body>
 </html>
