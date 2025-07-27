@@ -13,6 +13,8 @@ import re # Import for regular expressions
 from functools import wraps # Import wraps for decorators
 import base64 # Import base64 for image processing
 import uuid # For generating unique reset tokens
+import random # NEW: For generating random username suggestions
+import string # NEW: For string manipulation in username generation
 
 
 # --- NEW IMPORTS FOR AUTHENTICATION ---
@@ -1235,11 +1237,15 @@ def register():
 
       user = User.query.filter_by(username=username).first()
       if user:
-          flash('Username already exists. Please choose a different one.', 'danger')
+          flash('this username already exists', 'danger') # Updated message
+          # Generate suggestions if username exists
+          suggestions = generate_unique_username_suggestions(username)
+          return render_template('register.html', suggestions=suggestions) # Pass suggestions
       else:
           # NEW: Check if email already exists
           if email and User.query.filter_by(email=email).first():
               flash('Email already registered. Please use a different email or log in.', 'danger')
+              return render_template('register.html') # Re-render without suggestions for email conflict
           else:
               new_user = User(username=username, email=email) # Pass email to User constructor
               new_user.set_password(password)
@@ -1248,7 +1254,39 @@ def register():
               login_user(new_user) # Automatically log in the new user
               flash('Registration successful! You are now logged in.', 'success')
               return redirect(url_for('app_home')) # Redirect directly to app_home
-  return render_template('register.html')
+  return render_template('register.html') # Initial GET request, no suggestions
+
+
+# NEW: Helper function to generate unique username suggestions
+def generate_unique_username_suggestions(base_username, num_suggestions=3):
+   suggestions = []
+   attempts = 0
+   max_attempts_per_suggestion = 10 # Prevent infinite loops
+
+
+   while len(suggestions) < num_suggestions and attempts < num_suggestions * max_attempts_per_suggestion:
+       suffix = ''.join(random.choices(string.digits, k=4)) # 4 random digits
+       new_username = f"{base_username}{suffix}"
+      
+       # Ensure the suggestion is not too long
+       if len(new_username) > 80: # Max length for username field
+           new_username = f"{base_username[:76]}{suffix}" # Truncate base_username if needed
+
+
+       if not User.query.filter_by(username=new_username).first():
+           suggestions.append(new_username)
+       attempts += 1
+  
+   # If we still don't have enough suggestions, try more generic ones
+   while len(suggestions) < num_suggestions:
+       random_suffix = ''.join(random.choices(string.ascii_lowercase + string.digits, k=6))
+       generic_username = f"user_{random_suffix}"
+       if not User.query.filter_by(username=generic_username).first():
+           suggestions.append(generic_username)
+  
+   return suggestions
+
+
 
 
 @app.route('/login', methods=['GET', 'POST'])
