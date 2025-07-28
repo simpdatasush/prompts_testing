@@ -485,6 +485,22 @@ def landing():
   return render_template('landing.html', news_items=news_items, job_listings=job_listings, current_user=current_user)
 
 
+# NEW: Route to view a specific news item (redirect to external URL)
+@app.route('/view_news/<int:news_id>')
+def view_news(news_id):
+   news_item = News.query.get_or_404(news_id)
+   return redirect(news_item.url)
+
+
+# NEW: Route to view a specific job listing (redirect to external URL)
+@app.route('/view_job/<int:job_id>')
+def view_job(job_id):
+   job_listing = Job.query.get_or_404(job_id)
+   return redirect(job_listing.url)
+
+
+
+
 # Renamed original index route to /app_home
 @app.route('/app_home')
 def app_home():
@@ -1240,12 +1256,12 @@ def register():
           flash('this username already exists', 'danger') # Updated message
           # Generate suggestions if username exists
           suggestions = generate_unique_username_suggestions(username)
-          return render_template('register.html', suggestions=suggestions) # Pass suggestions
+          return render_template('register.html', suggestions=suggestions, username=username, email=email) # Pass suggestions and original inputs
       else:
           # NEW: Check if email already exists
           if email and User.query.filter_by(email=email).first():
               flash('Email already registered. Please use a different email or log in.', 'danger')
-              return render_template('register.html') # Re-render without suggestions for email conflict
+              return render_template('register.html', username=username, email=email) # Re-render without suggestions for email conflict
           else:
               new_user = User(username=username, email=email) # Pass email to User constructor
               new_user.set_password(password)
