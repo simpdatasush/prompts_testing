@@ -172,47 +172,52 @@
        }
 
 
-       /* Call to action section */
-       .call-to-action {
-           background-color: #007bff;
-           color: #ffffff;
+       /* Newsletter Section */
+       .newsletter-section {
+           background-color: #f8f9fa;
            padding: 40px 20px;
            border-radius: 10px;
            text-align: center;
            margin-top: 40px;
-           box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+           box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
        }
-
-
-       .call-to-action h3 {
+       .newsletter-section h3 {
            font-size: 2rem;
            margin-bottom: 15px;
-           font-weight: 700;
+           color: #2c3e50;
        }
-
-
-       .call-to-action p {
+       .newsletter-section p {
            font-size: 1.1rem;
-           margin-bottom: 30px;
-           max-width: 700px;
-           margin-left: auto;
-           margin-right: auto;
+           margin-bottom: 25px;
+           color: #555;
        }
-
-
-       .call-to-action .btn-light {
-           font-size: 1.1rem;
-           padding: 12px 30px;
-           border-radius: 30px;
+       .newsletter-form {
+           max-width: 500px;
+           margin: 0 auto;
+           display: flex;
+           justify-content: center;
+           gap: 10px; /* Space between input and button */
+       }
+       .newsletter-form .form-control {
+           flex-grow: 1;
+           border-radius: 5px;
+           padding: 10px 15px;
+           border: 1px solid #ced4da;
+       }
+       .newsletter-form .btn-primary {
+           background-color: #007bff;
+           border-color: #007bff;
+           border-radius: 5px;
+           padding: 10px 20px;
            font-weight: bold;
-           transition: background-color 0.3s ease, color 0.3s ease;
+           transition: background-color 0.3s ease, border-color 0.3s ease;
+       }
+       .newsletter-form .btn-primary:hover {
+           background-color: #0056b3;
+           border-color: #0056b3;
        }
 
 
-       .call-to-action .btn-light:hover {
-           background-color: #e2e6ea;
-           color: #007bff;
-       }
 
 
        /* Footer Styles */
@@ -264,18 +269,13 @@
            h2.section-title {
                font-size: 1.8rem;
            }
-           .call-to-action {
-               padding: 30px 15px;
+           .newsletter-form {
+               flex-direction: column;
+               gap: 15px;
            }
-           .call-to-action h3 {
-               font-size: 1.6rem;
-           }
-           .call-to-action p {
-               font-size: 1rem;
-           }
-           .call-to-action .btn-light {
-               font-size: 1rem;
-               padding: 10px 20px;
+           .newsletter-form .form-control,
+           .newsletter-form .btn-primary {
+               width: 100%;
            }
            .footer {
                padding: 10px;
@@ -290,12 +290,13 @@
            <h1 class="header-title">SuperPrompter</h1>
        </div>
        <div class="auth-section">
-           <a href="{{ url_for('app_home') }}" class="btn btn-outline-light btn-sm mr-2">App Home</a>
-           <a href="{{ url_for('llm_benchmark') }}" class="btn btn-outline-light btn-sm mr-2">LLM Benchmarks</a>
            {% if current_user.is_authenticated %}
+               <a href="{{ url_for('app_home') }}" class="btn btn-outline-light btn-sm mr-2">App Home</a>
+               <a href="{{ url_for('llm_benchmark') }}" class="btn btn-outline-light btn-sm mr-2">LLM Benchmarks</a>
                <span class="navbar-text mr-2">Logged in as: <strong>{{ current_user.username }}</strong></span>
                <a href="{{ url_for('logout') }}" class="btn btn-outline-light btn-sm">Logout</a>
            {% else %}
+               <a href="{{ url_for('llm_benchmark') }}" class="btn btn-outline-light btn-sm mr-2">LLM Benchmarks</a>
                <a href="{{ url_for('login') }}" class="btn btn-outline-light btn-sm mr-2">Login</a>
                <a href="{{ url_for('register') }}" class="btn btn-light btn-sm">Register</a>
            {% endif %}
@@ -309,7 +310,12 @@
            <p class="lead">Your ultimate tool for refining, enhancing, and generating powerful AI prompts.</p>
            <hr class="my-4">
            <p>Leverage the power of AI to transform your raw ideas into perfectly crafted prompts for large language models.</p>
-           <a class="btn btn-primary btn-lg" href="{{ url_for('app_home') }}" role="button">Start Generating Prompts</a>
+           {% if current_user.is_authenticated %}
+               <a class="btn btn-primary btn-lg" href="{{ url_for('app_home') }}" role="button">Start Generating Prompts</a>
+           {% else %}
+               <p class="text-muted">Please log in or register to start generating prompts.</p>
+               <a class="btn btn-primary btn-lg" href="{{ url_for('login') }}" role="button">Login to Get Started</a>
+           {% endif %}
        </div>
 
 
@@ -322,7 +328,7 @@
                        <div class="card-body">
                            <h5 class="card-title">{{ item.title }}</h5>
                            <p class="card-text">{{ item.description | truncate(150) }}</p>
-                           <a href="{{ url_for('view_news', news_id=item.id) }}" target="_blank" class="card-link">Read More <i class="fas fa-external-link-alt"></i></a>
+                           <a href="{{ item.url }}" target="_blank" class="card-link">Read More <i class="fas fa-external-link-alt"></i></a>
                            <p class="meta-info">Published: {{ item.published_date.strftime('%Y-%m-%d') if item.published_date else 'N/A' }}</p>
                            <p class="meta-info">Added: {{ item.timestamp.strftime('%Y-%m-%d %H:%M') }}</p>
                        </div>
@@ -347,7 +353,7 @@
                            <h5 class="card-title">{{ job.title }}</h5>
                            <h6 class="card-subtitle mb-2 text-muted">{{ job.company }} - {{ job.location if job.location else 'Remote' }}</h6>
                            <p class="card-text">{{ job.description | truncate(150) }}</p>
-                           <a href="{{ url_for('view_job', job_id=job.id) }}" target="_blank" class="card-link">Apply Now <i class="fas fa-external-link-alt"></i></a>
+                           <a href="{{ job.url }}" target="_blank" class="card-link">Apply Now <i class="fas fa-external-link-alt"></i></a>
                            <p class="meta-info">Published: {{ job.published_date.strftime('%Y-%m-%d') if job.published_date else 'N/A' }}</p>
                            <p class="meta-info">Added: {{ job.timestamp.strftime('%Y-%m-%d %H:%M') }}</p>
                        </div>
@@ -362,11 +368,14 @@
        </section>
 
 
-       <div class="call-to-action">
-           <h3>Ready to revolutionize your AI interactions?</h3>
-           <p>Join SuperPrompter today and start creating precise, powerful, and effective prompts with ease.</p>
-           <a class="btn btn-light btn-lg" href="{{ url_for('register') }}" role="button">Get Started - It's Free!</a>
-       </div>
+       <section class="newsletter-section">
+           <h3>Join Our Newsletter!</h3>
+           <p>Stay updated with the latest AI prompt engineering tips, news, and job opportunities.</p>
+           <form class="newsletter-form" action="{{ url_for('subscribe_newsletter') }}" method="POST">
+               <input type="email" class="form-control" name="email" placeholder="Enter your email address" required>
+               <button type="submit" class="btn btn-primary">Subscribe</button>
+           </form>
+       </section>
    </div>
 
 
