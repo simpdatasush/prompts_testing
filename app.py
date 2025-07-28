@@ -217,6 +217,18 @@ class Job(db.Model):
 # --- END UPDATED: Job Model ---
 
 
+# NEW: NewsletterSubscriber Model
+class NewsletterSubscriber(db.Model):
+   id = db.Column(db.Integer, primary_key=True)
+   email = db.Column(db.String(120), unique=True, nullable=False)
+   subscribed_on = db.Column(db.DateTime, default=datetime.utcnow)
+
+
+   def __repr__(self):
+       return f'<Subscriber {self.email}>'
+# END NEW: NewsletterSubscriber Model
+
+
 
 
 # --- NEW: Flask-Login User Loader ---
@@ -485,14 +497,14 @@ def landing():
   return render_template('landing.html', news_items=news_items, job_listings=job_listings, current_user=current_user)
 
 
-# NEW: Route to view a specific news item (redirect to external URL)
+# REVERTED: Route to view a specific news item (redirect directly to external URL)
 @app.route('/view_news/<int:news_id>')
 def view_news(news_id):
    news_item = News.query.get_or_404(news_id)
    return redirect(news_item.url)
 
 
-# NEW: Route to view a specific job listing (redirect to external URL)
+# REVERTED: Route to view a specific job listing (redirect directly to external URL)
 @app.route('/view_job/<int:job_id>')
 def view_job(job_id):
    job_listing = Job.query.get_or_404(job_id)
@@ -503,6 +515,7 @@ def view_job(job_id):
 
 # Renamed original index route to /app_home
 @app.route('/app_home')
+@login_required # REQUIRE LOGIN FOR APP HOME PAGE
 def app_home():
   # Pass current_user object to the template to show login/logout status
   return render_template('index.html', current_user=current_user)
@@ -1335,6 +1348,38 @@ def logout():
   flash('You have been logged out.', 'info')
   return redirect(url_for('landing')) # Redirect to landing page after logout
 # --- END UPDATED: Authentication Routes ---
+
+
+# NEW: Newsletter Subscription Route
+@app.route('/subscribe_newsletter', methods=['POST'])
+def subscribe_newsletter():
+   email = request.form.get('email')
+   if not email:
+       flash('Email address is required to subscribe.', 'danger')
+       return redirect(url_for('landing'))
+  
+   # Basic email format validation
+   if not re.match(r"[^@]+@[^@]+\.[^@]+", email):
+       flash('Invalid email address format.', 'danger')
+       return redirect(url_for('landing'))
+
+
+   existing_subscriber = NewsletterSubscriber.query.filter_by(email=email).first()
+   if existing_subscriber:
+       flash('You are already subscribed to our newsletter!', 'info')
+   else:
+       try:
+           new_subscriber = NewsletterSubscriber(email=email)
+           db.session.add(new_subscriber)
+           db.session.commit()
+           flash('Successfully subscribed to our newsletter! Thank you!', 'success')
+       except Exception as e:
+           db.session.rollback()
+           app.logger.error(f"Error subscribing email {email} to newsletter: {e}")
+           flash('Failed to subscribe to newsletter. Please try again later.', 'danger')
+          
+   return redirect(url_for('landing'))
+# END NEW: Newsletter Subscription Route
 
 
 
