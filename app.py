@@ -56,7 +56,7 @@ mail = Mail(app)
 
 
 # Configure logging for the Flask app
-app.logger.setLevel(logging.INFO)
+app.logger.setLevel(logging.INFO) # Changed to INFO, can be DEBUG for more verbosity
 # Corrected logging setup:
 stream_handler = logging.StreamHandler() # Create a StreamHandler instance
 formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s') # Create a Formatter instance
@@ -499,6 +499,7 @@ async def cv_maker():
 
         # Proceed with generation/calculation if not on cooldown/limit
         if action == 'generate_documents':
+            app.logger.info("CV Maker: Entering generate_documents logic.")
             if not existing_cv or not job_desc:
                 status_message = "Please provide both Existing CV and New Job Description to generate documents."
                 status_code = 400 # Bad Request
@@ -529,7 +530,10 @@ async def cv_maker():
                     app.logger.debug(f"CL Prompt sent to Gemini (first 200 chars): {full_cl_prompt[:200]}...")
 
                     generated_cv = await asyncio.to_thread(ask_gemini_for_prompt, full_cv_prompt, max_output_tokens=2048)
+                    app.logger.debug(f"Raw CV response from Gemini (first 200 chars): {generated_cv[:200]}...")
                     generated_cl = await asyncio.to_thread(ask_gemini_for_prompt, full_cl_prompt, max_output_tokens=1024)
+                    app.logger.debug(f"Raw CL response from Gemini (first 200 chars): {generated_cl[:200]}...")
+                    
                     status_message = "CV and Cover Letter generated successfully!"
                     app.logger.info("CV and Cover Letter generation complete.")
 
@@ -541,6 +545,7 @@ async def cv_maker():
                     app.logger.exception("Error during CV/CL generation in endpoint:")
 
         elif action == 'calculate_match':
+            app.logger.info("CV Maker: Entering calculate_match logic.")
             if not existing_cv or not job_desc:
                 status_message = "Please provide both Existing CV and New Job Description to calculate match percentage."
                 status_code = 400 # Bad Request
@@ -596,6 +601,7 @@ async def cv_maker():
         app.logger.info(f"User {user.username}'s last request time updated and count incremented for CV Maker. Daily count: {user.daily_prompt_count}")
 
         # Return JSON response for all cases
+        app.logger.info(f"CV Maker: Sending JSON response with status {status_code}. Status message: '{status_message}'")
         return jsonify({
             "generated_cv": generated_cv,
             "generated_cl": generated_cl,
@@ -749,7 +755,7 @@ async def reverse_prompt_endpoint():
 
     data = request.get_json()
     input_text = data.get('input_text', '').strip()
-    language_code = data.get('language_code', 'en-US')
+    language_code = data.get('language_code', 'en-US') # Not directly used by Gemini Vision, but good to pass
 
     if not input_text:
         # This is handled client-side in index.html, but kept as a server-side fallback
