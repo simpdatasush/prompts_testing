@@ -412,11 +412,18 @@
 
         // Handle form submission via AJAX
         document.getElementById('cvForm').addEventListener('submit', async function(event) {
+            console.log("Form submission initiated.");
             event.preventDefault(); // Prevent default form submission (page reload)
+            console.log("Default form submission prevented.");
 
             const form = event.target;
             const formData = new FormData(form);
             const action = event.submitter.value; // Get the value of the clicked button (action)
+
+            // Store input values before submission
+            const existingCvContent = document.getElementById('existing_cv_content').value;
+            const jobDescriptionContent = document.getElementById('job_description').value;
+            const numPagesValue = document.getElementById('num_pages').value;
 
             // Show loading overlay
             document.getElementById('loadingOverlay').style.display = 'flex';
@@ -428,6 +435,7 @@
                 });
 
                 const data = await response.json();
+                console.log("Response data received:", data);
 
                 // Update output fields
                 document.getElementById('generated_cv').value = data.generated_cv || '';
@@ -465,6 +473,11 @@
             } finally {
                 // Hide loading overlay
                 document.getElementById('loadingOverlay').style.display = 'none';
+                // Re-populate input fields
+                document.getElementById('existing_cv_content').value = existingCvContent;
+                document.getElementById('job_description').value = jobDescriptionContent;
+                document.getElementById('num_pages').value = numPagesValue;
+                console.log("Input fields re-populated.");
                 // Re-check cooldown status after any request to ensure accuracy
                 checkCooldownStatus();
             }
