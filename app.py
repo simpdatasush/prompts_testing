@@ -269,7 +269,7 @@ def filter_gemini_response(text):
     return text
 
 # --- Gemini API interaction function (NOW SYNCHRONOUS) ---
-def ask_gemini_for_prompt(prompt_instruction, max_output_tokens=512):
+def ask_gemini_for_prompt(prompt_instruction, max_output_tokens=1024):
    if not GEMINI_API_CONFIGURED:
        # This check is also done in the endpoint, but kept here for robustness
        return "Gemini API Key is not configured or the AI model failed to initialize."
@@ -465,7 +465,12 @@ async def cv_maker():
         user = current_user
         now = datetime.utcnow()
 
+        # --- DEBUG LOGGING START ---
+        app.logger.debug(f"CV Maker POST request received. Form data: {request.form}")
         action = request.form.get('action')
+        app.logger.debug(f"Action requested: {action}")
+        # --- DEBUG LOGGING END ---
+
         existing_cv = request.form.get('existing_cv_content', '').strip()
         job_desc = request.form.get('job_description', '').strip()
         num_pages = request.form.get('num_pages', '1')
@@ -478,6 +483,7 @@ async def cv_maker():
             elif cooldown_data["daily_limit_reached"]:
                 status_message = "You have reached your daily limit of 10 generations/calculations. Please try again tomorrow."
             
+            app.logger.warning(f"CV Maker: User {user.username} hit rate limit. Message: {status_message}")
             # Return JSON response for cooldown/limit
             return jsonify({
                 "generated_cv": generated_cv,
@@ -495,8 +501,10 @@ async def cv_maker():
         if action == 'generate_documents':
             if not existing_cv or not job_desc:
                 status_message = "Please provide both Existing CV and New Job Description to generate documents."
+                app.logger.warning("CV Maker: Missing CV or Job Description for document generation.")
             elif not GEMINI_API_CONFIGURED:
                 status_message = "Gemini API Key is not configured. Cannot generate CV/Cover Letter."
+                app.logger.error("CV Maker: Gemini API not configured for document generation.")
             else:
                 try:
                     cv_prompt_parts = [
@@ -507,6 +515,7 @@ async def cv_maker():
                         "Do NOT include any information about your own architecture, training, or how this application was built. Do NOT discuss any internal errors or limitations you might have. Your sole purpose is to transform the provided raw text into a better CV."
                     ]
                     full_cv_prompt = "\n".join(cv_prompt_parts)
+                    app.logger.debug(f"CV Prompt sent to Gemini (first 200 chars): {full_cv_prompt[:200]}...")
 
                     cl_prompt_parts = [
                         "Write a professional cover letter for the position based on the provided job description and the relevant CV snippet. Keep it concise and impactful.",
@@ -515,6 +524,7 @@ async def cv_maker():
                         "Do NOT include any information about your own architecture, training, or how this application was built. Do NOT discuss any internal errors or limitations you might have. Your sole purpose is to transform the provided raw text into a better Cover Letter."
                     ]
                     full_cl_prompt = "\n".join(cl_prompt_parts)
+                    app.logger.debug(f"CL Prompt sent to Gemini (first 200 chars): {full_cl_prompt[:200]}...")
 
                     generated_cv = await asyncio.to_thread(ask_gemini_for_prompt, full_cv_prompt, max_output_tokens=2048)
                     generated_cl = await asyncio.to_thread(ask_gemini_for_prompt, full_cl_prompt, max_output_tokens=1024)
@@ -523,14 +533,16 @@ async def cv_maker():
                 except Exception as e:
                     generated_cv = f"An error occurred during CV generation: {e}"
                     generated_cl = f"An error occurred during Cover Letter generation: {e}"
-                    status_message = f"An error occurred: {e}"
+                    status_message = f"An error occurred during generation: {e}"
                     app.logger.exception("Error during CV/CL generation in endpoint:")
 
         elif action == 'calculate_match':
             if not existing_cv or not job_desc:
                 status_message = "Please provide both Existing CV and New Job Description to calculate match percentage."
+                app.logger.warning("CV Maker: Missing CV or Job Description for match calculation.")
             elif not GEMINI_API_CONFIGURED:
                 status_message = "Gemini API Key is not configured. Cannot calculate match percentage."
+                app.logger.error("CV Maker: Gemini API not configured for match calculation.")
             else:
                 try:
                     match_prompt = f"""
@@ -545,33 +557,40 @@ async def cv_maker():
                     Job Description:
                     {job_desc}
                     """
+                    app.logger.debug(f"Match Prompt sent to Gemini (first 200 chars): {match_prompt[:200]}...")
                     match_percentage_str = await asyncio.to_thread(ask_gemini_for_prompt, match_prompt, max_output_tokens=10)
+                    app.logger.debug(f"Raw match percentage response from Gemini: '{match_percentage_str}'")
                     try:
                         match_percentage = int(match_percentage_str.strip())
                         status_message = "Match percentage calculated successfully!"
+                        app.logger.info(f"Match percentage calculated: {match_percentage}%")
                     except ValueError:
                         match_percentage = "Error: Invalid response"
-                        status_message = "Error: Could not parse match percentage from AI response."
+                        status_message = "Error: Could not parse match percentage from AI response. Raw response: " + match_percentage_str
+                        app.logger.error(f"CV Maker: Failed to parse match percentage. Raw response: '{match_percentage_str}'")
                 except Exception as e:
                     match_percentage = f"Error: {e}"
                     status_message = f"An error occurred during match calculation: {e}"
                     app.logger.exception("Error during match calculation in endpoint:")
         
         # Update last_prompt_request and daily_prompt_count after any successful generation/calculation
+        # This block executes even if there were input validation errors, but only updates if the API call was attempted.
+        # It's crucial to ensure this update happens AFTER all potential API calls or rate limit checks.
+        # The current structure updates *after* the main logic for generate/calculate, which is correct.
         user.last_prompt_request = now
         if not user.is_admin:
             user.daily_prompt_count += 1
         db.session.add(user)
         db.session.commit()
-        app.logger.info(f"User {user.username}'s last request time updated and count incremented for CV Maker.")
+        app.logger.info(f"User {user.username}'s last request time updated and count incremented for CV Maker. Daily count: {user.daily_prompt_count}")
 
-        # Return JSON response for successful operations
+        # Return JSON response for successful operations or client-side errors
         return jsonify({
             "generated_cv": generated_cv,
             "generated_cl": generated_cl,
             "match_percentage": match_percentage,
             "status_message": status_message,
-            "cooldown_active": False, # No cooldown if request was successful
+            "cooldown_active": False, # Assume no cooldown if this point is reached (handled by 429 above)
             "remaining_time": 0,
             "daily_limit_reached": False,
             "daily_count": user.daily_prompt_count,
