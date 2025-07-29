@@ -394,7 +394,8 @@
             }
         }
 
-        // Function to display flash messages dynamically
+        // Function to display flash messages dynamically - DISABLED
+        /*
         function displayFlashMessage(message, category) {
             const flashContainer = document.getElementById('flash-messages');
             // Clear existing messages before adding new ones
@@ -409,6 +410,7 @@
                 alertDiv.remove();
             }, 5000);
         }
+        */
 
         // Handle form submission via AJAX
         document.getElementById('cvForm').addEventListener('submit', async function(event) {
@@ -442,13 +444,15 @@
                 document.getElementById('generated_cl').value = data.generated_cl || '';
                 document.getElementById('matchPercentage').textContent = `Match Percentage: ${data.match_percentage}`;
 
-                // Display status message
+                // Display status message - Calls to displayFlashMessage are commented out
+                /*
                 if (data.status_message) {
                     const category = response.ok ? 'success' : 'danger'; // Determine category based on response status
                     displayFlashMessage(data.status_message, category);
                 } else if (data.error) { // Handle explicit errors from backend
                     displayFlashMessage(data.error, 'danger');
                 }
+                */
 
                 // Handle cooldown/daily limit messages and UI updates
                 if (data.cooldown_active || data.daily_limit_reached) {
@@ -469,7 +473,7 @@
 
             } catch (error) {
                 console.error('Error during form submission:', error);
-                displayFlashMessage('An unexpected error occurred. Please try again.', 'danger');
+                // displayFlashMessage('An unexpected error occurred. Please try again.', 'danger'); // Also commented out
             } finally {
                 // Hide loading overlay
                 document.getElementById('loadingOverlay').style.display = 'none';
