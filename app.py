@@ -527,6 +527,163 @@ def llm_benchmark():
    return render_template('llm_benchmark.html', current_user=current_user)
 
 
+# NEW: App Selection Page
+@app.route('/app_selection')
+@login_required
+def app_selection():
+   return render_template('app_selection.html', current_user=current_user)
+
+
+# NEW: CV Maker Page
+@app.route('/cv_maker', methods=['GET', 'POST'])
+@login_required
+async def cv_maker():
+   generated_cv = ""
+   generated_cl = "" # Added for Cover Letter
+   match_percentage = "N/A" # Initialize match percentage
+
+
+   if request.method == 'POST':
+       user = current_user
+       now = datetime.utcnow()
+
+
+       # Determine if the request is for CV generation or match calculation
+       action = request.form.get('action') # Hidden input to distinguish actions
+
+
+       # Apply cooldown to CV generation/match calculation
+       if user.last_prompt_request:
+           time_since_last_request = (now - user.last_prompt_request).total_seconds()
+           if time_since_last_request < COOLDOWN_SECONDS:
+               remaining_time = int(COOLDOWN_SECONDS - time_since_last_request)
+               flash(f"Please wait {remaining_time} seconds before making another request.", 'warning')
+               return render_template('cv_maker.html', generated_cv=generated_cv, generated_cl=generated_cl, match_percentage=match_percentage, current_user=current_user)
+
+
+       # Daily limit check for CV generation/match calculation
+       if not user.is_admin:
+           today = now.date()
+           if user.last_count_reset_date != today:
+               user.daily_prompt_count = 0
+               user.last_count_reset_date = today
+               db.session.add(user)
+               db.session.commit()
+
+
+           if user.daily_prompt_count >= 10:
+               flash("You have reached your daily limit of 10 generations/calculations. Please try again tomorrow.", 'warning')
+               return render_template('cv_maker.html', generated_cv=generated_cv, generated_cl=generated_cl, match_percentage=match_percentage, current_user=current_user)
+
+
+       # Extract common inputs
+       existing_cv = request.form.get('existing_cv_content', '').strip()
+       job_desc = request.form.get('job_description', '').strip()
+
+
+       if action == 'generate_documents':
+           num_pages = request.form.get('num_pages', '1') # Default to 1 if not provided
+          
+           if not existing_cv or not job_desc:
+               flash("Please provide both Existing CV and New Job Description to generate documents.", 'danger')
+               return render_template('cv_maker.html', generated_cv=generated_cv, generated_cl=generated_cl, match_percentage=match_percentage, current_user=current_user)
+
+
+           # Construct CV prompt
+           cv_prompt_parts = []
+           cv_prompt_parts.append("Generate a professional and concise CV (Curriculum Vitae) based on the following details. Format the output clearly with sections like 'Personal Information', 'Summary', 'Education', 'Experience', 'Skills', 'Projects', and 'Awards'. Use Markdown for formatting (e.g., bold for headings, bullet points for lists).")
+           # Extract specific fields from existing_cv for more structured prompting if desired,
+           # but for now, we'll pass the whole existing_cv content as per Tkinter app's prompt structure.
+           # The Tkinter app's prompt just passes the raw existing_cv, so we'll mimic that.
+           cv_prompt_parts.append(f"\n\nExisting CV:\n{existing_cv}")
+           cv_prompt_parts.append(f"\n\nNew Job Description:\n{job_desc}")
+           cv_prompt_parts.append(f"\n\nPrioritize skills and experience most relevant to the job. Maintain the general section structure. Try to keep the CV to approximately {num_pages} page(s). Do NOT include a placeholder for a photo. Output the CV in a clear, readable text format (like Markdown).")
+           full_cv_prompt = "\n".join(cv_prompt_parts)
+
+
+           # Construct Cover Letter prompt
+           cl_prompt_parts = []
+           cl_prompt_parts.append("Write a professional cover letter for the position based on the provided job description and the relevant CV snippet. Keep it concise and impactful.")
+           cl_prompt_parts.append(f"\n\nRelevant CV Snippet (for context):\n{existing_cv}")
+           cl_prompt_parts.append(f"\n\nJob Description:\n{job_desc}")
+           full_cl_prompt = "\n".join(cl_prompt_parts)
+
+
+
+
+           if not GEMINI_API_CONFIGURED:
+               generated_cv = "Gemini API Key is not configured. Cannot generate CV."
+               generated_cl = "Gemini API Key is not configured. Cannot generate Cover Letter."
+           else:
+               try:
+                   # Generate CV
+                   gemini_cv_response = await asyncio.to_thread(ask_gemini_for_prompt, full_cv_prompt, max_output_tokens=2048)
+                   generated_cv = gemini_cv_response
+
+
+                   # Generate Cover Letter
+                   gemini_cl_response = await asyncio.to_thread(ask_gemini_for_prompt, full_cl_prompt, max_output_tokens=1024)
+                   generated_cl = gemini_cl_response
+
+
+                   flash("CV and Cover Letter generated successfully!", 'success')
+               except Exception as e:
+                   generated_cv = f"An error occurred during CV generation: {e}"
+                   generated_cl = f"An error occurred during Cover Letter generation: {e}"
+                   app.logger.exception("Error during CV/CL generation in endpoint:")
+
+
+       elif action == 'calculate_match':
+           if not existing_cv or not job_desc:
+               flash("Please provide both Existing CV and New Job Description to calculate match percentage.", 'danger')
+               return render_template('cv_maker.html', generated_cv=generated_cv, generated_cl=generated_cl, match_percentage=match_percentage, current_user=current_user)
+
+
+           match_prompt = f"""
+           Compare the following CV content with the job description and provide a match percentage (0-100).
+           Focus on skills, experience, and responsibilities. Output only the percentage number.
+           Example: If the match is 75%, output: 75
+
+
+           CV:
+           {existing_cv}
+
+
+           Job Description:
+           {job_desc}
+           """
+
+
+           if not GEMINI_API_CONFIGURED:
+               match_percentage = "Error: API Not Configured"
+           else:
+               try:
+                   match_percentage_str = await asyncio.to_thread(ask_gemini_for_prompt, match_prompt, max_output_tokens=10) # Small output for percentage
+                  
+                   # Attempt to parse the response as an integer
+                   try:
+                       match_percentage = int(match_percentage_str.strip())
+                   except ValueError:
+                       match_percentage = "Error: Invalid response"
+
+
+                   flash("Match percentage calculated successfully!", 'success')
+               except Exception as e:
+                   match_percentage = f"Error: {e}"
+                   app.logger.exception("Error during match calculation in endpoint:")
+      
+       # Update last_prompt_request and daily_prompt_count after any successful generation/calculation
+       user.last_prompt_request = now
+       if not user.is_admin:
+           user.daily_prompt_count += 1
+       db.session.add(user)
+       db.session.commit()
+       app.logger.info(f"User {user.username}'s last request time updated and count incremented for CV Maker.")
+
+
+   return render_template('cv_maker.html', generated_cv=generated_cv, generated_cl=generated_cl, match_percentage=match_percentage, current_user=current_user)
+
+
 
 
 @app.route('/generate', methods=['POST'])
@@ -1254,7 +1411,7 @@ def download_prompts_txt():
 def register():
   if current_user.is_authenticated:
       flash('You are already registered and logged in.', 'info')
-      return redirect(url_for('app_home'))
+      return redirect(url_for('app_selection')) # Redirect to app selection if already logged in
 
 
   if request.method == 'POST':
@@ -1282,7 +1439,7 @@ def register():
               db.session.commit()
               login_user(new_user) # Automatically log in the new user
               flash('Registration successful! You are now logged in.', 'success')
-              return redirect(url_for('app_home')) # Redirect directly to app_home
+              return redirect(url_for('app_selection')) # Redirect to app selection after registration
   return render_template('register.html') # Initial GET request, no suggestions
 
 
@@ -1322,7 +1479,7 @@ def generate_unique_username_suggestions(base_username, num_suggestions=3):
 def login():
   if current_user.is_authenticated:
       flash('You are already logged in.', 'info')
-      return redirect(url_for('app_home'))
+      return redirect(url_for('app_selection')) # Redirect to app selection if already logged in
 
 
   if request.method == 'POST':
@@ -1335,7 +1492,7 @@ def login():
       if user and user.check_password(password):
           login_user(user, remember=remember_me)
           flash('Logged in successfully!', 'success')
-          return redirect(url_for('app_home')) # Redirect directly to app_home
+          return redirect(url_for('app_selection')) # Redirect to app selection after login
       else:
           flash('Login Unsuccessful. Please check username and password.', 'danger')
   return render_template('login.html')
@@ -1416,4 +1573,6 @@ if __name__ == '__main__':
   # you can use `nest_asyncio.apply()` (install with `pip install nest-asyncio`), but this is
   # generally not recommended for production as it can hide underlying architectural issues.
   app.run(debug=True)
+
+
 
