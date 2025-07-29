@@ -165,7 +165,7 @@ class User(db.Model, UserMixin):
 class RawPrompt(db.Model):
   id = db.Column(db.Integer, primary_key=True)
   user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
-  raw_text = db.Column(tk.Text, nullable=False)
+  raw_text = db.Column(db.Text, nullable=False)
   timestamp = db.Column(db.DateTime, default=datetime.utcnow)
 
 
@@ -527,186 +527,6 @@ def llm_benchmark():
    return render_template('llm_benchmark.html', current_user=current_user)
 
 
-# NEW: App Selection Page
-@app.route('/app_selection')
-@login_required
-def app_selection():
-   return render_template('app_selection.html', current_user=current_user)
-
-
-# NEW: CV Maker Page
-@app.route('/cv_maker', methods=['GET', 'POST'])
-@login_required
-async def cv_maker():
-   # Initial values for GET request or if an error occurs
-   generated_cv = ""
-   generated_cl = ""
-   match_percentage = "N/A"
-   status_message = "" # To hold messages for the frontend, including cooldown
-
-
-   if request.method == 'POST':
-       user = current_user
-       now = datetime.utcnow()
-
-
-       action = request.form.get('action')
-       existing_cv = request.form.get('existing_cv_content', '').strip()
-       job_desc = request.form.get('job_description', '').strip()
-       num_pages = request.form.get('num_pages', '1')
-
-
-       # Check cooldown and daily limit
-       cooldown_data = await asyncio.to_thread(check_cooldown_logic, user, now)
-       if cooldown_data["cooldown_active"] or cooldown_data["daily_limit_reached"]:
-           if cooldown_data["cooldown_active"]:
-               status_message = f"Please wait {cooldown_data['remaining_time']} seconds before making another request."
-           elif cooldown_data["daily_limit_reached"]:
-               status_message = "You have reached your daily limit of 10 generations/calculations. Please try again tomorrow."
-          
-           # Return JSON response for cooldown/limit
-           return jsonify({
-               "generated_cv": generated_cv,
-               "generated_cl": generated_cl,
-               "match_percentage": match_percentage,
-               "status_message": status_message,
-               "cooldown_active": cooldown_data["cooldown_active"],
-               "remaining_time": cooldown_data["remaining_time"],
-               "daily_limit_reached": cooldown_data["daily_limit_reached"],
-               "daily_count": cooldown_data["daily_count"],
-               "is_admin": user.is_admin
-           }), 429 # Too Many Requests
-
-
-       # Proceed with generation/calculation if not on cooldown/limit
-       if action == 'generate_documents':
-           if not existing_cv or not job_desc:
-               status_message = "Please provide both Existing CV and New Job Description to generate documents."
-           elif not GEMINI_API_CONFIGURED:
-               status_message = "Gemini API Key is not configured. Cannot generate CV/Cover Letter."
-           else:
-               try:
-                   cv_prompt_parts = [
-                       "Generate a professional and concise CV (Curriculum Vitae) based on the following details. Format the output clearly with sections like 'Personal Information', 'Summary', 'Education', 'Experience', 'Skills', 'Projects', and 'Awards'. Use Markdown for formatting (e.g., bold for headings, bullet points for lists).",
-                       f"\n\nExisting CV:\n{existing_cv}",
-                       f"\n\nNew Job Description:\n{job_desc}",
-                       f"\n\nPrioritize skills and experience most relevant to the job. Maintain the general section structure. Try to keep the CV to approximately {num_pages} page(s). Do NOT include a placeholder for a photo. Output the CV in a clear, readable text format (like Markdown)."
-                   ]
-                   full_cv_prompt = "\n".join(cv_prompt_parts)
-
-
-                   cl_prompt_parts = [
-                       "Write a professional cover letter for the position based on the provided job description and the relevant CV snippet. Keep it concise and impactful.",
-                       f"\n\nRelevant CV Snippet (for context):\n{existing_cv}",
-                       f"\n\nJob Description:\n{job_desc}"
-                   ]
-                   full_cl_prompt = "\n".join(cl_prompt_parts)
-
-
-                   generated_cv = await asyncio.to_thread(ask_gemini_for_prompt, full_cv_prompt, max_output_tokens=2048)
-                   generated_cl = await asyncio.to_thread(ask_gemini_for_prompt, full_cl_prompt, max_output_tokens=1024)
-                   status_message = "CV and Cover Letter generated successfully!"
-
-
-               except Exception as e:
-                   generated_cv = f"An error occurred during CV generation: {e}"
-                   generated_cl = f"An error occurred during Cover Letter generation: {e}"
-                   status_message = f"An error occurred: {e}"
-                   app.logger.exception("Error during CV/CL generation in endpoint:")
-
-
-       elif action == 'calculate_match':
-           if not existing_cv or not job_desc:
-               status_message = "Please provide both Existing CV and New Job Description to calculate match percentage."
-           elif not GEMINI_API_CONFIGURED:
-               status_message = "Gemini API Key is not configured. Cannot calculate match percentage."
-           else:
-               try:
-                   match_prompt = f"""
-                   Compare the following CV content with the job description and provide a match percentage (0-100).
-                   Focus on skills, experience, and responsibilities. Output only the percentage number.
-                   Example: If the match is 75%, output: 75
-
-
-                   CV:
-                   {existing_cv}
-
-
-                   Job Description:
-                   {job_desc}
-                   """
-                   match_percentage_str = await asyncio.to_thread(ask_gemini_for_prompt, match_prompt, max_output_tokens=10)
-                   try:
-                       match_percentage = int(match_percentage_str.strip())
-                       status_message = "Match percentage calculated successfully!"
-                   except ValueError:
-                       match_percentage = "Error: Invalid response"
-                       status_message = "Error: Could not parse match percentage from AI response."
-               except Exception as e:
-                   match_percentage = f"Error: {e}"
-                   status_message = f"An error occurred during match calculation: {e}"
-                   app.logger.exception("Error during match calculation in endpoint:")
-      
-       # Update last_prompt_request and daily_prompt_count after any successful generation/calculation
-       user.last_prompt_request = now
-       if not user.is_admin:
-           user.daily_prompt_count += 1
-       db.session.add(user)
-       db.session.commit()
-       app.logger.info(f"User {user.username}'s last request time updated and count incremented for CV Maker.")
-
-
-       # Return JSON response for successful operations
-       return jsonify({
-           "generated_cv": generated_cv,
-           "generated_cl": generated_cl,
-           "match_percentage": match_percentage,
-           "status_message": status_message,
-           "cooldown_active": False, # No cooldown if request was successful
-           "remaining_time": 0,
-           "daily_limit_reached": False,
-           "daily_count": user.daily_prompt_count,
-           "is_admin": user.is_admin
-       })
-
-
-   # For GET request, render the initial page
-   return render_template('cv_maker.html', generated_cv=generated_cv, generated_cl=generated_cl, match_percentage=match_percentage, current_user=current_user)
-
-
-# Helper function for cooldown logic, reusable by different endpoints
-def check_cooldown_logic(user, now):
-   cooldown_active = False
-   remaining_time = 0
-   if user.last_prompt_request:
-       time_since_last_request = (now - user.last_prompt_request).total_seconds()
-       if time_since_last_request < COOLDOWN_SECONDS:
-           cooldown_active = True
-           remaining_time = int(COOLDOWN_SECONDS - time_since_last_request)
-
-
-   daily_limit_reached = False
-   daily_count = 0
-   if not user.is_admin:
-       today = now.date()
-       if user.last_count_reset_date != today:
-           daily_count = 0
-       else:
-           daily_count = user.daily_prompt_count
-      
-       if daily_count >= 10:
-           daily_limit_reached = True
-
-
-   return {
-       "cooldown_active": cooldown_active,
-       "remaining_time": remaining_time,
-       "daily_limit_reached": daily_limit_reached,
-       "daily_count": daily_count,
-       "is_admin": user.is_admin
-   }
-
-
 
 
 @app.route('/generate', methods=['POST'])
@@ -717,22 +537,36 @@ async def generate_prompts_endpoint(): # This remains async
 
 
   # --- UPDATED: Cooldown Check using database timestamp ---
-  cooldown_data = await asyncio.to_thread(check_cooldown_logic, user, now)
-  if cooldown_data["cooldown_active"] or cooldown_data["daily_limit_reached"]:
-      if cooldown_data["cooldown_active"]:
-          error_message = f"Please wait {cooldown_data['remaining_time']} seconds before generating new prompts."
-      else:
-          error_message = "You have reached your daily limit of 10 prompt generations. Please try again tomorrow."
-      app.logger.info(f"User {user.username} is on cooldown/daily limit for prompt generation. Error: {error_message}")
-      return jsonify({
-          "error": error_message,
-          "cooldown_active": cooldown_data["cooldown_active"],
-          "remaining_time": cooldown_data["remaining_time"],
-          "daily_limit_reached": cooldown_data["daily_limit_reached"],
-          "daily_count": cooldown_data["daily_count"],
-          "is_admin": user.is_admin
-      }), 429 # 429 Too Many Requests
+  if user.last_prompt_request:
+      time_since_last_request = (now - user.last_prompt_request).total_seconds()
+      if time_since_last_request < COOLDOWN_SECONDS:
+          remaining_time = int(COOLDOWN_SECONDS - time_since_last_request)
+          app.logger.info(f"User {user.username} is on cooldown. Remaining: {remaining_time}s")
+          return jsonify({
+              "error": f"Please wait {remaining_time} seconds before generating new prompts.",
+              "cooldown_active": True,
+              "remaining_time": remaining_time
+          }), 429 # 429 Too Many Requests
   # --- END UPDATED ---
+
+
+  # --- NEW: Daily Limit Check ---
+  if not user.is_admin: # Admins are exempt from the daily limit
+      today = now.date()
+      if user.last_count_reset_date != today:
+          user.daily_prompt_count = 0
+          user.last_count_reset_date = today
+          db.session.add(user) # Mark user as modified
+          db.session.commit() # Commit reset immediately to prevent race conditions on count
+
+
+      if user.daily_prompt_count >= 10: # Max 10 generations per day
+          app.logger.info(f"User {user.username} exceeded daily prompt limit.")
+          return jsonify({
+              "error": "You have reached your daily limit of 10 prompt generations. Please try again tomorrow.",
+              "daily_limit_reached": True
+          }), 429 # 429 Too Many Requests
+  # --- END NEW: Daily Limit Check ---
 
 
 
@@ -800,21 +634,35 @@ async def reverse_prompt_endpoint():
 
 
    # Apply cooldown to reverse prompting as well
-   cooldown_data = await asyncio.to_thread(check_cooldown_logic, user, now)
-   if cooldown_data["cooldown_active"] or cooldown_data["daily_limit_reached"]:
-       if cooldown_data["cooldown_active"]:
-           error_message = f"Please wait {cooldown_data['remaining_time']} seconds before performing another reverse prompt."
-       else:
-           error_message = "You have reached your daily limit of 10 prompt generations. Please try again tomorrow."
-       app.logger.info(f"User {user.username} is on cooldown/daily limit for reverse prompt. Error: {error_message}")
-       return jsonify({
-           "error": error_message,
-           "cooldown_active": cooldown_data["cooldown_active"],
-           "remaining_time": cooldown_data["remaining_time"],
-           "daily_limit_reached": cooldown_data["daily_limit_reached"],
-           "daily_count": cooldown_data["daily_count"],
-           "is_admin": user.is_admin
-       }), 429
+   if user.last_prompt_request: # Reusing the same cooldown for simplicity
+       time_since_last_request = (now - user.last_prompt_request).total_seconds()
+       if time_since_last_request < COOLDOWN_SECONDS:
+           remaining_time = int(COOLDOWN_SECONDS - time_since_last_request)
+           app.logger.info(f"User {user.username} is on cooldown for reverse prompt. Remaining: {remaining_time}s")
+           return jsonify({
+               "error": f"Please wait {remaining_time} seconds before performing another reverse prompt.",
+               "cooldown_active": True,
+               "remaining_time": remaining_time
+           }), 429
+
+
+   # --- NEW: Daily Limit Check for Reverse Prompt ---
+   if not user.is_admin: # Admins are exempt from the daily limit
+       today = now.date()
+       if user.last_count_reset_date != today:
+           user.daily_prompt_count = 0
+           user.last_count_reset_date = today
+           db.session.add(user) # Mark user as modified
+           db.session.commit() # Commit reset immediately to prevent race conditions on count
+
+
+       if user.daily_prompt_count >= 10: # Max 10 generations per day
+           app.logger.info(f"User {user.username} exceeded daily reverse prompt limit.")
+           return jsonify({
+               "error": "You have reached your daily limit of 10 prompt generations. Please try again tomorrow.",
+               "daily_limit_reached": True
+           }), 429 # 429 Too Many Requests
+   # --- END NEW: Daily Limit Check ---
 
 
    data = request.get_json()
@@ -863,21 +711,34 @@ async def process_image_prompt_endpoint():
 
 
    # Apply cooldown to image processing as well
-   cooldown_data = await asyncio.to_thread(check_cooldown_logic, user, now)
-   if cooldown_data["cooldown_active"] or cooldown_data["daily_limit_reached"]:
-       if cooldown_data["cooldown_active"]:
-           error_message = f"Please wait {cooldown_data['remaining_time']} seconds before processing another image."
-       else:
-           error_message = "You have reached your daily limit of 10 image processing requests. Please try again tomorrow."
-       app.logger.info(f"User {user.username} is on cooldown/daily limit for image processing. Error: {error_message}")
-       return jsonify({
-           "error": error_message,
-           "cooldown_active": cooldown_data["cooldown_active"],
-           "remaining_time": cooldown_data["remaining_time"],
-           "daily_limit_reached": cooldown_data["daily_limit_reached"],
-           "daily_count": cooldown_data["daily_count"],
-           "is_admin": user.is_admin
-       }), 429
+   if user.last_prompt_request:
+       time_since_last_request = (now - user.last_prompt_request).total_seconds()
+       if time_since_last_request < COOLDOWN_SECONDS:
+           remaining_time = int(COOLDOWN_SECONDS - time_since_last_request)
+           app.logger.info(f"User {user.username} is on cooldown for image processing. Remaining: {remaining_time}s")
+           return jsonify({
+               "error": f"Please wait {remaining_time} seconds before processing another image.",
+               "cooldown_active": True,
+               "remaining_time": remaining_time
+           }), 429
+
+
+   # Daily limit check for image processing
+   if not user.is_admin:
+       today = now.date()
+       if user.last_count_reset_date != today:
+           user.daily_prompt_count = 0
+           user.last_count_reset_date = today
+           db.session.add(user)
+           db.session.commit()
+
+
+       if user.daily_prompt_count >= 10:
+           app.logger.info(f"User {user.username} exceeded daily image processing limit.")
+           return jsonify({
+               "error": "You have reached your daily limit of 10 image processing requests. Please try again tomorrow.",
+               "daily_limit_reached": True
+           }), 429
 
 
    data = request.get_json()
@@ -924,10 +785,37 @@ def check_cooldown_endpoint():
    now = datetime.utcnow() # Use utcnow for consistency
 
 
-   cooldown_data = check_cooldown_logic(user, now)
+   cooldown_active = False
+   remaining_time = 0
+   if user.last_prompt_request:
+       time_since_last_request = (now - user.last_prompt_request).total_seconds()
+       if time_since_last_request < COOLDOWN_SECONDS:
+           cooldown_active = True
+           remaining_time = int(COOLDOWN_SECONDS - time_since_last_request)
 
 
-   return jsonify(cooldown_data), 200
+   daily_limit_reached = False
+   daily_count = 0
+   if not user.is_admin: # Check daily limit only for non-admins
+       today = now.date()
+       if user.last_count_reset_date != today:
+           # If the last reset date is not today, reset the count for the current session's check
+           # (The actual DB reset happens on the next prompt generation)
+           daily_count = 0
+       else:
+           daily_count = user.daily_prompt_count
+      
+       if daily_count >= 10:
+           daily_limit_reached = True
+
+
+   return jsonify({
+       "cooldown_active": cooldown_active,
+       "remaining_time": remaining_time,
+       "daily_limit_reached": daily_limit_reached,
+       "daily_count": daily_count,
+       "is_admin": user.is_admin
+   }), 200
 # --- END UPDATED ---
 
 
@@ -1366,7 +1254,7 @@ def download_prompts_txt():
 def register():
   if current_user.is_authenticated:
       flash('You are already registered and logged in.', 'info')
-      return redirect(url_for('app_selection')) # Redirect to app selection if already logged in
+      return redirect(url_for('app_home'))
 
 
   if request.method == 'POST':
@@ -1394,7 +1282,7 @@ def register():
               db.session.commit()
               login_user(new_user) # Automatically log in the new user
               flash('Registration successful! You are now logged in.', 'success')
-              return redirect(url_for('app_selection')) # Redirect to app selection after registration
+              return redirect(url_for('app_home')) # Redirect directly to app_home
   return render_template('register.html') # Initial GET request, no suggestions
 
 
@@ -1434,7 +1322,7 @@ def generate_unique_username_suggestions(base_username, num_suggestions=3):
 def login():
   if current_user.is_authenticated:
       flash('You are already logged in.', 'info')
-      return redirect(url_for('app_selection')) # Redirect to app selection if already logged in
+      return redirect(url_for('app_home'))
 
 
   if request.method == 'POST':
@@ -1447,7 +1335,7 @@ def login():
       if user and user.check_password(password):
           login_user(user, remember=remember_me)
           flash('Logged in successfully!', 'success')
-          return redirect(url_for('app_selection')) # Redirect to app selection after login
+          return redirect(url_for('app_home')) # Redirect directly to app_home
       else:
           flash('Login Unsuccessful. Please check username and password.', 'danger')
   return render_template('login.html')
@@ -1528,6 +1416,4 @@ if __name__ == '__main__':
   # you can use `nest_asyncio.apply()` (install with `pip install nest-asyncio`), but this is
   # generally not recommended for production as it can hide underlying architectural issues.
   app.run(debug=True)
-
-
 
