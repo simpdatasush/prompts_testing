@@ -276,7 +276,7 @@
                             </div>
                         </form>
                         <div id="cooldownTimer" class="cooldown-info" style="display: none;"></div>
-                        <div id="dailyLimitInfo" class="daily-limit-info" style="display: none;"></div>
+                        <!-- Daily limit info div removed as per request -->
                     </div>
                 </div>
             </div>
@@ -366,21 +366,21 @@
                 const response = await fetch('/check_cooldown');
                 const data = await response.json();
 
-                const dailyLimitInfoDiv = document.getElementById('dailyLimitInfo');
-                if (data.daily_limit_reached) {
-                    dailyLimitInfoDiv.textContent = `Daily limit reached (${data.daily_count}/10). Please try again tomorrow.`;
-                    dailyLimitInfoDiv.style.display = 'block';
-                    document.getElementById('generateBtn').disabled = true;
-                    document.getElementById('matchBtn').disabled = true;
-                } else {
-                    dailyLimitInfoDiv.textContent = `Daily requests: ${data.daily_count}/10`;
-                    dailyLimitInfoDiv.style.display = 'block';
-                    // Only re-enable buttons if not on cooldown
-                    if (!data.cooldown_active) {
-                        document.getElementById('generateBtn').disabled = false;
-                        document.getElementById('matchBtn').disabled = false;
-                    }
-                }
+                // Removed daily limit display logic as per request
+                // const dailyLimitInfoDiv = document.getElementById('dailyLimitInfo');
+                // if (data.daily_limit_reached) {
+                //     dailyLimitInfoDiv.textContent = `Daily limit reached (${data.daily_count}/10). Please try again tomorrow.`;
+                //     dailyLimitInfoDiv.style.display = 'block';
+                //     document.getElementById('generateBtn').disabled = true;
+                //     document.getElementById('matchBtn').disabled = true;
+                // } else {
+                //     dailyLimitInfoDiv.textContent = `Daily requests: ${data.daily_count}/10`;
+                //     dailyLimitInfoDiv.style.display = 'block';
+                //     if (!data.cooldown_active) {
+                //         document.getElementById('generateBtn').disabled = false;
+                //         document.getElementById('matchBtn').disabled = false;
+                //     }
+                // }
 
                 if (data.cooldown_active) {
                     let remainingTime = data.remaining_time;
@@ -396,6 +396,9 @@
                     }, 1000);
                 } else {
                     updateCooldownDisplay(0); // Ensure cooldown display is hidden
+                    // Re-enable buttons if not on cooldown (and not disabled by daily limit, which is now removed from display)
+                    document.getElementById('generateBtn').disabled = false;
+                    document.getElementById('matchBtn').disabled = false;
                 }
             } catch (error) {
                 console.error('Error checking cooldown status:', error);
@@ -459,19 +462,15 @@
                     displayFlashMessage(data.error, 'danger');
                 }
 
-                // Handle cooldown/daily limit messages and UI updates
-                if (data.cooldown_active || data.daily_limit_reached) {
+                // Handle cooldown messages and UI updates (daily limit display removed)
+                if (data.cooldown_active) {
                     updateCooldownDisplay(data.remaining_time);
-                    const dailyLimitInfoDiv = document.getElementById('dailyLimitInfo');
-                    dailyLimitInfoDiv.textContent = data.daily_limit_reached ? `Daily limit reached (${data.daily_count}/10). Please try again tomorrow.` : `Daily requests: ${data.daily_count}/10`;
-                    dailyLimitInfoDiv.style.display = 'block';
-                    document.getElementById('generateBtn').disabled = true;
-                    document.getElementById('matchBtn').disabled = true;
+                    // Daily limit info div is no longer displayed, so no need to update its content
+                    // document.getElementById('dailyLimitInfo').style.display = 'none'; // Ensure it's hidden
                 } else {
-                    // If successful, ensure cooldown/daily limit messages are cleared/updated
+                    // If successful, ensure cooldown message is cleared/updated
                     updateCooldownDisplay(0);
-                    document.getElementById('dailyLimitInfo').textContent = `Daily requests: ${data.daily_count}/10`;
-                    document.getElementById('dailyLimitInfo').style.display = 'block';
+                    // document.getElementById('dailyLimitInfo').style.display = 'none'; // Ensure it's hidden
                     document.getElementById('generateBtn').disabled = false;
                     document.getElementById('matchBtn').disabled = false;
                 }
