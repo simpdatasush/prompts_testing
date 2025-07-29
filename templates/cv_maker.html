@@ -92,13 +92,6 @@
             font-family: 'Consolas', 'Monaco', monospace;
             font-size: 0.9rem;
         }
-        /* .debugger-section textarea {
-            min-height: 150px;
-            background-color: #f8f9fa;
-            font-family: 'Consolas', 'Monaco', monospace;
-            font-size: 0.85rem;
-            color: #6c757d;
-        } */ /* Removed debugger styles */
         .btn-group-custom {
             display: flex;
             justify-content: center;
@@ -141,6 +134,48 @@
         }
         .footer-content a:hover {
             text-decoration: underline;
+        }
+        .cooldown-info {
+            text-align: center;
+            margin-top: 15px;
+            font-weight: bold;
+            color: #dc3545; /* Red color for warnings */
+        }
+        .daily-limit-info {
+            text-align: center;
+            margin-top: 15px;
+            font-weight: bold;
+            color: #ffc107; /* Yellow color for warnings */
+        }
+        .loading-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(255, 255, 255, 0.8);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+        }
+        .loading-spinner {
+            border: 8px solid #f3f3f3;
+            border-top: 8px solid #3498db;
+            border-radius: 50%;
+            width: 60px;
+            height: 60px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .loading-text {
+            margin-top: 15px;
+            font-size: 1.2rem;
+            color: #333;
         }
 
         @media (max-width: 992px) {
@@ -200,15 +235,15 @@
     <div class="container-fluid">
         <h2>AI CV & Cover Letter Generator</h2>
 
-        {% with messages = get_flashed_messages(with_categories=true) %}
-            {% if messages %}
-                <div class="alert-container">
+        <div id="flash-messages" class="alert-container">
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
                     {% for category, message in messages %}
                         <div class="alert alert-{{ category }}">{{ message }}</div>
                     {% endfor %}
-                </div>
-            {% endif %}
-        {% endwith %}
+                {% endif %}
+            {% endwith %}
+        </div>
 
         <div class="row">
             <!-- Input Section -->
@@ -236,10 +271,12 @@
                             <small class="form-text text-muted mb-3">Note: Photo needs to be manually added to the generated CV.</small>
 
                             <div class="btn-group-custom">
-                                <button type="submit" class="btn btn-primary" name="action" value="generate_documents">Generate CV & Cover Letter</button>
-                                <button type="submit" class="btn btn-info" name="action" value="calculate_match">Calculate Match %</button>
+                                <button type="submit" class="btn btn-primary" name="action" value="generate_documents" id="generateBtn">Generate CV & Cover Letter</button>
+                                <button type="submit" class="btn btn-info" name="action" value="calculate_match" id="matchBtn">Calculate Match %</button>
                             </div>
                         </form>
+                        <div id="cooldownTimer" class="cooldown-info" style="display: none;"></div>
+                        <div id="dailyLimitInfo" class="daily-limit-info" style="display: none;"></div>
                     </div>
                 </div>
             </div>
@@ -264,18 +301,13 @@
                         </div>
                     </div>
                 </div>
-
-                <!-- Debugger Section Removed -->
-                <!--
-                <div class="card debugger-section">
-                    <div class="card-header">Debugger Output</div>
-                    <div class="card-body">
-                        <textarea class="form-control" id="debugger_output" rows="10" readonly>{{ debugger_output }}</textarea>
-                    </div>
-                </div>
-                -->
             </div>
         </div>
+    </div>
+
+    <div class="loading-overlay" id="loadingOverlay">
+        <div class="loading-spinner"></div>
+        <div class="loading-text">Generating... Please wait.</div>
     </div>
 
     <footer class="footer">
@@ -289,14 +321,157 @@
     <script src="https://cdn.jsdelivr.net/npm/popper.js@1.16.1/dist/umd/popper.min.js"></script>
     <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
     <script>
+        // Function to copy text to clipboard
         function copyToClipboard(elementId) {
             var copyText = document.getElementById(elementId);
             copyText.select();
             copyText.setSelectionRange(0, 99999); /* For mobile devices */
             document.execCommand("copy");
-            alert("Copied to clipboard!"); // Using alert as per instruction, consider custom modal for production
+            // Replace alert with a custom modal for better UX if needed
+            alert("Copied to clipboard!");
         }
+
+        const COOLDOWN_SECONDS = 60; // Must match backend
+        let cooldownInterval; // Variable to hold the interval for cooldown timer
+
+        // Function to update cooldown timer display
+        function updateCooldownDisplay(remainingTime) {
+            const cooldownTimerDiv = document.getElementById('cooldownTimer');
+            if (remainingTime > 0) {
+                cooldownTimerDiv.textContent = `Cooldown active: Please wait ${remainingTime} seconds.`;
+                cooldownTimerDiv.style.display = 'block';
+                document.getElementById('generateBtn').disabled = true;
+                document.getElementById('matchBtn').disabled = true;
+            } else {
+                cooldownTimerDiv.textContent = '';
+                cooldownTimerDiv.style.display = 'none';
+                document.getElementById('generateBtn').disabled = false;
+                document.getElementById('matchBtn').disabled = false;
+                clearInterval(cooldownInterval); // Clear interval when cooldown ends
+            }
+        }
+
+        // Function to check cooldown status from the server
+        async function checkCooldownStatus() {
+            try {
+                const response = await fetch('/check_cooldown');
+                const data = await response.json();
+
+                const dailyLimitInfoDiv = document.getElementById('dailyLimitInfo');
+                if (data.daily_limit_reached) {
+                    dailyLimitInfoDiv.textContent = `Daily limit reached (${data.daily_count}/10). Please try again tomorrow.`;
+                    dailyLimitInfoDiv.style.display = 'block';
+                    document.getElementById('generateBtn').disabled = true;
+                    document.getElementById('matchBtn').disabled = true;
+                } else {
+                    dailyLimitInfoDiv.textContent = `Daily requests: ${data.daily_count}/10`;
+                    dailyLimitInfoDiv.style.display = 'block';
+                    // Only re-enable buttons if not on cooldown
+                    if (!data.cooldown_active) {
+                        document.getElementById('generateBtn').disabled = false;
+                        document.getElementById('matchBtn').disabled = false;
+                    }
+                }
+
+                if (data.cooldown_active) {
+                    let remainingTime = data.remaining_time;
+                    updateCooldownDisplay(remainingTime);
+                    clearInterval(cooldownInterval); // Clear any existing interval
+                    cooldownInterval = setInterval(() => {
+                        remainingTime--;
+                        updateCooldownDisplay(remainingTime);
+                        if (remainingTime <= 0) {
+                            clearInterval(cooldownInterval);
+                            checkCooldownStatus(); // Re-check status to ensure buttons are enabled
+                        }
+                    }, 1000);
+                } else {
+                    updateCooldownDisplay(0); // Ensure cooldown display is hidden
+                }
+            } catch (error) {
+                console.error('Error checking cooldown status:', error);
+                // Optionally display an error message to the user
+            }
+        }
+
+        // Function to display flash messages dynamically
+        function displayFlashMessage(message, category) {
+            const flashContainer = document.getElementById('flash-messages');
+            // Clear existing messages before adding new ones
+            flashContainer.innerHTML = ''; 
+            const alertDiv = document.createElement('div');
+            alertDiv.className = `alert alert-${category}`;
+            alertDiv.textContent = message;
+            flashContainer.appendChild(alertDiv);
+
+            // Automatically remove the message after 5 seconds
+            setTimeout(() => {
+                alertDiv.remove();
+            }, 5000);
+        }
+
+        // Handle form submission via AJAX
+        document.getElementById('cvForm').addEventListener('submit', async function(event) {
+            event.preventDefault(); // Prevent default form submission (page reload)
+
+            const form = event.target;
+            const formData = new FormData(form);
+            const action = event.submitter.value; // Get the value of the clicked button (action)
+
+            // Show loading overlay
+            document.getElementById('loadingOverlay').style.display = 'flex';
+
+            try {
+                const response = await fetch(form.action, {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const data = await response.json();
+
+                // Update output fields
+                document.getElementById('generated_cv').value = data.generated_cv || '';
+                document.getElementById('generated_cl').value = data.generated_cl || '';
+                document.getElementById('matchPercentage').textContent = `Match Percentage: ${data.match_percentage}`;
+
+                // Display status message
+                if (data.status_message) {
+                    const category = response.ok ? 'success' : 'danger'; // Determine category based on response status
+                    displayFlashMessage(data.status_message, category);
+                } else if (data.error) { // Handle explicit errors from backend
+                    displayFlashMessage(data.error, 'danger');
+                }
+
+                // Handle cooldown/daily limit messages and UI updates
+                if (data.cooldown_active || data.daily_limit_reached) {
+                    updateCooldownDisplay(data.remaining_time);
+                    const dailyLimitInfoDiv = document.getElementById('dailyLimitInfo');
+                    dailyLimitInfoDiv.textContent = data.daily_limit_reached ? `Daily limit reached (${data.daily_count}/10). Please try again tomorrow.` : `Daily requests: ${data.daily_count}/10`;
+                    dailyLimitInfoDiv.style.display = 'block';
+                    document.getElementById('generateBtn').disabled = true;
+                    document.getElementById('matchBtn').disabled = true;
+                } else {
+                    // If successful, ensure cooldown/daily limit messages are cleared/updated
+                    updateCooldownDisplay(0);
+                    document.getElementById('dailyLimitInfo').textContent = `Daily requests: ${data.daily_count}/10`;
+                    document.getElementById('dailyLimitInfo').style.display = 'block';
+                    document.getElementById('generateBtn').disabled = false;
+                    document.getElementById('matchBtn').disabled = false;
+                }
+
+            } catch (error) {
+                console.error('Error during form submission:', error);
+                displayFlashMessage('An unexpected error occurred. Please try again.', 'danger');
+            } finally {
+                // Hide loading overlay
+                document.getElementById('loadingOverlay').style.display = 'none';
+                // Re-check cooldown status after any request to ensure accuracy
+                checkCooldownStatus();
+            }
+        });
+
+        // Initial check when the page loads
+        document.addEventListener('DOMContentLoaded', checkCooldownStatus);
     </script>
 </body>
 </html>
-
