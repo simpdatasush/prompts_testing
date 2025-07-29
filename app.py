@@ -466,8 +466,8 @@ async def cv_maker():
         user = current_user
         now = datetime.utcnow()
 
-        app.logger.info(f"CV Maker POST request received from user: {user.username}")
         action = request.form.get('action')
+        app.logger.debug(f"CV Maker: Received action from form: '{action}'") # ADDED DEBUG LOG
         app.logger.info(f"Action requested: {action}")
 
         existing_cv = request.form.get('existing_cv_content', '').strip()
