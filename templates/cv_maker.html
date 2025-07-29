@@ -435,7 +435,8 @@
             document.getElementById('loadingOverlay').style.display = 'flex';
 
             try {
-                const response = await fetch(form.action, {
+                // CORRECTED: Use getAttribute('action') for robustness
+                const response = await fetch(form.getAttribute('action'), {
                     method: 'POST',
                     body: formData
                 });
