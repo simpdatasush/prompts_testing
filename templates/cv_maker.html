@@ -135,11 +135,20 @@
         .footer-content a:hover {
             text-decoration: underline;
         }
+        /* UPDATED: Cooldown info positioning */
         .cooldown-info {
-            text-align: center;
-            margin-top: 15px;
+            position: fixed; /* Position relative to the viewport */
+            bottom: 20px;    /* 20px from the bottom */
+            right: 20px;     /* 20px from the right */
+            background-color: #ffe0b2; /* Light orange background */
+            color: #e65100; /* Darker orange text */
+            padding: 10px 15px;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
             font-weight: bold;
-            color: #dc3545; /* Red color for warnings */
+            z-index: 1001; /* Ensure it's above other content */
+            text-align: center; /* Center text within the box */
+            min-width: 250px; /* Ensure it's wide enough */
         }
         .daily-limit-info {
             text-align: center;
@@ -188,6 +197,13 @@
             }
             .btn-group-custom .btn {
                 width: 100%;
+            }
+            /* Adjust cooldown info for smaller screens */
+            .cooldown-info {
+                bottom: 10px;
+                right: 10px;
+                left: 10px; /* Make it full width on mobile */
+                min-width: auto;
             }
         }
         @media (max-width: 768px) {
@@ -275,7 +291,8 @@
                                 <button type="submit" class="btn btn-info" name="action" value="calculate_match" id="matchBtn">Calculate Match %</button>
                             </div>
                         </form>
-                        <div id="cooldownTimer" class="cooldown-info" style="display: none;"></div>
+                        <!-- Cooldown timer div is now positioned globally via CSS -->
+                        <!-- <div id="cooldownTimer" class="cooldown-info" style="display: none;"></div> -->
                         <!-- Daily limit info div removed as per request -->
                     </div>
                 </div>
@@ -319,6 +336,9 @@
         <div class="loading-spinner"></div>
         <div class="loading-text">Generating... Please wait.</div>
     </div>
+
+    <!-- Cooldown timer div moved here for fixed positioning -->
+    <div id="cooldownTimer" class="cooldown-info" style="display: none;"></div>
 
     <footer class="footer">
        <div class="footer-content">
@@ -366,7 +386,7 @@
                 const response = await fetch('/check_cooldown');
                 const data = await response.json();
 
-                // Removed daily limit display logic as per request
+                // Daily limit display logic is removed as per request
                 // const dailyLimitInfoDiv = document.getElementById('dailyLimitInfo');
                 // if (data.daily_limit_reached) {
                 //     dailyLimitInfoDiv.textContent = `Daily limit reached (${data.daily_count}/10). Please try again tomorrow.`;
@@ -396,7 +416,6 @@
                     }, 1000);
                 } else {
                     updateCooldownDisplay(0); // Ensure cooldown display is hidden
-                    // Re-enable buttons if not on cooldown (and not disabled by daily limit, which is now removed from display)
                     document.getElementById('generateBtn').disabled = false;
                     document.getElementById('matchBtn').disabled = false;
                 }
@@ -465,12 +484,8 @@
                 // Handle cooldown messages and UI updates (daily limit display removed)
                 if (data.cooldown_active) {
                     updateCooldownDisplay(data.remaining_time);
-                    // Daily limit info div is no longer displayed, so no need to update its content
-                    // document.getElementById('dailyLimitInfo').style.display = 'none'; // Ensure it's hidden
                 } else {
-                    // If successful, ensure cooldown message is cleared/updated
                     updateCooldownDisplay(0);
-                    // document.getElementById('dailyLimitInfo').style.display = 'none'; // Ensure it's hidden
                     document.getElementById('generateBtn').disabled = false;
                     document.getElementById('matchBtn').disabled = false;
                 }
