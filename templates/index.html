@@ -598,7 +598,6 @@
 
       .toggle-text {
           position: absolute;
-          color: white;
           font-size: 12px;
           font-weight: bold;
           line-height: 34px;
@@ -609,28 +608,28 @@
 
       .toggle-text.contextual {
           left: 25px; /* Adjusted for centering in new width */
-          color: #333; /* Darker text when not active */
+          color: #FFFFFF; /* Default color when Contextual is active */
       }
 
       .toggle-text.json {
           right: 30px; /* Adjusted for centering in new width */
-          color: #333; /* Darker text when not active */
+          color: #333; /* Default color when JSON is not active */
       }
 
       input:checked + .slider .toggle-text.contextual {
-          color: white; /* White text when active */
+          color: #333; /* Muted color when JSON is active */
       }
 
       input:checked + .slider .toggle-text.json {
-          color: white; /* White text when active */
+          color: white; /* Highlighted color when JSON is active */
       }
 
       input:not(:checked) + .slider .toggle-text.contextual {
-          color: white; /* White text when active */
+          color: white; /* Highlighted color when Contextual is active */
       }
 
       input:not(:checked) + .slider .toggle-text.json {
-          color: #333; /* Darker text when not active */
+          color: #333; /* Muted color when Contextual is active */
       }
   </style>
 </head>
@@ -1123,7 +1122,7 @@
                } else if (data.daily_limit_reached) {
                    canGenerate = false;
                    messageType = 'danger';
-                   statusMessage = `Daily limit reached: You have used ${data.daily_count}/10 generations today. Please try again tomorrow.`;
+                   statusMessage = `Daily limit reached: You have used ${data.daily_count}/10 generations today.`;
                    cooldownTimerDisplay.style.display = 'none'; // Ensure timer is hidden
                } else {
                    // If not on cooldown or limit, show daily count for non-admins
@@ -1703,5 +1702,3 @@
    </script>
 </body>
 </html>
-
-
