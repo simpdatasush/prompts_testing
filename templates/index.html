@@ -537,7 +537,7 @@
       .toggle-switch {
           position: relative;
           display: inline-block;
-          width: 60px;
+          width: 120px; /* Doubled from 60px */
           height: 34px;
       }
 
@@ -582,9 +582,9 @@
       }
 
       input:checked + .slider:before {
-          -webkit-transform: translateX(26px);
-          -ms-transform: translateX(26px);
-          transform: translateX(26px);
+          -webkit-transform: translateX(86px); /* Adjusted for new width */
+          -ms-transform: translateX(86px);    /* Adjusted for new width */
+          transform: translateX(86px);       /* Adjusted for new width */
       }
 
       /* Round sliders */
@@ -608,12 +608,12 @@
       }
 
       .toggle-text.contextual {
-          left: 10px; /* Position for "Contextual" text */
+          left: 25px; /* Adjusted for centering in new width */
           color: #333; /* Darker text when not active */
       }
 
       .toggle-text.json {
-          right: 10px; /* Position for "JSON" text */
+          right: 30px; /* Adjusted for centering in new width */
           color: #333; /* Darker text when not active */
       }
 
@@ -1703,3 +1703,5 @@
    </script>
 </body>
 </html>
+
+
