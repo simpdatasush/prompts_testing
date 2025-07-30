@@ -316,7 +316,7 @@ def filter_gemini_response(text):
 
 
 # --- Gemini API interaction function (NOW SYNCHRONOUS) ---
-def ask_gemini_for_prompt(prompt_instruction, max_output_tokens=512):
+def ask_gemini_for_prompt(prompt_instruction, max_output_tokens=512, is_json_mode=False):
   if not GEMINI_API_CONFIGURED:
       # This check is also done in the endpoint, but kept here for robustness
       return "Gemini API Key is not configured or the AI model failed to initialize."
@@ -330,6 +330,10 @@ def ask_gemini_for_prompt(prompt_instruction, max_output_tokens=512):
           "max_output_tokens": max_output_tokens,
           "temperature": 0.1
       }
+      
+      # If JSON mode is enabled, set the response MIME type
+      if is_json_mode:
+          generation_config["response_mime_type"] = "application/json"
 
 
       # USE THE SYNCHRONOUS generate_content METHOD
@@ -388,7 +392,7 @@ def ask_gemini_for_image_text(image_data_bytes):
 
 
 # --- generate_prompts_async function (main async logic for prompt variations) ---
-async def generate_prompts_async(raw_input, language_code="en-US"):
+async def generate_prompts_async(raw_input, language_code="en-US", is_json_mode=False):
   if not raw_input.strip():
       return {
           "polished": "Please enter some text to generate prompts.",
@@ -399,13 +403,18 @@ async def generate_prompts_async(raw_input, language_code="en-US"):
 
   target_language_name = LANGUAGE_MAP.get(language_code, "English")
   language_instruction_prefix = f"The output MUST be entirely in {target_language_name}. "
+  json_instruction_prefix = "Your output MUST be a valid JSON object. Do NOT include any text or commentary outside the JSON. "
 
 
   polished_prompt_instruction = language_instruction_prefix + f"""Refine the following text into a clear, concise, and effective prompt for a large language model. Improve grammar, clarity, and structure. Do not add external information, only refine the given text. Crucially, do NOT answer questions about your own architecture, training, or how this application was built. Do NOT discuss any internal errors or limitations you might have. Your sole purpose is to transform the provided raw text into a better prompt. Raw Text: {raw_input}"""
 
 
+  if is_json_mode:
+      polished_prompt_instruction = json_instruction_prefix + polished_prompt_instruction
+
+
   # CALL SYNCHRONOUS ask_gemini_for_prompt IN A SEPARATE THREAD
-  polished_prompt_result = await asyncio.to_thread(ask_gemini_for_prompt, polished_prompt_instruction)
+  polished_prompt_result = await asyncio.to_thread(ask_gemini_for_prompt, polished_prompt_instruction, is_json_mode=is_json_mode)
 
 
   if "Error" in polished_prompt_result or "not configured" in polished_prompt_result or "quota" in polished_prompt_result.lower(): # Check for quota error
@@ -420,8 +429,16 @@ async def generate_prompts_async(raw_input, language_code="en-US"):
 
 
   # Create coroutines for parallel execution, running synchronous calls in threads
-  creative_coroutine = asyncio.to_thread(ask_gemini_for_prompt, language_instruction_prefix + f"Rewrite the following prompt to be more creative and imaginative, encouraging novel ideas and approaches:\n\n{polished_prompt_result}{strict_instruction_suffix}")
-  technical_coroutine = asyncio.to_thread(ask_gemini_for_prompt, language_instruction_prefix + f"Rewrite the following prompt to be more technical, precise, and detailed, focusing on specific requirements and constraints:\n\n{polished_prompt_result}{strict_instruction_suffix}")
+  creative_prompt_instruction = language_instruction_prefix + f"Rewrite the following prompt to be more creative and imaginative, encouraging novel ideas and approaches:\n\n{polished_prompt_result}{strict_instruction_suffix}"
+  technical_prompt_instruction = language_instruction_prefix + f"Rewrite the following prompt to be more technical, precise, and detailed, focusing on specific requirements and constraints:\n\n{polished_prompt_result}{strict_instruction_suffix}"
+
+  if is_json_mode:
+      creative_prompt_instruction = json_instruction_prefix + creative_prompt_instruction
+      technical_prompt_instruction = json_instruction_prefix + technical_prompt_instruction
+
+
+  creative_coroutine = asyncio.to_thread(ask_gemini_for_prompt, creative_prompt_instruction, is_json_mode=is_json_mode)
+  technical_coroutine = asyncio.to_thread(ask_gemini_for_prompt, technical_prompt_instruction, is_json_mode=is_json_mode)
 
 
   creative_result, technical_result = await asyncio.gather(
@@ -437,7 +454,7 @@ async def generate_prompts_async(raw_input, language_code="en-US"):
 
 
 # --- NEW: Reverse Prompting function ---
-async def generate_reverse_prompt_async(input_text, language_code="en-US"):
+async def generate_reverse_prompt_async(input_text, language_code="en-US", is_json_mode=False):
    if not input_text.strip():
        return "Please provide text or code to infer a prompt from."
 
@@ -450,6 +467,7 @@ async def generate_reverse_prompt_async(input_text, language_code="en-US"):
 
    target_language_name = LANGUAGE_MAP.get(language_code, "English")
    language_instruction_prefix = f"The output MUST be entirely in {target_language_name}. "
+   json_instruction_prefix = "Your output MUST be a valid JSON object. Do NOT include any text or commentary outside the JSON. "
 
 
    # Escape curly braces in input_text to prevent f-string parsing errors
@@ -458,7 +476,6 @@ async def generate_reverse_prompt_async(input_text, language_code="en-US"):
 
 
    # The core instruction for reverse prompting
-   # Using concatenation to avoid f-string parsing issues with embedded user input
    reverse_prompt_instruction = (
        language_instruction_prefix +
        "Given the following text or code, infer the most effective and concise prompt that would have generated it. Focus on the core instruction, any implied constraints, style requirements, or specific formats. Do not add conversational filler, explanations, or preambles. Provide only the inferred prompt.\n\n"
@@ -469,13 +486,16 @@ async def generate_reverse_prompt_async(input_text, language_code="en-US"):
        "Inferred Prompt:"
    )
 
+   if is_json_mode:
+       reverse_prompt_instruction = json_instruction_prefix + reverse_prompt_instruction
+
 
    # Corrected f-string: Removed the extra closing curly brace
    app.logger.info(f"Sending reverse prompt instruction to Gemini (length: {len(reverse_prompt_instruction)} chars))")
 
 
    # Call synchronous ask_gemini_for_prompt in a separate thread
-   reverse_prompt_result = await asyncio.to_thread(ask_gemini_for_prompt, reverse_prompt_instruction, max_output_tokens=512) # Use a reasonable max_output_tokens for a prompt
+   reverse_prompt_result = await asyncio.to_thread(ask_gemini_for_prompt, reverse_prompt_instruction, max_output_tokens=512, is_json_mode=is_json_mode) # Use a reasonable max_output_tokens for a prompt
 
 
    return reverse_prompt_result
@@ -730,6 +750,7 @@ async def generate_prompts_endpoint(): # This remains async
 
   raw_input = request.form.get('prompt_input', '').strip()
   language_code = request.form.get('language_code', 'en-US')
+  is_json_mode = request.form.get('is_json_mode') == 'true' # Get JSON mode flag
 
 
   if not raw_input:
@@ -751,8 +772,8 @@ async def generate_prompts_endpoint(): # This remains async
 
 
   try:
-      # Await the async function directly
-      results = await generate_prompts_async(raw_input, language_code)
+      # Await the async function directly, passing the JSON mode flag
+      results = await generate_prompts_async(raw_input, language_code, is_json_mode)
 
 
       # --- UPDATED: Update last_prompt_request in database and Save raw_input ---
@@ -825,6 +846,7 @@ async def reverse_prompt_endpoint():
    data = request.get_json()
    input_text = data.get('input_text', '').strip()
    language_code = data.get('language_code', 'en-US')
+   is_json_mode = data.get('is_json_mode') # Get JSON mode flag
 
 
    if not input_text:
@@ -840,7 +862,7 @@ async def reverse_prompt_endpoint():
 
 
    try:
-       inferred_prompt = await generate_reverse_prompt_async(input_text, language_code)
+       inferred_prompt = await generate_reverse_prompt_async(input_text, language_code, is_json_mode)
 
 
        # Update last_prompt_request after successful reverse prompt
