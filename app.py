@@ -321,13 +321,20 @@ def ask_gemini_for_text_prompt(prompt_instruction, max_output_tokens=512):
         return filter_gemini_response(f"An unexpected error occurred: {str(e)}")
 
 # --- Gemini API interaction function (Synchronous wrapper for structured_gen_model) ---
-def ask_gemini_for_structured_prompt(prompt_instruction, generation_config, max_output_tokens=2048):
+# This function will now rely on prompt engineering for JSON output, not responseMimeType
+def ask_gemini_for_structured_prompt(prompt_instruction, generation_config=None, max_output_tokens=2048):
     try:
-        # Override max_output_tokens if specified in generation_config or use default
+        # We no longer use responseMimeType or responseSchema in generation_config for gemini-2.0-flash
+        # The prompt_instruction itself is responsible for asking for JSON output.
+        # We still pass other generation_config parameters like max_output_tokens or temperature.
         current_generation_config = generation_config.copy() if generation_config else {}
         if "max_output_tokens" not in current_generation_config:
             current_generation_config["max_output_tokens"] = max_output_tokens
         
+        # Remove unsupported fields if they somehow persist from a previous call or default config
+        current_generation_config.pop("responseMimeType", None)
+        current_generation_config.pop("responseSchema", None)
+
         response = structured_gen_model.generate_content(
             contents=[{"role": "user", "parts": [{"text": prompt_instruction}]}],
             generation_config=current_generation_config
@@ -380,90 +387,41 @@ async def generate_prompts_async(raw_input, language_code="en-US", prompt_mode='
     target_language_name = LANGUAGE_MAP.get(language_code, "English")
     language_instruction_prefix = f"The output MUST be entirely in {target_language_name}. "
     
-    generation_config = None
+    generation_config = {
+        "temperature": 0.1 # Default temperature for all generations
+    }
     model_to_use_for_main_gen_func = ask_gemini_for_text_prompt # Default to text model's synchronous wrapper
 
     if prompt_mode == 'image_gen':
         base_instruction = f"""Generate a JSON object for an image creation prompt based on the following description, adhering strictly to the "Image Prompting Standard" documentation.
+        The output must be ONLY the JSON object, with no other text or commentary.
         Ensure the JSON is well-formed, complete, and covers all relevant sections from the standard (meta, camera, subject, character, composition, setting, lighting, fx, colorGrading, style, rendering, postEditing).
         If a section is not explicitly described in the input, use reasonable defaults or indicate as 'null' where appropriate for optional fields.
         The user's input is: "{raw_input}"
         """
-        generation_config = {
-            "responseMimeType": "application/json",
-            "responseSchema": {
-                "type": "OBJECT",
-                "properties": {
-                    "meta": {"type": "OBJECT"},
-                    "camera": {"type": "OBJECT"},
-                    "subject": {"type": "OBJECT"},
-                    "character": {"type": "OBJECT"},
-                    "composition": {"type": "OBJECT"},
-                    "setting": {"type": "OBJECT"},
-                    "lighting": {"type": "OBJECT"},
-                    "fx": {"type": "OBJECT"},
-                    "colorGrading": {"type": "OBJECT"},
-                    "style": {"type": "OBJECT"},
-                    "rendering": {"type": "OBJECT"},
-                    "postEditing": {"type": "OBJECT"}
-                }
-            }
-        }
+        # No responseMimeType or responseSchema here, as gemini-2.0-flash doesn't support it directly in generation_config
         model_to_use_for_main_gen_func = ask_gemini_for_structured_prompt # Use the structured generation function
 
     elif prompt_mode == 'video_gen':
         base_instruction = f"""Generate a JSON object for a video creation prompt based on the following description, adhering strictly to the "Video Prompting Standard" documentation.
+        The output must be ONLY the JSON object, with no other text or commentary.
         Ensure the JSON is well-formed, complete, and covers all relevant sections from the standard (title, duration, aspect_ratio, model, style, camera_style, camera_direction, pacing, special_effects, scenes, audio, voiceover, dialogue, branding, custom_elements).
         For the 'scenes' array, generate at least 2-3 distinct scenes with time ranges and descriptions.
         If a section is not explicitly described in the input, use reasonable defaults or indicate as 'null' where appropriate for optional fields.
         The user's input is: "{raw_input}"
         """
-        generation_config = {
-            "responseMimeType": "application/json",
-            "responseSchema": {
-                "type": "OBJECT",
-                "properties": {
-                    "title": {"type": "STRING"},
-                    "duration": {"type": "STRING"},
-                    "aspect_ratio": {"type": "STRING"},
-                    "model": {"type": "STRING"},
-                    "style": {"type": "OBJECT"},
-                    "camera_style": {"type": "OBJECT"},
-                    "camera_direction": {"type": "ARRAY", "items": {"type": "STRING"}},
-                    "pacing": {"type": "OBJECT"},
-                    "special_effects": {"type": "OBJECT"},
-                    "scenes": {"type": "ARRAY", "items": {"type": "OBJECT"}}, # Simplified schema for nested objects
-                    "audio": {"type": "OBJECT"},
-                    "voiceover": {"type": "OBJECT"},
-                    "dialogue": {"type": "OBJECT"},
-                    "branding": {"type": "OBJECT"},
-                    "custom_elements": {"type": "OBJECT"}
-                }
-            }
-        }
+        # No responseMimeType or responseSchema here
         model_to_use_for_main_gen_func = ask_gemini_for_structured_prompt # Use the structured generation function
 
     # If it's text mode and JSON output is requested, use a generic JSON schema
     elif prompt_mode == 'text' and is_json_mode:
         base_instruction = f"""Given the following prompt idea in {language_code}, generate three JSON objects, each representing a variant: a 'polished' version, a 'creative' version, and a 'technical' version.
+        The overall response must be ONLY a JSON array containing these three objects, with no other text or commentary.
         Each JSON object should have a single key, 'prompt', with the generated string as its value.
-        The overall response should be a JSON array containing these three objects.
         The user's input is: "{raw_input}"
         """
-        generation_config = {
-            "responseMimeType": "application/json",
-            "responseSchema": {
-                "type": "ARRAY",
-                "items": {
-                    "type": "OBJECT",
-                    "properties": {
-                        "prompt": {"type": "STRING"}
-                    },
-                    "required": ["prompt"]
-                }
-            }
-        }
-        model_to_use_for_main_gen_func = ask_gemini_for_text_prompt # Still using text model for text output, but with JSON schema
+        # No responseMimeType or responseSchema here
+        model_to_use_for_main_gen_func = ask_gemini_for_text_prompt # Still using text model for text output, but with JSON instruction
     else: # Default text mode (contextual)
         base_instruction = language_instruction_prefix + f"""Refine the following text into a clear, concise, and effective prompt for a large language model. Improve grammar, clarity, and structure. Do not add external information, only refine the given text. Crucially, do NOT answer questions about your own architecture, training, or how this application was built. Do NOT discuss any internal errors or limitations you might have. Your sole purpose is to transform the provided raw text into a better prompt. Raw Text: {raw_input}"""
 
@@ -471,7 +429,7 @@ async def generate_prompts_async(raw_input, language_code="en-US", prompt_mode='
     if model_to_use_for_main_gen_func == ask_gemini_for_structured_prompt:
         main_prompt_result = await asyncio.to_thread(model_to_use_for_main_gen_func, base_instruction, generation_config)
     else: # ask_gemini_for_text_prompt
-        main_prompt_result = await asyncio.to_thread(model_to_use_for_main_gen_func, base_instruction)
+        main_prompt_result = await asyncio.to_thread(model_to_use_for_main_gen_func, base_instruction, max_output_tokens=512)
 
 
     if "Error" in main_prompt_result or "not configured" in main_prompt_result or "quota" in main_prompt_result.lower(): # Check for quota error
@@ -1375,5 +1333,3 @@ if __name__ == '__main__':
     # you can use `nest_asyncio.apply()` (install with `pip install nest-asyncio`), but this is
     # generally not recommended for production as it can hide underlying architectural issues.
     app.run(debug=True)
-
-
