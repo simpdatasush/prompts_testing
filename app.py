@@ -374,6 +374,14 @@ def ask_gemini_for_image_text(image_data_bytes):
         app.logger.error(f"Unexpected Error calling Gemini API for image text extraction: {e}", exc_info=True)
         return filter_gemini_response(f"An unexpected error occurred during image text extraction: {str(e)}")
 
+# Helper function to remove nulls recursively
+def remove_null_values(obj):
+    if isinstance(obj, dict):
+        return {k: remove_null_values(v) for k, v in obj.items() if v is not None}
+    elif isinstance(obj, list):
+        return [remove_null_values(elem) for elem in obj if elem is not None]
+    else:
+        return obj
 
 # --- generate_prompts_async function (main async logic for prompt variations) ---
 async def generate_prompts_async(raw_input, language_code="en-US", prompt_mode='text', is_json_mode=False):
@@ -482,11 +490,19 @@ async def generate_prompts_async(raw_input, language_code="en-US", prompt_mode='
                 logging.info(f"Removed 'model' field from generated {prompt_mode} JSON.")
             # --- END NEW ---
 
+            # --- NEW: Recursively remove null values ---
+            cleaned_json_obj = remove_null_values(parsed_json_obj)
+            # --- END NEW ---
+
             # Pretty print the modified JSON for display
-            formatted_json = json.dumps(parsed_json_obj, indent=2)
-            polished_output = formatted_json
-            creative_output = formatted_json # For now, creative/technical are same as polished for image/video
-            technical_output = formatted_json
+            formatted_json = json.dumps(cleaned_json_obj, indent=2)
+            
+            # --- NEW: Assign to creative_output only ---
+            polished_output = ""
+            creative_output = formatted_json
+            technical_output = ""
+            # --- END NEW ---
+
         except json.JSONDecodeError:
             logging.error(f"Failed to decode JSON for image/video mode: {json_string_to_parse}")
             polished_output = creative_output = technical_output = f"Error: Failed to parse JSON response for image/video. Raw: {json_string_to_parse}"
@@ -533,6 +549,11 @@ async def generate_reverse_prompt_async(input_text, language_code="en-US", promp
     if not input_text.strip():
         return "Please provide text or code to infer a prompt from."
 
+    # --- NEW: Disable reverse prompting for image_gen and video_gen modes ---
+    if prompt_mode in ['image_gen', 'video_gen']:
+        return "Reverse prompting is not applicable for image or video generation modes."
+    # --- END NEW ---
+
     # Enforce character limit
     MAX_REVERSE_PROMPT_CHARS = 10000
     if len(input_text) > MAX_REVERSE_PROMPT_CHARS:
@@ -553,6 +574,8 @@ async def generate_reverse_prompt_async(input_text, language_code="en-US", promp
                 prompt_instruction = f"Analyze the following text/code and infer a concise, high-level prompt idea that could have generated it. Respond in {language_code}. Input: {escaped_input_text}"
         else:
             prompt_instruction = f"Analyze the following text/code and infer a concise, high-level prompt idea that could have generated it. Respond in {language_code}. Input: {escaped_input_text}"
+    # The image_gen and video_gen cases below are now effectively unreachable due to the early return above.
+    # However, keeping them for clarity of original intent if the restriction were to be lifted.
     elif prompt_mode == 'image_gen':
         try:
             json_data = json.loads(input_text)
@@ -737,18 +760,53 @@ async def reverse_prompt():
     if not input_text:
         return jsonify({"error": "Please provide text or code to infer a prompt from."}), 400
 
-    try:
-        inferred_prompt = await generate_reverse_prompt_async(input_text, language_code, prompt_mode, is_json_mode)
+    # --- NEW: Disable reverse prompting for image_gen and video_gen modes ---
+    if prompt_mode in ['image_gen', 'video_gen']:
+        return jsonify({"inferred_prompt": "Reverse prompting is not applicable for image or video generation modes."}), 200
+    # --- END NEW ---
 
-        # Update last_generation_time after successful reverse prompt
-        user.last_generation_time = now
-        if not user.is_admin: # Only increment count for non-admin users
-            user.daily_generation_count += 1
-        db.session.add(user)
-        db.session.commit()
-        app.logger.info(f"User {user.username}'s last prompt request time updated and count incremented after reverse prompt.")
+    # Enforce character limit
+    MAX_REVERSE_PROMPT_CHARS = 10000
+    if len(input_text) > MAX_REVERSE_PROMPT_CHARS:
+        return jsonify({"inferred_prompt": f"Input for reverse prompting exceeds the {MAX_REVERSE_PROMPT_CHARS} character limit. Please shorten your input."}), 200
 
-        return jsonify({"inferred_prompt": inferred_prompt})
+    target_language_name = LANGUAGE_MAP.get(language_code, "English")
+    language_instruction_prefix = f"The output MUST be entirely in {target_language_name}. "
+
+    # Escape curly braces in input_text to prevent f-string parsing errors
+    escaped_input_text = input_text.replace('{', '{{').replace('}', '}}')
+
+    if prompt_mode == 'text':
+        if is_json_mode:
+            try:
+                json_data = json.loads(input_text)
+                prompt_instruction = f"Describe the following JSON object in natural language as a prompt idea, focusing on its core content and purpose: {json.dumps(json_data, indent=2)}"
+            except json.JSONDecodeError:
+                prompt_instruction = f"Analyze the following text/code and infer a concise, high-level prompt idea that could have generated it. Respond in {language_code}. Input: {escaped_input_text}"
+        else:
+            prompt_instruction = f"Analyze the following text/code and infer a concise, high-level prompt idea that could have generated it. Respond in {language_code}. Input: {escaped_input_text}"
+    # The image_gen and video_gen cases below are now effectively unreachable due to the early return above.
+    # However, keeping them for clarity of original intent if the restriction were to be lifted.
+    elif prompt_mode == 'image_gen':
+        try:
+            json_data = json.loads(input_text)
+            prompt_instruction = f"The user has provided a structured JSON for an image generation prompt. Convert this JSON into a concise, natural language description that could be used as an input to generate a similar structured prompt. JSON: {json.dumps(json_data, indent=2)}"
+        except json.JSONDecodeError:
+            prompt_instruction = f"The user has provided a natural language description for an image. Infer a concise, natural language prompt idea for image generation based on this input. Input: {escaped_input_text}"
+    elif prompt_mode == 'video_gen':
+        try:
+            json_data = json.loads(input_text)
+            prompt_instruction = f"The user has provided a structured JSON for a video generation prompt. Convert this JSON into a concise, natural language description that could be used as an input to generate a similar structured prompt. JSON: {json.dumps(json_data, indent=2)}"
+        except json.JSONDecodeError:
+            prompt_instruction = f"The user has provided a natural language description for a video. Infer a concise, natural language prompt idea for video generation based on this input. Input: {escaped_input_text}"
+    else:
+        prompt_instruction = f"Analyze the following text/code and infer a concise, high-level prompt idea that could have generated it. Respond in {language_code}. Input: {escaped_input_text}"
+
+    app.logger.info(f"Sending reverse prompt instruction to Gemini (length: {len(prompt_instruction)} chars))")
+
+    reverse_prompt_result = await asyncio.to_thread(ask_gemini_for_text_prompt, prompt_instruction, max_output_tokens=512)
+
+    return jsonify({"inferred_prompt": reverse_prompt_result})
     except Exception as e:
         app.logger.exception("Error during reverse prompt generation in endpoint:")
         return jsonify({"error": f"An unexpected server error occurred: {e}. Please check server logs for details."}), 500
