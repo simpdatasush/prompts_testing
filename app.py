@@ -439,13 +439,26 @@ async def generate_prompts_async(raw_input, language_code="en-US", prompt_mode='
             "technical": "",
         }
 
+    # --- NEW: Strip markdown code block fences before JSON parsing ---
+    # This regex looks for an optional leading markdown fence (```json or ```)
+    # and an optional trailing markdown fence (```)
+    # It captures the content in between.
+    match = re.search(r"^\s*```(?:json)?\s*(.*?)\s*```\s*$", main_prompt_result, re.DOTALL)
+    if match:
+        json_string_to_parse = match.group(1)
+        logging.info("Stripped markdown fences from response.")
+    else:
+        json_string_to_parse = main_prompt_result
+        logging.warning("No markdown fences found, attempting to parse raw response as JSON.")
+    # --- END NEW ---
+
     polished_output = ""
     creative_output = ""
     technical_output = ""
 
     if prompt_mode == 'text' and is_json_mode:
         try:
-            parsed_response = json.loads(main_prompt_result)
+            parsed_response = json.loads(json_string_to_parse) # Use the stripped string
             if isinstance(parsed_response, list) and len(parsed_response) >= 3:
                 polished_output = parsed_response[0].get('prompt', '')
                 creative_output = parsed_response[1].get('prompt', '')
@@ -453,22 +466,30 @@ async def generate_prompts_async(raw_input, language_code="en-US", prompt_mode='
             else:
                 raise ValueError("Unexpected JSON structure for text generation.")
         except json.JSONDecodeError:
-            logging.error(f"Failed to decode JSON for text mode: {main_prompt_result}")
-            polished_output = creative_output = technical_output = f"Error: Failed to parse JSON response. Raw: {main_prompt_result}"
+            logging.error(f"Failed to decode JSON for text mode: {json_string_to_parse}")
+            polished_output = creative_output = technical_output = f"Error: Failed to parse JSON response. Raw: {json_string_to_parse}"
         except ValueError as ve:
-            logging.error(f"Structured JSON for text mode has unexpected format: {ve}. Raw: {main_prompt_result}")
-            polished_output = creative_output = technical_output = f"Error: Unexpected JSON format. Raw: {main_prompt_result}"
+            logging.error(f"Structured JSON for text mode has unexpected format: {ve}. Raw: {json_string_to_parse}")
+            polished_output = creative_output = technical_output = f"Error: Unexpected JSON format. Raw: {json_string_to_parse}"
     elif prompt_mode in ['image_gen', 'video_gen']:
         # For image/video, the entire response is a single JSON object for the prompt
         try:
-            # Pretty print the JSON for display
-            formatted_json = json.dumps(json.loads(main_prompt_result), indent=2)
+            parsed_json_obj = json.loads(json_string_to_parse) # Parse the stripped string
+
+            # --- NEW: Remove 'model' field from the parsed JSON object ---
+            if "model" in parsed_json_obj:
+                del parsed_json_obj["model"]
+                logging.info(f"Removed 'model' field from generated {prompt_mode} JSON.")
+            # --- END NEW ---
+
+            # Pretty print the modified JSON for display
+            formatted_json = json.dumps(parsed_json_obj, indent=2)
             polished_output = formatted_json
             creative_output = formatted_json # For now, creative/technical are same as polished for image/video
             technical_output = formatted_json
         except json.JSONDecodeError:
-            logging.error(f"Failed to decode JSON for image/video mode: {main_prompt_result}")
-            polished_output = creative_output = technical_output = f"Error: Failed to parse JSON response for image/video. Raw: {main_prompt_result}"
+            logging.error(f"Failed to decode JSON for image/video mode: {json_string_to_parse}")
+            polished_output = creative_output = technical_output = f"Error: Failed to parse JSON response for image/video. Raw: {json_string_to_parse}"
     else: # Regular text mode (contextual)
         # For text mode, we expect a single string response that contains all three variants
         # This is a heuristic and might need refinement based on actual model output patterns.
