@@ -776,37 +776,38 @@ async def reverse_prompt():
     # Escape curly braces in input_text to prevent f-string parsing errors
     escaped_input_text = input_text.replace('{', '{{').replace('}', '}}')
 
-    if prompt_mode == 'text':
-        if is_json_mode:
+    try: # Added try block here
+        if prompt_mode == 'text':
+            if is_json_mode:
+                try:
+                    json_data = json.loads(input_text)
+                    prompt_instruction = f"Describe the following JSON object in natural language as a prompt idea, focusing on its core content and purpose: {json.dumps(json_data, indent=2)}"
+                except json.JSONDecodeError:
+                    prompt_instruction = f"Analyze the following text/code and infer a concise, high-level prompt idea that could have generated it. Respond in {language_code}. Input: {escaped_input_text}"
+            else:
+                prompt_instruction = f"Analyze the following text/code and infer a concise, high-level prompt idea that could have generated it. Respond in {language_code}. Input: {escaped_input_text}"
+        # The image_gen and video_gen cases below are now effectively unreachable due to the early return above.
+        # However, keeping them for clarity of original intent if the restriction were to be lifted.
+        elif prompt_mode == 'image_gen':
             try:
                 json_data = json.loads(input_text)
-                prompt_instruction = f"Describe the following JSON object in natural language as a prompt idea, focusing on its core content and purpose: {json.dumps(json_data, indent=2)}"
+                prompt_instruction = f"The user has provided a structured JSON for an image generation prompt. Convert this JSON into a concise, natural language description that could be used as an input to generate a similar structured prompt. JSON: {json.dumps(json_data, indent=2)}"
             except json.JSONDecodeError:
-                prompt_instruction = f"Analyze the following text/code and infer a concise, high-level prompt idea that could have generated it. Respond in {language_code}. Input: {escaped_input_text}"
+                prompt_instruction = f"The user has provided a natural language description for an image. Infer a concise, natural language prompt idea for image generation based on this input. Input: {escaped_input_text}"
+        elif prompt_mode == 'video_gen':
+            try:
+                json_data = json.loads(input_text)
+                prompt_instruction = f"The user has provided a structured JSON for a video generation prompt. Convert this JSON into a concise, natural language description that could be used as an input to generate a similar structured prompt. JSON: {json.dumps(json_data, indent=2)}"
+            except json.JSONDecodeError:
+                prompt_instruction = f"The user has provided a natural language description for a video. Infer a concise, natural language prompt idea for video generation based on this input. Input: {escaped_input_text}"
         else:
             prompt_instruction = f"Analyze the following text/code and infer a concise, high-level prompt idea that could have generated it. Respond in {language_code}. Input: {escaped_input_text}"
-    # The image_gen and video_gen cases below are now effectively unreachable due to the early return above.
-    # However, keeping them for clarity of original intent if the restriction were to be lifted.
-    elif prompt_mode == 'image_gen':
-        try:
-            json_data = json.loads(input_text)
-            prompt_instruction = f"The user has provided a structured JSON for an image generation prompt. Convert this JSON into a concise, natural language description that could be used as an input to generate a similar structured prompt. JSON: {json.dumps(json_data, indent=2)}"
-        except json.JSONDecodeError:
-            prompt_instruction = f"The user has provided a natural language description for an image. Infer a concise, natural language prompt idea for image generation based on this input. Input: {escaped_input_text}"
-    elif prompt_mode == 'video_gen':
-        try:
-            json_data = json.loads(input_text)
-            prompt_instruction = f"The user has provided a structured JSON for a video generation prompt. Convert this JSON into a concise, natural language description that could be used as an input to generate a similar structured prompt. JSON: {json.dumps(json_data, indent=2)}"
-        except json.JSONDecodeError:
-            prompt_instruction = f"The user has provided a natural language description for a video. Infer a concise, natural language prompt idea for video generation based on this input. Input: {escaped_input_text}"
-    else:
-        prompt_instruction = f"Analyze the following text/code and infer a concise, high-level prompt idea that could have generated it. Respond in {language_code}. Input: {escaped_input_text}"
 
-    app.logger.info(f"Sending reverse prompt instruction to Gemini (length: {len(prompt_instruction)} chars))")
+        app.logger.info(f"Sending reverse prompt instruction to Gemini (length: {len(prompt_instruction)} chars))")
 
-    reverse_prompt_result = await asyncio.to_thread(ask_gemini_for_text_prompt, prompt_instruction, max_output_tokens=512)
+        reverse_prompt_result = await asyncio.to_thread(ask_gemini_for_text_prompt, prompt_instruction, max_output_tokens=512)
 
-    return jsonify({"inferred_prompt": reverse_prompt_result})
+        return jsonify({"inferred_prompt": reverse_prompt_result})
     except Exception as e:
         app.logger.exception("Error during reverse prompt generation in endpoint:")
         return jsonify({"error": f"An unexpected server error occurred: {e}. Please check server logs for details."}), 500
