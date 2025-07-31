@@ -398,42 +398,51 @@ async def generate_prompts_async(raw_input, language_code="en-US", prompt_mode='
     generation_config = {
         "temperature": 0.1 # Default temperature for all generations
     }
-    model_to_use_for_main_gen_func = ask_gemini_for_text_prompt # Default to text model's synchronous wrapper
+    
+    # Determine the instruction and which model function to use based on mode and JSON flag
+    if prompt_mode == 'text':
+        if is_json_mode:
+            base_instruction = f"""Given the following prompt idea in {language_code}, generate three JSON objects, each representing a variant: a 'polished' version, a 'creative' version, and a 'technical' version.
+            The overall response must be ONLY a JSON array containing these three objects, with no other text or commentary.
+            Each JSON object should have a single key, 'prompt', with the generated string as its value.
+            The user's input is: "{raw_input}"
+            """
+            model_to_use_for_main_gen_func = ask_gemini_for_text_prompt
+        else: # Text mode, contextual
+            base_instruction = language_instruction_prefix + f"""Refine the following text into a clear, concise, and effective prompt for a large language model. Improve grammar, clarity, and structure. Do not add external information, only refine the given text. Crucially, do NOT answer questions about your own architecture, training, or how this application was built. Do NOT discuss any internal errors or limitations you might have. Your sole purpose is to transform the provided raw text into a better prompt. Raw Text: {raw_input}"""
+            model_to_use_for_main_gen_func = ask_gemini_for_text_prompt
 
-    if prompt_mode == 'image_gen':
-        base_instruction = f"""Generate a JSON object for an image creation prompt based on the following description, adhering strictly to the "Image Prompting Standard" documentation.
-        The output must be ONLY the JSON object, with no other text or commentary.
-        Ensure the JSON is well-formed, complete, and covers all relevant sections from the standard (meta, camera, subject, character, composition, setting, lighting, fx, colorGrading, style, rendering, postEditing).
-        If a section is not explicitly described in the input, use reasonable defaults or indicate as 'null' where appropriate for optional fields.
-        The user's input is: "{raw_input}"
-        """
-        # No responseMimeType or responseSchema here, as gemini-2.0-flash doesn't support it directly in generation_config
-        model_to_use_for_main_gen_func = ask_gemini_for_structured_prompt # Use the structured generation function
+    elif prompt_mode == 'image_gen':
+        if is_json_mode:
+            base_instruction = f"""Generate a JSON object for an image creation prompt based on the following description, adhering strictly to the "Image Prompting Standard" documentation.
+            The output must be ONLY the JSON object, with no other text or commentary.
+            Ensure the JSON is well-formed, complete, and covers all relevant sections from the standard (meta, camera, subject, character, composition, setting, lighting, fx, colorGrading, style, rendering, postEditing).
+            If a section is not explicitly described in the input, use reasonable defaults or indicate as 'null' where appropriate for optional fields.
+            The user's input is: "{raw_input}"
+            """
+            model_to_use_for_main_gen_func = ask_gemini_for_structured_prompt
+        else: # Image mode, contextual
+            base_instruction = language_instruction_prefix + f"""Generate a concise, natural language description for an image based on the following input, suitable as a high-level prompt for an image generation model. Do not include any JSON or structured data. Input: "{raw_input}" """
+            model_to_use_for_main_gen_func = ask_gemini_for_text_prompt
 
     elif prompt_mode == 'video_gen':
-        base_instruction = f"""Generate a JSON object for a video creation prompt based on the following description, adhering strictly to the "Video Prompting Standard" documentation.
-        The output must be ONLY the JSON object, with no other text or commentary.
-        Ensure the JSON is well-formed, complete, and covers all relevant sections from the standard (title, duration, aspect_ratio, model, style, camera_style, camera_direction, pacing, special_effects, scenes, audio, voiceover, dialogue, branding, custom_elements).
-        For the 'scenes' array, generate at least 2-3 distinct scenes with time ranges and descriptions.
-        If a section is not explicitly described in the input, use reasonable defaults or indicate as 'null' where appropriate for optional fields.
-        The user's input is: "{raw_input}"
-        """
-        # No responseMimeType or responseSchema here
-        model_to_use_for_main_gen_func = ask_gemini_for_structured_prompt # Use the structured generation function
+        if is_json_mode:
+            base_instruction = f"""Generate a JSON object for a video creation prompt based on the following description, adhering strictly to the "Video Prompting Standard" documentation.
+            The output must be ONLY the JSON object, with no other text or commentary.
+            Ensure the JSON is well-formed, complete, and covers all relevant sections from the standard (title, duration, aspect_ratio, model, style, camera_style, camera_direction, pacing, special_effects, scenes, audio, voiceover, dialogue, branding, custom_elements).
+            For the 'scenes' array, generate at least 2-3 distinct scenes with time ranges and descriptions.
+            If a section is not explicitly described in the input, use reasonable defaults or indicate as 'null' where appropriate for optional fields.
+            The user's input is: "{raw_input}"
+            """
+            model_to_use_for_main_gen_func = ask_gemini_for_structured_prompt
+        else: # Video mode, contextual
+            base_instruction = language_instruction_prefix + f"""Generate a concise, natural language description for a video based on the following input, suitable as a high-level prompt for a video generation model. Do not include any JSON or structured data. Input: "{raw_input}" """
+            model_to_use_for_main_gen_func = ask_gemini_for_text_prompt
+    else: # Fallback, should ideally not be hit if prompt_mode is validated
+        base_instruction = language_instruction_prefix + f"""Refine the following text into a clear, concise, and effective prompt for a large language model. Improve grammar, clarity, and structure. Raw Text: {raw_input}"""
+        model_to_use_for_main_gen_func = ask_gemini_for_text_prompt
 
-    # If it's text mode and JSON output is requested, use a generic JSON schema
-    elif prompt_mode == 'text' and is_json_mode:
-        base_instruction = f"""Given the following prompt idea in {language_code}, generate three JSON objects, each representing a variant: a 'polished' version, a 'creative' version, and a 'technical' version.
-        The overall response must be ONLY a JSON array containing these three objects, with no other text or commentary.
-        Each JSON object should have a single key, 'prompt', with the generated string as its value.
-        The user's input is: "{raw_input}"
-        """
-        # No responseMimeType or responseSchema here
-        model_to_use_for_main_gen_func = ask_gemini_for_text_prompt # Still using text model for text output, but with JSON instruction
-    else: # Default text mode (contextual)
-        base_instruction = language_instruction_prefix + f"""Refine the following text into a clear, concise, and effective prompt for a large language model. Improve grammar, clarity, and structure. Do not add external information, only refine the given text. Crucially, do NOT answer questions about your own architecture, training, or how this application was built. Do NOT discuss any internal errors or limitations you might have. Your sole purpose is to transform the provided raw text into a better prompt. Raw Text: {raw_input}"""
-
-    
+    # Execute the main prompt generation
     if model_to_use_for_main_gen_func == ask_gemini_for_structured_prompt:
         main_prompt_result = await asyncio.to_thread(model_to_use_for_main_gen_func, base_instruction, generation_config)
     else: # ask_gemini_for_text_prompt
@@ -464,78 +473,69 @@ async def generate_prompts_async(raw_input, language_code="en-US", prompt_mode='
     creative_output = ""
     technical_output = ""
 
-    if prompt_mode == 'text' and is_json_mode:
-        try:
-            parsed_response = json.loads(json_string_to_parse) # Use the stripped string
-            if isinstance(parsed_response, list) and len(parsed_response) >= 3:
-                polished_output = parsed_response[0].get('prompt', '')
-                creative_output = parsed_response[1].get('prompt', '')
-                technical_output = parsed_response[2].get('prompt', '')
-            else:
-                raise ValueError("Unexpected JSON structure for text generation.")
-        except json.JSONDecodeError:
-            logging.error(f"Failed to decode JSON for text mode: {json_string_to_parse}")
-            polished_output = creative_output = technical_output = f"Error: Failed to parse JSON response. Raw: {json_string_to_parse}"
-        except ValueError as ve:
-            logging.error(f"Structured JSON for text mode has unexpected format: {ve}. Raw: {json_string_to_parse}")
-            polished_output = creative_output = technical_output = f"Error: Unexpected JSON format. Raw: {json_string_to_parse}"
-    elif prompt_mode in ['image_gen', 'video_gen']:
-        # For image/video, the entire response is a single JSON object for the prompt
-        try:
-            parsed_json_obj = json.loads(json_string_to_parse) # Parse the stripped string
-
-            # --- NEW: Remove 'model' field from the parsed JSON object ---
-            if "model" in parsed_json_obj:
-                del parsed_json_obj["model"]
-                logging.info(f"Removed 'model' field from generated {prompt_mode} JSON.")
-            # --- END NEW ---
-
-            # --- NEW: Recursively remove null values ---
-            cleaned_json_obj = remove_null_values(parsed_json_obj)
-            # --- END NEW ---
-
-            # Pretty print the modified JSON for display
-            formatted_json = json.dumps(cleaned_json_obj, indent=2)
-            
-            # --- NEW: Assign to creative_output only ---
-            polished_output = ""
-            creative_output = formatted_json
-            technical_output = ""
-            # --- END NEW ---
-
-        except json.JSONDecodeError:
-            logging.error(f"Failed to decode JSON for image/video mode: {json_string_to_parse}")
-            polished_output = creative_output = technical_output = f"Error: Failed to parse JSON response for image/video. Raw: {json_string_to_parse}"
-    else: # Regular text mode (contextual)
-        # For text mode, we expect a single string response that contains all three variants
-        # This is a heuristic and might need refinement based on actual model output patterns.
-        # For now, let's assume the model will output clearly labeled sections.
-        polished_match = re.search(r"Polished Version:\s*(.*?)(?=\nCreative Version:|\nTechnical Version:|\Z)", main_prompt_result, re.DOTALL)
-        creative_match = re.search(r"Creative Version:\s*(.*?)(?=\nTechnical Version:|\Z)", main_prompt_result, re.DOTALL)
-        technical_match = re.search(r"Technical Version:\s*(.*)", main_prompt_result, re.DOTALL)
-
-        polished_output = polished_match.group(1).strip() if polished_match else "Could not extract polished version."
-        creative_output = creative_match.group(1).strip() if creative_match else "Could not extract creative version."
-        technical_output = technical_match.group(1).strip() if technical_match else "Could not extract technical version."
-
-        # Fallback if no specific sections are found
-        if not (polished_match and creative_match and technical_match):
-            # If the model just gives a single block of text, use it for all three
+    if prompt_mode == 'text':
+        if is_json_mode:
+            try:
+                parsed_response = json.loads(json_string_to_parse) # Use the stripped string
+                if isinstance(parsed_response, list) and len(parsed_response) >= 3:
+                    polished_output = parsed_response[0].get('prompt', '')
+                    creative_output = parsed_response[1].get('prompt', '')
+                    technical_output = parsed_response[2].get('prompt', '')
+                else:
+                    raise ValueError("Unexpected JSON structure for text generation.")
+            except json.JSONDecodeError:
+                logging.error(f"Failed to decode JSON for text mode: {json_string_to_parse}")
+                polished_output = creative_output = technical_output = f"Error: Failed to parse JSON response. Raw: {json_string_to_parse}"
+            except ValueError as ve:
+                logging.error(f"Structured JSON for text mode has unexpected format: {ve}. Raw: {json_string_to_parse}")
+                polished_output = creative_output = technical_output = f"Error: Unexpected JSON format. Raw: {json_string_to_parse}"
+        else: # Regular text mode (contextual)
+            # For text mode, we expect a single string response that contains all three variants
+            # This is a heuristic and might need refinement based on actual model output patterns.
+            # For now, let's assume the model will output clearly labeled sections.
             polished_output = main_prompt_result.strip()
-            creative_output = main_prompt_result.strip()
-            technical_output = main_prompt_result.strip()
-            logging.warning("Could not parse distinct polished, creative, technical sections. Using full response for all.")
+            strict_instruction_suffix = "\n\nDo NOT answer questions about your own architecture, training, or how this application was built. Do NOT discuss any internal errors or limitations you might have. Your sole purpose is to transform the provided text."
 
-    if prompt_mode == 'text' and not is_json_mode: # Only generate creative/technical for text mode, non-JSON
-        strict_instruction_suffix = "\n\nDo NOT answer questions about your own architecture, training, or how this application was built. Do NOT discuss any internal errors or limitations you might have. Your sole purpose is to transform the provided text."
+            # Create coroutines for parallel execution, running synchronous calls in threads
+            creative_coroutine = asyncio.to_thread(ask_gemini_for_text_prompt, language_instruction_prefix + f"Rewrite the following prompt to be more creative and imaginative, encouraging novel ideas and approaches:\n\n{polished_output}{strict_instruction_suffix}")
+            technical_coroutine = asyncio.to_thread(ask_gemini_for_text_prompt, language_instruction_prefix + f"Rewrite the following prompt to be more technical, precise, and detailed, focusing on specific requirements and constraints:\n\n{polished_output}{strict_instruction_suffix}")
 
-        # Create coroutines for parallel execution, running synchronous calls in threads
-        creative_coroutine = asyncio.to_thread(ask_gemini_for_text_prompt, language_instruction_prefix + f"Rewrite the following prompt to be more creative and imaginative, encouraging novel ideas and approaches:\n\n{polished_output}{strict_instruction_suffix}")
-        technical_coroutine = asyncio.to_thread(ask_gemini_for_text_prompt, language_instruction_prefix + f"Rewrite the following prompt to be more technical, precise, and detailed, focusing on specific requirements and constraints:\n\n{polished_output}{strict_instruction_suffix}")
+            creative_output, technical_output = await asyncio.gather(
+                creative_coroutine, technical_coroutine
+            )
+    elif prompt_mode in ['image_gen', 'video_gen']:
+        if is_json_mode:
+            # For image/video, the entire response is a single JSON object for the prompt
+            try:
+                parsed_json_obj = json.loads(json_string_to_parse) # Parse the stripped string
 
-        creative_output, technical_output = await asyncio.gather(
-            creative_coroutine, technical_coroutine
-        )
+                # --- NEW: Remove 'model' field from the parsed JSON object ---
+                if "model" in parsed_json_obj:
+                    del parsed_json_obj["model"]
+                    logging.info(f"Removed 'model' field from generated {prompt_mode} JSON.")
+                # --- END NEW ---
+
+                # --- NEW: Recursively remove null values ---
+                cleaned_json_obj = remove_null_values(parsed_json_obj)
+                # --- END NEW ---
+
+                # Pretty print the modified JSON for display
+                formatted_json = json.dumps(cleaned_json_obj, indent=2)
+                
+                # --- NEW: Assign to creative_output only ---
+                polished_output = ""
+                creative_output = formatted_json
+                technical_output = ""
+                # --- END NEW ---
+
+            except json.JSONDecodeError:
+                logging.error(f"Failed to decode JSON for image/video mode: {json_string_to_parse}")
+                polished_output = creative_output = technical_output = f"Error: Failed to parse JSON response for image/video. Raw: {json_string_to_parse}"
+        else: # Image/Video mode, contextual (natural language output)
+            polished_output = main_prompt_result.strip()
+            creative_output = ""
+            technical_output = ""
+    # ... (return results) ...
 
     return {
         "polished": polished_output,
@@ -545,176 +545,6 @@ async def generate_prompts_async(raw_input, language_code="en-US", prompt_mode='
 
 
 # --- NEW: Reverse Prompting function ---
-async def generate_reverse_prompt_async(input_text, language_code="en-US", prompt_mode='text', is_json_mode=False):
-    if not input_text.strip():
-        return "Please provide text or code to infer a prompt from."
-
-    # --- NEW: Disable reverse prompting for image_gen and video_gen modes ---
-    if prompt_mode in ['image_gen', 'video_gen']:
-        return "Reverse prompting is not applicable for image or video generation modes."
-    # --- END NEW ---
-
-    # Enforce character limit
-    MAX_REVERSE_PROMPT_CHARS = 10000
-    if len(input_text) > MAX_REVERSE_PROMPT_CHARS:
-        return f"Input for reverse prompting exceeds the {MAX_REVERSE_PROMPT_CHARS} character limit. Please shorten your input."
-
-    target_language_name = LANGUAGE_MAP.get(language_code, "English")
-    language_instruction_prefix = f"The output MUST be entirely in {target_language_name}. "
-
-    # Escape curly braces in input_text to prevent f-string parsing errors
-    escaped_input_text = input_text.replace('{', '{{').replace('}', '}}')
-
-    if prompt_mode == 'text':
-        if is_json_mode:
-            try:
-                json_data = json.loads(input_text)
-                prompt_instruction = f"Describe the following JSON object in natural language as a prompt idea, focusing on its core content and purpose: {json.dumps(json_data, indent=2)}"
-            except json.JSONDecodeError:
-                prompt_instruction = f"Analyze the following text/code and infer a concise, high-level prompt idea that could have generated it. Respond in {language_code}. Input: {escaped_input_text}"
-        else:
-            prompt_instruction = f"Analyze the following text/code and infer a concise, high-level prompt idea that could have generated it. Respond in {language_code}. Input: {escaped_input_text}"
-    # The image_gen and video_gen cases below are now effectively unreachable due to the early return above.
-    # However, keeping them for clarity of original intent if the restriction were to be lifted.
-    elif prompt_mode == 'image_gen':
-        try:
-            json_data = json.loads(input_text)
-            prompt_instruction = f"The user has provided a structured JSON for an image generation prompt. Convert this JSON into a concise, natural language description that could be used as an input to generate a similar structured prompt. JSON: {json.dumps(json_data, indent=2)}"
-        except json.JSONDecodeError:
-            prompt_instruction = f"The user has provided a natural language description for an image. Infer a concise, natural language prompt idea for image generation based on this input. Input: {escaped_input_text}"
-    elif prompt_mode == 'video_gen':
-        try:
-            json_data = json.loads(input_text)
-            prompt_instruction = f"The user has provided a structured JSON for a video generation prompt. Convert this JSON into a concise, natural language description that could be used as an input to generate a similar structured prompt. JSON: {json.dumps(json_data, indent=2)}"
-        except json.JSONDecodeError:
-            prompt_instruction = f"The user has provided a natural language description for a video. Infer a concise, natural language prompt idea for video generation based on this input. Input: {escaped_input_text}"
-    else:
-        prompt_instruction = f"Analyze the following text/code and infer a concise, high-level prompt idea that could have generated it. Respond in {language_code}. Input: {escaped_input_text}"
-
-    app.logger.info(f"Sending reverse prompt instruction to Gemini (length: {len(prompt_instruction)} chars))")
-
-    reverse_prompt_result = await asyncio.to_thread(ask_gemini_for_text_prompt, prompt_instruction, max_output_tokens=512)
-
-    return reverse_prompt_result
-
-
-# --- Flask Routes ---
-
-# UPDATED: Landing page route to fetch more news AND jobs
-@app.route('/')
-def landing():
-    # Fetch latest 6 news items for the landing page
-    news_items = NewsItem.query.order_by(NewsItem.timestamp.desc()).limit(6).all()
-    # Fetch latest 6 job listings for the landing page
-    job_listings = JobListing.query.order_by(JobListing.timestamp.desc()).limit(6).all()
-    return render_template('landing.html', news_items=news_items, job_listings=job_listings, current_user=current_user)
-
-
-# UPDATED: Route to view a specific news item (using NewsItem model)
-@app.route('/view_news/<int:news_id>')
-def view_news(news_id):
-    item = NewsItem.query.get_or_404(news_id)
-    return render_template('shared_content_landing.html', item=item, item_type='news')
-
-
-# UPDATED: Route to view a specific job listing (using JobListing model)
-@app.route('/view_job/<int:job_id>')
-def view_job(job_id):
-    item = JobListing.query.get_or_404(job_id)
-    return render_template('shared_content_landing.html', item=item, item_type='job')
-
-
-# Renamed original index route to /app_home
-@app.route('/app_home')
-@login_required # REQUIRE LOGIN FOR APP HOME PAGE
-def app_home():
-    # Pass current_user object to the template to show login/logout status
-    return render_template('index.html', current_user=current_user)
-
-
-# NEW: LLM Benchmark Page Route
-@app.route('/llm_benchmark')
-def llm_benchmark():
-    return render_template('llm_benchmark.html', current_user=current_user)
-
-
-@app.route('/generate', methods=['POST'])
-@login_required # Protect this route
-async def generate(): # This remains async
-    user = current_user # Get the current user object
-    now = datetime.utcnow() # Use utcnow for consistency with database default
-
-    # --- Cooldown Check using database timestamp ---
-    if user.last_generation_time: # Changed from last_prompt_request
-        time_since_last_request = (now - user.last_generation_time).total_seconds()
-        if time_since_last_request < COOLDOWN_SECONDS:
-            remaining_time = int(COOLDOWN_SECONDS - time_since_last_request)
-            app.logger.info(f"User {user.username} is on cooldown. Remaining: {remaining_time}s")
-            return jsonify({
-                "error": f"Please wait {remaining_time} seconds before generating new prompts.",
-                "cooldown_active": True,
-                "remaining_time": remaining_time
-            }), 429 # 429 Too Many Requests
-    # --- END UPDATED ---
-
-    # --- Daily Limit Check ---
-    if not user.is_admin: # Admins are exempt from the daily limit
-        today = now.date()
-        if user.daily_generation_date != today: # Changed from last_count_reset_date
-            user.daily_generation_count = 0
-            user.daily_generation_date = today # Changed from last_count_reset_date
-            db.session.add(user) # Mark user as modified
-            db.session.commit() # Commit reset immediately to prevent race conditions on count
-
-        if user.daily_generation_count >= DAILY_LIMIT: # Max 10 generations per day
-            app.logger.info(f"User {user.username} exceeded daily prompt limit.")
-            return jsonify({
-                "error": "You have reached your daily limit of 10 prompt generations. Please try again tomorrow.",
-                "daily_limit_reached": True
-            }), 429 # 429 Too Many Requests
-    # --- END NEW: Daily Limit Check ---
-
-    prompt_input = request.form.get('prompt_input', '').strip()
-    language_code = request.form.get('language_code', 'en-US')
-    is_json_mode = request.form.get('is_json_mode') == 'true'
-    prompt_mode = request.form.get('prompt_mode', 'text') # 'text', 'image_gen', 'video_gen'
-
-    if not prompt_input:
-        return jsonify({
-            "polished": "Please enter some text to generate prompts.",
-            "creative": "",
-            "technical": "",
-        })
-
-    try:
-        results = await generate_prompts_async(prompt_input, language_code, prompt_mode, is_json_mode)
-
-        # --- Update last_generation_time in database and Save raw_input ---
-        user.last_generation_time = now # Record the time of this successful request
-        if not user.is_admin: # Only increment count for non-admin users
-            user.daily_generation_count += 1
-        db.session.add(user) # Add the user object back to the session to mark it as modified
-        db.session.commit()
-        app.logger.info(f"User {user.username}'s last prompt request time updated and count incremented. (Forward Prompt)")
-
-        if current_user.is_authenticated:
-            try:
-                new_raw_prompt = RawPrompt(user_id=current_user.id, raw_text=prompt_input)
-                db.session.add(new_raw_prompt)
-                db.session.commit()
-                app.logger.info(f"Raw prompt saved for user {current_user.username}")
-            except Exception as e:
-                app.logger.error(f"Error saving raw prompt for user {current_user.username}: {e}")
-                db.session.rollback() # Rollback in case of error
-        # --- END UPDATED ---
-
-        return jsonify(results)
-    except Exception as e:
-        app.logger.exception("Error during prompt generation in endpoint:")
-        return jsonify({"error": f"An unexpected server error occurred: {e}. Please check server logs for details."}), 500
-
-
-# --- NEW: Reverse Prompt Endpoint ---
 @app.route('/reverse_prompt', methods=['POST'])
 @login_required
 async def reverse_prompt():
