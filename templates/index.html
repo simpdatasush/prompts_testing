@@ -631,23 +631,6 @@
       input:not(:checked) + .slider .toggle-text.json {
           color: #333; /* Muted color when Contextual is active */
       }
-
-      /* NEW: Prompt Mode Selector Styling */
-      .prompt-mode-selector {
-          display: flex;
-          align-items: center;
-          margin-bottom: 20px;
-      }
-      .prompt-mode-selector label {
-          margin-right: 15px;
-          font-size: 1.2rem;
-          font-weight: bold;
-          color: #2c3e50;
-      }
-      .prompt-mode-selector select {
-          max-width: 200px;
-          border-radius: 5px;
-      }
   </style>
 </head>
 <body>
@@ -681,19 +664,9 @@
             {% endif %}
         {% endwith %}
 
-        <!-- NEW: Prompt Mode Selector -->
-        <div class="prompt-mode-selector">
-            <label for="prompt_mode_select">Prompt Mode:</label>
-            <select id="prompt_mode_select" class="form-control">
-                <option value="text">Text Prompting</option>
-                <option value="image_gen">Image Creation</option>
-                <option value="video_gen">Video Creation</option>
-            </select>
-        </div>
-        <!-- END NEW: Prompt Mode Selector -->
-
         <div class="prompt-input-section card">
             <div class="card-body">
+                <!-- START: Wrapped content in form tag -->
                 <form id="promptForm">
                     <div class="d-flex justify-content-between align-items-center mb-3">
                         <label for="prompt_input" class="form-label mb-0">Enter your raw prompt idea (or paste text/code for reverse prompting):</label>
@@ -812,7 +785,6 @@
         <div class="llm-buttons-section">
             <h3>Open Prompt in LLM</h3>
             <div class="llm-link-group">
-                <!-- Existing Text LLMs -->
                 <button id="chatgpt_llm_btn" onclick="openLLM('chatgpt')" disabled>ChatGPT</button>
                 <button id="claude_llm_btn" onclick="openLLM('claude')" disabled>Claude</button>
                 <button id="mistral_llm_btn" onclick="openLLM('mistral')" disabled>Mistral</button>
@@ -820,13 +792,6 @@
                 <button id="grok_llm_btn" onclick="openLLM('grok')" disabled>Grok</button>
                 <button id="perplexity_llm_btn" onclick="openLLM('perplexity')" disabled>Perplexity</button>
                 <button id="deepseek_llm_btn" onclick="openLLM('deepseek')" disabled>DeepSeek</button>
-                
-                <!-- NEW: Image/Video Generation LLMs -->
-                <button id="midjourney_llm_btn" onclick="openLLM('midjourney')" disabled>Midjourney</button>
-                <button id="dalle3_llm_btn" onclick="openLLM('dalle3')" disabled>DALL·E 3 (OpenAI)</button>
-                <button id="sdxl_llm_btn" onclick="openLLM('sdxl')" disabled>Stable Diffusion XL</button>
-                <button id="sora_llm_btn" onclick="openLLM('sora')" disabled>Sora (OpenAI)</button>
-                <button id="veo3_llm_btn" onclick="openLLM('veo3')" disabled>Veo 3 (Google DeepMind)</button>
             </div>
             <p class="text-muted mt-2" style="font-size: 0.85rem;">
                 (Copy a prompt using the "Copy" button above, then click an LLM button to open its website and paste.)
@@ -1076,7 +1041,6 @@
            fetchAndDisplaySavedPrompts();
            fetchAndDisplayRawPrompts();
            updateAllButtonStates(); // Initial check and update of all button states
-           handlePromptModeChange(); // Set initial state for buttons based on default mode
        });
 
        // Cooldown timer variables
@@ -1095,34 +1059,14 @@
        const perplexityBtn = document.getElementById('perplexity_llm_btn');
        const deepSeekBtn = document.getElementById('deepseek_llm_btn');
 
-       // NEW: Image/Video Generation LLM Buttons
-       const midjourneyBtn = document.getElementById('midjourney_llm_btn');
-       const dalle3Btn = document.getElementById('dalle3_llm_btn');
-       const sdxlBtn = document.getElementById('sdxl_llm_btn');
-       const soraBtn = document.getElementById('sora_llm_btn');
-       const veo3Btn = document.getElementById('veo3_llm_btn');
-
        // Get reference to download button
        const downloadPromptsBtn = document.getElementById('download_prompts_btn');
-
-       // Get references to voice and image input buttons
-       const voiceInputButton = document.getElementById('voice_input_button');
-       const triggerImageInputButton = document.getElementById('trigger_image_input');
-       const imageInputSection = document.querySelector('.image-input-section');
-       const imagePreview = document.getElementById('image_preview');
-       const imageInput = document.getElementById('image_input');
-       const processImageButton = document.getElementById('process_image_button');
 
 
        function startCooldownTimer(remainingTime) {
            let timeLeft = remainingTime;
            generateButton.disabled = true;
            reversePromptButton.disabled = true;
-           voiceInputButton.disabled = true; // Disable voice input during cooldown
-           triggerImageInputButton.disabled = true; // Disable image upload during cooldown
-           processImageButton.disabled = true; // Disable image processing during cooldown
-
-
            cooldownTimerDisplay.style.display = 'inline';
            cooldownTimerDisplay.textContent = `Cooldown: ${timeLeft}s`;
 
@@ -1141,22 +1085,14 @@
        }
 
        // Function to enable/disable LLM website buttons
-       function setLLMWebsiteButtonsDisabled(isDisabled, mode = 'text') {
-           // Disable/enable all text LLMs
-           if (chatGPTBtn) chatGPTBtn.disabled = isDisabled || (mode !== 'text');
-           if (claudeBtn) claudeBtn.disabled = isDisabled || (mode !== 'text');
-           if (mistralBtn) mistralBtn.disabled = isDisabled || (mode !== 'text');
-           if (geminiBtn) geminiBtn.disabled = isDisabled || (mode !== 'text');
-           if (grokBtn) grokBtn.disabled = isDisabled || (mode !== 'text');
-           if (perplexityBtn) perplexityBtn.disabled = isDisabled || (mode !== 'text');
-           if (deepSeekBtn) deepSeekBtn.disabled = isDisabled || (mode !== 'text');
-
-           // Disable/enable image/video LLMs
-           if (midjourneyBtn) midjourneyBtn.disabled = isDisabled || (mode === 'text');
-           if (dalle3Btn) dalle3Btn.disabled = isDisabled || (mode === 'text');
-           if (sdxlBtn) sdxlBtn.disabled = isDisabled || (mode === 'text');
-           if (soraBtn) soraBtn.disabled = isDisabled || (mode === 'text');
-           if (veo3Btn) veo3Btn.disabled = isDisabled || (mode === 'text');
+       function setLLMWebsiteButtonsDisabled(isDisabled) {
+           if (chatGPTBtn) chatGPTBtn.disabled = isDisabled;
+           if (claudeBtn) claudeBtn.disabled = isDisabled;
+           if (mistralBtn) mistralBtn.disabled = isDisabled;
+           if (geminiBtn) geminiBtn.disabled = isDisabled;
+           if (grokBtn) grokBtn.disabled = isDisabled;
+           if (perplexityBtn) perplexityBtn.disabled = isDisabled;
+           if (deepSeekBtn) deepSeekBtn.disabled = isDisabled;
        }
 
        // Function to enable/disable save/download buttons
@@ -1169,7 +1105,6 @@
        async function updateAllButtonStates() {
            const promptInput = document.getElementById('prompt_input').value.trim();
            const selectedLanguage = document.getElementById('lang_select').value;
-           const promptMode = document.getElementById('prompt_mode_select').value; // Get current prompt mode
 
            try {
                const response = await fetch('/check_cooldown');
@@ -1212,23 +1147,8 @@
 
                // Enable/disable save/download buttons based ONLY on whether there's output
                setSaveActionButtonsDisabled(!hasOutput);
-               // Enable/disable LLM website buttons based ONLY on whether there's output and current mode
-               setLLMWebsiteButtonsDisabled(!hasOutput, promptMode);
-
-               // Handle voice and image input buttons based on prompt mode
-               if (promptMode === 'text') {
-                   voiceInputButton.disabled = !canGenerate && !isRecording; // Re-enable if not on cooldown and not recording
-                   triggerImageInputButton.disabled = !canGenerate;
-                   processImageButton.disabled = !canGenerate;
-               } else {
-                   voiceInputButton.disabled = true; // Always disable for image/video generation
-                   triggerImageInputButton.disabled = true; // Always disable for image/video generation
-                   processImageButton.disabled = true; // Always disable for image/video generation
-                   imageInputSection.style.display = 'none'; // Hide image input section
-                   imagePreview.src = '#'; // Clear image preview
-                   imageInput.value = ''; // Clear file input
-               }
-
+               // Enable/disable LLM website buttons based ONLY on whether there's output
+               setLLMWebsiteButtonsDisabled(!hasOutput);
 
            } catch (error) {
                console.error("Error checking cooldown/daily limit:", error);
@@ -1238,9 +1158,6 @@
                reversePromptButton.disabled = true;
                setSaveActionButtonsDisabled(true); // Disable on error
                setLLMWebsiteButtonsDisabled(true); // Disable on error
-               voiceInputButton.disabled = true; // Disable on error
-               triggerImageInputButton.disabled = true; // Disable on error
-               processImageButton.disabled = true; // Disable on error
            }
        }
 
@@ -1251,7 +1168,6 @@
            const promptInput = document.getElementById('prompt_input').value.trim(); // Trim whitespace
            const selectedLanguage = document.getElementById('lang_select').value;
            const isJsonMode = document.getElementById('promptModeToggle').checked; // Get JSON mode state
-           const promptMode = document.getElementById('prompt_mode_select').value; // Get current prompt mode
            
            // Clear previous outputs and token counts
            document.getElementById('polished_output').textContent = '';
@@ -1267,7 +1183,7 @@
                appOutput.textContent = getMessage("no_input_provided", selectedLanguage);
                appOutput.className = 'mt-4 warning';
                setSaveActionButtonsDisabled(true);
-               setLLMWebsiteButtonsDisabled(true, promptMode); // Pass mode
+               setLLMWebsiteButtonsDisabled(true);
                return; // Stop execution if no input
            }
            // --- END NEW ---
@@ -1276,11 +1192,8 @@
            appOutput.className = 'mt-4 info'; // Set to info during generation
            generateButton.disabled = true;
            reversePromptButton.disabled = true;
-           voiceInputButton.disabled = true; // Disable during generation
-           triggerImageInputButton.disabled = true; // Disable during generation
-           processImageButton.disabled = true; // Disable during generation
            setSaveActionButtonsDisabled(true); // Disable all LLM-related buttons immediately
-           setLLMWebsiteButtonsDisabled(true, promptMode); // Disable LLM website buttons immediately
+           setLLMWebsiteButtonsDisabled(true); // Disable LLM website buttons immediately
            generateButton.textContent = 'Generating...';
            cooldownTimerDisplay.style.display = 'none';
 
@@ -1291,8 +1204,6 @@
                formData.append('prompt_input', promptInput);
                formData.append('language_code', selectedLanguage);
                formData.append('is_json_mode', isJsonMode ? 'true' : 'false'); // Send JSON mode flag
-               formData.append('prompt_mode', promptMode); // Send prompt mode
-
 
                const response = await fetch('/generate', {
                    method: 'POST',
@@ -1368,7 +1279,6 @@
            const promptInput = document.getElementById('prompt_input').value.trim(); // Trim whitespace
            const selectedLanguage = document.getElementById('lang_select').value;
            const isJsonMode = document.getElementById('promptModeToggle').checked; // Get JSON mode state
-           const promptMode = document.getElementById('prompt_mode_select').value; // Get current prompt mode
 
            // Clear previous outputs and token counts
            document.getElementById('polished_output').textContent = '';
@@ -1384,7 +1294,7 @@
                appOutput.textContent = getMessage("no_input_provided", selectedLanguage);
                appOutput.className = 'mt-4 warning';
                setSaveActionButtonsDisabled(true);
-               setLLMWebsiteButtonsDisabled(true, promptMode); // Pass mode
+               setLLMWebsiteButtonsDisabled(true);
                return; // Stop execution if no input
            }
            // --- END NEW ---
@@ -1393,11 +1303,8 @@
            appOutput.className = 'mt-4 info'; // Set to info during generation
            generateButton.disabled = true;
            reversePromptButton.disabled = true;
-           voiceInputButton.disabled = true; // Disable during generation
-           triggerImageInputButton.disabled = true; // Disable during generation
-           processImageButton.disabled = true; // Disable during generation
            setSaveActionButtonsDisabled(true); // Disable all LLM-related buttons immediately
-           setLLMWebsiteButtonsDisabled(true, promptMode); // Disable LLM website buttons immediately
+           setLLMWebsiteButtonsDisabled(true); // Disable LLM website buttons immediately
            reversePromptButton.textContent = 'Inferring...';
            cooldownTimerDisplay.style.display = 'none';
 
@@ -1412,8 +1319,7 @@
                    body: JSON.stringify({
                        input_text: promptInput,
                        language_code: selectedLanguage,
-                       is_json_mode: isJsonMode, // Send JSON mode flag
-                       prompt_mode: promptMode // Send prompt mode
+                       is_json_mode: isJsonMode // Send JSON mode flag
                    })
                });
 
@@ -1523,11 +1429,10 @@
        });
 
        // --- Web Speech API for Voice Input with Language Selector ---
+       const voiceInputButton = document.getElementById('voice_input_button');
        const promptInputTextarea = document.getElementById('prompt_input');
        const langSelect = document.getElementById('lang_select');
        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-
-       let isRecording = false; // Define isRecording globally or ensure it's accessible
 
        if (!SpeechRecognition) {
            voiceInputButton.disabled = true;
@@ -1540,6 +1445,8 @@
            recognition.continuous = false;
            recognition.interimResults = false;
            recognition.lang = langSelect.value;
+
+           let isRecording = false;
 
            langSelect.addEventListener('change', () => {
                const selectedLanguage = langSelect.value;
@@ -1616,6 +1523,14 @@
        }
 
        // --- Image Input JavaScript Logic ---
+       const imageInput = document.getElementById('image_input');
+       const triggerImageInputButton = document.getElementById('trigger_image_input');
+       const imagePreview = document.getElementById('image_preview');
+       const processImageButton = document.getElementById('process_image_button');
+       const imageLoadingSpinner = document.getElementById('image_loading_spinner');
+       const imageInputSection = document.querySelector('.image-input-section');
+
+
        triggerImageInputButton.addEventListener('click', () => {
            imageInput.click();
        });
@@ -1741,13 +1656,7 @@
            gemini: "https://gemini.google.com/app",
            grok: "https://grok.x.ai/",
            perplexity: "https://www.perplexity.ai/",
-           deepseek: "https://www.deepseek.com/chat",
-           // NEW: Image/Video Generation LLM URLs
-           midjourney: "https://www.midjourney.com/",
-           dalle3: "https://openai.com/dall-e-3", // DALL-E 3 is part of ChatGPT Plus/Enterprise
-           sdxl: "https://stability.ai/stable-diffusion", // Stable Diffusion XL homepage
-           sora: "https://openai.com/sora", // Sora homepage
-           veo3: "https://deepmind.google/technologies/veo/" // Veo 3 homepage
+           deepseek: "https://www.deepseek.com/chat"
        };
 
        function openLLM(llmKey) {
@@ -1780,47 +1689,18 @@
        }
        // --- END Full Context View Modal Functions ---
 
-       // Toggle Switch Logic (for JSON/Contextual)
+       // Toggle Switch Logic (from previous interaction, now integrated into the old layout)
        const promptModeToggle = document.getElementById('promptModeToggle');
+       // The prompt_input textarea is already defined globally.
+
+       // The toggle now only influences the `is_json_mode` flag sent to the backend.
+       // The input area remains the same.
        promptModeToggle.addEventListener('change', function() {
            // No direct UI changes to input area based on this toggle.
            // The `is_json_mode` flag will be read when generate/reverse buttons are clicked.
        });
-
-       // NEW: Prompt Mode Selector Logic
-       const promptModeSelect = document.getElementById('prompt_mode_select');
-
-       function handlePromptModeChange() {
-           const selectedMode = promptModeSelect.value;
-           
-           // Disable/enable voice and image input buttons based on mode
-           if (selectedMode === 'text') {
-               voiceInputButton.disabled = false;
-               triggerImageInputButton.disabled = false;
-               // Only enable processImageButton if an image is already selected
-               processImageButton.disabled = (imageInput.files.length === 0); 
-           } else {
-               voiceInputButton.disabled = true;
-               triggerImageInputButton.disabled = true;
-               processImageButton.disabled = true;
-               imageInputSection.style.display = 'none'; // Hide image input section
-               imagePreview.src = '#'; // Clear image preview
-               imageInput.value = ''; // Clear file input
-               // If voice recording is active, stop it
-               if (isRecording) {
-                   recognition.stop();
-               }
-           }
-           // Update LLM buttons based on the new mode
-           setLLMWebsiteButtonsDisabled(false, selectedMode); // Re-evaluate LLM button states
-       }
-
-       // Add event listener for the new prompt mode select
-       promptModeSelect.addEventListener('change', handlePromptModeChange);
-
-       // Initial call to set button states correctly on page load
-       document.addEventListener('DOMContentLoaded', handlePromptModeChange);
    </script>
 </body>
 </html>
+
 
