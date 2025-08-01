@@ -3,8 +3,6 @@
 # nest_asyncio.apply()
 
 
-
-
 import asyncio
 import os
 import google.generativeai as genai
@@ -19,8 +17,6 @@ import random # NEW: For generating random username suggestions
 import string # NEW: For string manipulation in username generation
 
 
-
-
 # --- NEW IMPORTS FOR AUTHENTICATION ---
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager, UserMixin, login_user, logout_user, login_required, current_user
@@ -28,12 +24,8 @@ from werkzeug.security import generate_password_hash, check_password_hash
 # --- END NEW IMPORTS ---
 
 
-
-
 # NEW: Import for specific Gemini API exceptions
 from google.api_core import exceptions as google_api_exceptions
-
-
 
 
 # NEW: Flask-Mail imports for email sending
@@ -42,13 +34,7 @@ from flask_mail import Mail, Message
 
 
 
-
-
-
-
 app = Flask(__name__)
-
-
 
 
 # --- NEW: Flask-SQLAlchemy Configuration ---
@@ -61,15 +47,11 @@ db = SQLAlchemy(app)
 # --- END NEW: Flask-SQLAlchemy Configuration ---
 
 
-
-
 # --- NEW: Flask-Login Configuration ---
 login_manager = LoginManager()
 login_manager.init_app(app)
 login_manager.login_view = 'login' # The view Flask-Login should redirect to for login
 # --- END NEW: Flask-Login Configuration ---
-
-
 
 
 # --- NEW: Flask-Mail Configuration ---
@@ -80,10 +62,6 @@ app.config['MAIL_USERNAME'] = 'info@promptsgenerator.ai'
 app.config['MAIL_PASSWORD'] = os.getenv('EMAIL_PASSWORD') # IMPORTANT: Set this environment variable!
 mail = Mail(app)
 # --- END NEW: Flask-Mail Configuration ---
-
-
-
-
 
 
 
@@ -99,20 +77,12 @@ app.logger.addHandler(stream_handler) # Add the configured handler to the app lo
 
 
 
-
-
-
-
 # --- Temporary In-Memory Storage for Saved Prompts (Unchanged) ---
 saved_prompts_in_memory = []
 
 
-
-
 # --- NEW: Cooldown configuration (no longer in-memory dict for last_request_time) ---
 COOLDOWN_SECONDS = 60 # 60 seconds cooldown
-
-
 
 
 # --- Language Mapping for Gemini Instructions (Unchanged) ---
@@ -132,22 +102,14 @@ LANGUAGE_MAP = {
 
 
 
-
-
-
-
 # --- Gemini API Key and Configuration ---
 GEMINI_API_CONFIGURED = False
 GEMINI_API_KEY = None
 
 
-
-
 def configure_gemini_api():
  global GEMINI_API_KEY, GEMINI_API_CONFIGURED
  GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
-
-
 
 
  if GEMINI_API_KEY:
@@ -167,11 +129,7 @@ def configure_gemini_api():
      GEMINI_API_CONFIGURED = False
 
 
-
-
 configure_gemini_api()
-
-
 
 
 # --- UPDATED: User Model for SQLAlchemy and Flask-Login ---
@@ -191,26 +149,16 @@ class User(db.Model, UserMixin):
 
 
 
-
-
-
-
  def set_password(self, password):
      self.password_hash = generate_password_hash(password)
-
-
 
 
  def check_password(self, password):
      return check_password_hash(self.password_hash, password)
 
 
-
-
  def __repr__(self):
      return f'<User {self.username}>'
-
-
 
 
 # --- NEW: RawPrompt Model for storing user's raw input requests ---
@@ -221,18 +169,12 @@ class RawPrompt(db.Model):
  timestamp = db.Column(db.DateTime, default=datetime.utcnow)
 
 
-
-
  user = db.relationship('User', backref=db.backref('raw_prompts', lazy=True))
-
-
 
 
  def __repr__(self):
      return f'<RawPrompt {self.id} by User {self.user_id}>'
 # --- END NEW: RawPrompt Model ---
-
-
 
 
 # --- UPDATED: News Model for storing news items ---
@@ -246,18 +188,12 @@ class News(db.Model):
   user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True) # Who added it
 
 
-
-
   user = db.relationship('User', backref=db.backref('news_items', lazy=True))
-
-
 
 
   def __repr__(self):
       return f'<News {self.title}>'
 # --- END UPDATED: News Model ---
-
-
 
 
 # --- UPDATED: Job Model for storing job listings (added published_date) ---
@@ -273,18 +209,12 @@ class Job(db.Model):
   user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True) # Who added it
 
 
-
-
   user = db.relationship('User', backref=db.backref('job_listings', lazy=True))
-
-
 
 
   def __repr__(self):
       return f'<Job {self.title} at {self.company}>'
 # --- END UPDATED: Job Model ---
-
-
 
 
 # NEW: NewsletterSubscriber Model
@@ -294,15 +224,9 @@ class NewsletterSubscriber(db.Model):
   subscribed_on = db.Column(db.DateTime, default=datetime.utcnow)
 
 
-
-
   def __repr__(self):
       return f'<Subscriber {self.email}>'
 # END NEW: NewsletterSubscriber Model
-
-
-
-
 
 
 
@@ -312,8 +236,6 @@ class NewsletterSubscriber(db.Model):
 def load_user(user_id):
  return db.session.get(User, int(user_id)) # Use db.session.get for primary key lookup
 # --- END NEW: User Model and Loader ---
-
-
 
 
 # --- NEW: Admin Required Decorator ---
@@ -330,16 +252,10 @@ def admin_required(f):
 
 
 
-
-
-
-
 # --- Response Filtering Function (UPDATED) ---
 def filter_gemini_response(text):
   unauthorized_message = "I am not authorised to answer this question. My purpose is solely to refine your raw prompt into a machine-readable format."
   text_lower = text.lower()
-
-
 
 
   # Generic unauthorized phrases
@@ -360,8 +276,6 @@ def filter_gemini_response(text):
           return unauthorized_message
 
 
-
-
   # Generic bug/error phrases
   bug_phrases = [
       "a bug occurred", "i encountered an error", "there was an issue in my processing",
@@ -370,8 +284,6 @@ def filter_gemini_response(text):
   for phrase in bug_phrases:
       if phrase in text_lower:
           return unauthorized_message
-
-
 
 
   # Specific filtering for Gemini API quota/internal errors
@@ -392,8 +304,6 @@ def filter_gemini_response(text):
       filtered_text = re.sub(r"\[violations \{.*?\}\s*\]", "", filtered_text, flags=re.DOTALL) # In case only violations are present
 
 
-
-
       # If after filtering, it's still too verbose or contains sensitive info, generalize
       if "google.api_core.exceptions" in filtered_text.lower() or "api_key" in filtered_text.lower():
           return "There was an issue with the AI service. Please try again later."
@@ -401,11 +311,7 @@ def filter_gemini_response(text):
       return filtered_text.strip() # Return the filtered text
 
 
-
-
   return text
-
-
 
 
 # --- Gemini API interaction function (NOW SYNCHRONOUS) ---
@@ -415,20 +321,14 @@ def ask_gemini_for_prompt(prompt_instruction, max_output_tokens=512):
      return "Gemini API Key is not configured or the AI model failed to initialize."
 
 
-
-
  try:
      gemini_model_instance = genai.GenerativeModel('gemini-2.0-flash')
-
-
 
 
      generation_config = {
          "max_output_tokens": max_output_tokens,
          "temperature": 0.1
      }
-
-
 
 
      # USE THE SYNCHRONOUS generate_content METHOD
@@ -449,16 +349,10 @@ def ask_gemini_for_prompt(prompt_instruction, max_output_tokens=512):
 
 
 
-
-
-
-
 # --- NEW: Gemini API for Image Understanding ---
 def ask_gemini_for_image_text(image_data_bytes):
  if not GEMINI_API_CONFIGURED:
      return "Gemini API Key is not configured or the AI model failed to initialize."
-
-
 
 
  try:
@@ -471,15 +365,11 @@ def ask_gemini_for_image_text(image_data_bytes):
      }
 
 
-
-
      # Instruction for the model to extract text
      prompt_parts = [
          image_part,
          "Extract all text from this image, including handwritten text. Provide only the extracted text, without any additional commentary or formatting."
      ]
-
-
 
 
      response = gemini_model_instance.generate_content(prompt_parts)
@@ -496,10 +386,6 @@ def ask_gemini_for_image_text(image_data_bytes):
 
 
 
-
-
-
-
 # --- generate_prompts_async function (main async logic for prompt variations) ---
 async def generate_prompts_async(raw_input, language_code="en-US"):
  if not raw_input.strip():
@@ -510,23 +396,15 @@ async def generate_prompts_async(raw_input, language_code="en-US"):
      }
 
 
-
-
  target_language_name = LANGUAGE_MAP.get(language_code, "English")
  language_instruction_prefix = f"The output MUST be entirely in {target_language_name}. "
-
-
 
 
  polished_prompt_instruction = language_instruction_prefix + f"""Refine the following text into a clear, concise, and effective prompt for a large language model. Improve grammar, clarity, and structure. Do not add external information, only refine the given text. Crucially, do NOT answer questions about your own architecture, training, or how this application was built. Do NOT discuss any internal errors or limitations you might have. Your sole purpose is to transform the provided raw text into a better prompt. Raw Text: {raw_input}"""
 
 
-
-
  # CALL SYNCHRONOUS ask_gemini_for_prompt IN A SEPARATE THREAD
  polished_prompt_result = await asyncio.to_thread(ask_gemini_for_prompt, polished_prompt_instruction)
-
-
 
 
  if "Error" in polished_prompt_result or "not configured" in polished_prompt_result or "quota" in polished_prompt_result.lower(): # Check for quota error
@@ -537,11 +415,7 @@ async def generate_prompts_async(raw_input, language_code="en-US"):
      }
 
 
-
-
  strict_instruction_suffix = "\n\nDo NOT answer questions about your own architecture, training, or how this application was built. Do NOT discuss any internal errors or limitations you might have. Your sole purpose is to transform the provided text."
-
-
 
 
  # Create coroutines for parallel execution, running synchronous calls in threads
@@ -549,13 +423,9 @@ async def generate_prompts_async(raw_input, language_code="en-US"):
  technical_coroutine = asyncio.to_thread(ask_gemini_for_prompt, language_instruction_prefix + f"Rewrite the following prompt to be more technical, precise, and detailed, focusing on specific requirements and constraints:\n\n{polished_prompt_result}{strict_instruction_suffix}")
 
 
-
-
  creative_result, technical_result = await asyncio.gather(
      creative_coroutine, technical_coroutine
  )
-
-
 
 
  return {
@@ -565,14 +435,10 @@ async def generate_prompts_async(raw_input, language_code="en-US"):
  }
 
 
-
-
 # --- NEW: Reverse Prompting function ---
 async def generate_reverse_prompt_async(input_text, language_code="en-US"):
   if not input_text.strip():
       return "Please provide text or code to infer a prompt from."
-
-
 
 
   # Enforce character limit
@@ -581,19 +447,13 @@ async def generate_reverse_prompt_async(input_text, language_code="en-US"):
       return f"Input for reverse prompting exceeds the {MAX_REVERSE_PROMPT_CHARS} character limit. Please shorten your input."
 
 
-
-
   target_language_name = LANGUAGE_MAP.get(language_code, "English")
   language_instruction_prefix = f"The output MUST be entirely in {target_language_name}. "
-
-
 
 
   # Escape curly braces in input_text to prevent f-string parsing errors
   # This replaces single { with {{ and single } with }}
   escaped_input_text = input_text.replace('{', '{{').replace('}', '}}')
-
-
 
 
   # The core instruction for reverse prompting
@@ -609,18 +469,12 @@ async def generate_reverse_prompt_async(input_text, language_code="en-US"):
   )
 
 
-
-
   # Corrected f-string: Removed the extra closing curly brace
   app.logger.info(f"Sending reverse prompt instruction to Gemini (length: {len(reverse_prompt_instruction)} chars))")
 
 
-
-
   # Call synchronous ask_gemini_for_prompt in a separate thread
   reverse_prompt_result = await asyncio.to_thread(ask_gemini_for_prompt, reverse_prompt_instruction, max_output_tokens=512) # Use a reasonable max_output_tokens for a prompt
-
-
 
 
   return reverse_prompt_result
@@ -629,13 +483,7 @@ async def generate_reverse_prompt_async(input_text, language_code="en-US"):
 
 
 
-
-
-
-
 # --- Flask Routes ---
-
-
 
 
 # UPDATED: Landing page route to fetch more news AND jobs
@@ -648,8 +496,6 @@ def landing():
  return render_template('landing.html', news_items=news_items, job_listings=job_listings, current_user=current_user)
 
 
-
-
 # REVERTED: Route to view a specific news item (redirect directly to external URL)
 @app.route('/view_news/<int:news_id>')
 def view_news(news_id):
@@ -657,17 +503,11 @@ def view_news(news_id):
   return redirect(news_item.url)
 
 
-
-
 # REVERTED: Route to view a specific job listing (redirect directly to external URL)
 @app.route('/view_job/<int:job_id>')
 def view_job(job_id):
   job_listing = Job.query.get_or_404(job_id)
   return redirect(job_listing.url)
-
-
-
-
 
 
 
@@ -680,14 +520,10 @@ def app_home():
  return render_template('index.html', current_user=current_user)
 
 
-
-
 # NEW: LLM Benchmark Page Route
 @app.route('/llm_benchmark')
 def llm_benchmark():
   return render_template('llm_benchmark.html', current_user=current_user)
-
-
 
 
 # REMOVED: App Selection Page
@@ -695,8 +531,6 @@ def llm_benchmark():
 # @login_required
 # def app_selection():
 #    return render_template('app_selection.html', current_user=current_user)
-
-
 
 
 # REMOVED: CV Maker Page
@@ -708,19 +542,13 @@ def llm_benchmark():
 #    match_percentage = "N/A" # Initialize match percentage
 
 
-
-
 #    if request.method == 'POST':
 #        user = current_user
 #        now = datetime.utcnow()
 
 
-
-
 #        # Determine if the request is for CV generation or match calculation
 #        action = request.form.get('action') # Hidden input to distinguish actions
-
-
 
 
 #        # Apply cooldown to CV generation/match calculation
@@ -730,8 +558,6 @@ def llm_benchmark():
 #                remaining_time = int(COOLDOWN_SECONDS - time_since_last_request)
 #                flash(f"Please wait {remaining_time} seconds before making another request.", 'warning')
 #                return render_template('cv_maker.html', generated_cv=generated_cv, generated_cl=generated_cl, match_percentage=match_percentage, current_user=current_user)
-
-
 
 
 #        # Daily limit check for CV generation/match calculation
@@ -744,20 +570,14 @@ def llm_benchmark():
 #                db.session.commit()
 
 
-
-
 #            if user.daily_prompt_count >= 10:
 #                flash("You have reached your daily limit of 10 generations/calculations. Please try again tomorrow.", 'warning')
 #                return render_template('cv_maker.html', generated_cv=generated_cv, generated_cl=generated_cl, match_percentage=match_percentage, current_user=current_user)
 
 
-
-
 #        # Extract common inputs
 #        existing_cv = request.form.get('existing_cv_content', '').strip()
 #        job_desc = request.form.get('job_description', '').strip()
-
-
 
 
 #        if action == 'generate_documents':
@@ -766,8 +586,6 @@ def llm_benchmark():
 #            if not existing_cv or not job_desc:
 #                flash("Please provide both Existing CV and New Job Description to generate documents.", 'danger')
 #                return render_template('cv_maker.html', generated_cv=generated_cv, generated_cl=generated_cl, match_percentage=match_percentage, current_user=current_user)
-
-
 
 
 #            # Construct CV prompt
@@ -782,18 +600,12 @@ def llm_benchmark():
 #            full_cv_prompt = "\n".join(cv_prompt_parts)
 
 
-
-
 #            # Construct Cover Letter prompt
 #            cl_prompt_parts = []
 #            cl_prompt_parts.append("Write a professional cover letter for the position based on the provided job description and the relevant CV snippet. Keep it concise and impactful.")
 #            cl_prompt_parts.append(f"\n\nRelevant CV Snippet (for context):\n{existing_cv}")
 #            cl_prompt_parts.append(f"\n\nJob Description:\n{job_desc}")
 #            full_cl_prompt = "\n".join(cl_prompt_parts)
-
-
-
-
 
 
 
@@ -808,13 +620,9 @@ def llm_benchmark():
 #                    generated_cv = gemini_cv_response
 
 
-
-
 #                    # Generate Cover Letter
 #                    gemini_cl_response = await asyncio.to_thread(ask_gemini_for_prompt, full_cl_prompt, max_output_tokens=1024)
 #                    generated_cl = gemini_cl_response
-
-
 
 
 #                    flash("CV and Cover Letter generated successfully!", 'success')
@@ -824,14 +632,10 @@ def llm_benchmark():
 #                    app.logger.exception("Error during CV/CL generation in endpoint:")
 
 
-
-
 #        elif action == 'calculate_match':
 #            if not existing_cv or not job_desc:
 #                flash("Please provide both Existing CV and New Job Description to calculate match percentage.", 'danger')
 #                return render_template('cv_maker.html', generated_cv=generated_cv, generated_cl=generated_cl, match_percentage=match_percentage, current_user=current_user)
-
-
 
 
 #            match_prompt = f"""
@@ -840,19 +644,13 @@ def llm_benchmark():
 #            Example: If the match is 75%, output: 75
 
 
-
-
 #            CV:
 #            {existing_cv}
-
-
 
 
 #            Job Description:
 #            {job_desc}
 #            """
-
-
 
 
 #            if not GEMINI_API_CONFIGURED:
@@ -866,8 +664,6 @@ def llm_benchmark():
 #                        match_percentage = int(match_percentage_str.strip())
 #                    except ValueError:
 #                        match_percentage = "Error: Invalid response"
-
-
 
 
 #                    flash("Match percentage calculated successfully!", 'success')
@@ -884,13 +680,7 @@ def llm_benchmark():
 #        app.logger.info(f"User {user.username}'s last request time updated and count incremented for CV Maker.")
 
 
-
-
 #    return render_template('cv_maker.html', generated_cv=generated_cv, generated_cl=generated_cl, match_percentage=match_percentage, current_user=current_user)
-
-
-
-
 
 
 
@@ -900,8 +690,6 @@ def llm_benchmark():
 async def generate_prompts_endpoint(): # This remains async
  user = current_user # Get the current user object
  now = datetime.utcnow() # Use utcnow for consistency with database default
-
-
 
 
  # --- UPDATED: Cooldown Check using database timestamp ---
@@ -918,8 +706,6 @@ async def generate_prompts_endpoint(): # This remains async
  # --- END UPDATED ---
 
 
-
-
  # --- NEW: Daily Limit Check ---
  if not user.is_admin: # Admins are exempt from the daily limit
      today = now.date()
@@ -928,8 +714,6 @@ async def generate_prompts_endpoint(): # This remains async
          user.last_count_reset_date = today
          db.session.add(user) # Mark user as modified
          db.session.commit() # Commit reset immediately to prevent race conditions on count
-
-
 
 
      if user.daily_prompt_count >= 10: # Max 10 generations per day
@@ -943,14 +727,8 @@ async def generate_prompts_endpoint(): # This remains async
 
 
 
-
-
-
-
  raw_input = request.form.get('prompt_input', '').strip()
  language_code = request.form.get('language_code', 'en-US')
-
-
 
 
  if not raw_input:
@@ -962,8 +740,6 @@ async def generate_prompts_endpoint(): # This remains async
      })
 
 
-
-
  # --- ADDED: Explicit check for Gemini API configuration ---
  if not GEMINI_API_CONFIGURED:
      app.logger.error("Gemini API Key is not configured. Cannot generate prompts.")
@@ -973,13 +749,9 @@ async def generate_prompts_endpoint(): # This remains async
  # --- END ADDED ---
 
 
-
-
  try:
      # Await the async function directly
      results = await generate_prompts_async(raw_input, language_code)
-
-
 
 
      # --- UPDATED: Update last_prompt_request in database and Save raw_input ---
@@ -989,8 +761,6 @@ async def generate_prompts_endpoint(): # This remains async
      db.session.add(user) # Add the user object back to the session to mark it as modified
      db.session.commit()
      app.logger.info(f"User {user.username}'s last prompt request time updated and count incremented. (Forward Prompt)")
-
-
 
 
      if current_user.is_authenticated:
@@ -1005,14 +775,10 @@ async def generate_prompts_endpoint(): # This remains async
      # --- END UPDATED ---
 
 
-
-
      return jsonify(results)
  except Exception as e:
      app.logger.exception("Error during prompt generation in endpoint:")
      return jsonify({"error": f"An unexpected server error occurred: {e}. Please check server logs for details."}), 500
-
-
 
 
 # --- NEW: Reverse Prompt Endpoint ---
@@ -1021,8 +787,6 @@ async def generate_prompts_endpoint(): # This remains async
 async def reverse_prompt_endpoint():
   user = current_user
   now = datetime.utcnow()
-
-
 
 
   # Apply cooldown to reverse prompting as well
@@ -1038,8 +802,6 @@ async def reverse_prompt_endpoint():
           }), 429
 
 
-
-
   # --- NEW: Daily Limit Check for Reverse Prompt ---
   if not user.is_admin: # Admins are exempt from the daily limit
       today = now.date()
@@ -1048,8 +810,6 @@ async def reverse_prompt_endpoint():
           user.last_count_reset_date = today
           db.session.add(user) # Mark user as modified
           db.session.commit() # Commit reset immediately to prevent race conditions on count
-
-
 
 
       if user.daily_prompt_count >= 10: # Max 10 generations per day
@@ -1061,20 +821,14 @@ async def reverse_prompt_endpoint():
   # --- END NEW: Daily Limit Check ---
 
 
-
-
   data = request.get_json()
   input_text = data.get('input_text', '').strip()
   language_code = data.get('language_code', 'en-US')
 
 
-
-
   if not input_text:
       # This is handled client-side in index.html, but kept as a server-side fallback
       return jsonify({"error": "Please provide text or code to infer a prompt from."}), 400
-
-
 
 
   if not GEMINI_API_CONFIGURED:
@@ -1084,12 +838,8 @@ async def reverse_prompt_endpoint():
       }), 500
 
 
-
-
   try:
       inferred_prompt = await generate_reverse_prompt_async(input_text, language_code)
-
-
 
 
       # Update last_prompt_request after successful reverse prompt
@@ -1101,15 +851,11 @@ async def reverse_prompt_endpoint():
       app.logger.info(f"User {user.username}'s last prompt request time updated and count incremented after reverse prompt.")
 
 
-
-
       return jsonify({"inferred_prompt": inferred_prompt})
   except Exception as e:
       app.logger.exception("Error during reverse prompt generation in endpoint:")
       return jsonify({"error": f"An unexpected server error occurred: {e}. Please check server logs for details."}), 500
 # --- END NEW: Reverse Prompt Endpoint ---
-
-
 
 
 # --- NEW: Image Processing Endpoint ---
@@ -1118,8 +864,6 @@ async def reverse_prompt_endpoint():
 async def process_image_prompt_endpoint():
   user = current_user
   now = datetime.utcnow()
-
-
 
 
   # Apply cooldown to image processing as well
@@ -1135,8 +879,6 @@ async def process_image_prompt_endpoint():
           }), 429
 
 
-
-
   # Daily limit check for image processing
   if not user.is_admin:
       today = now.date()
@@ -1147,8 +889,6 @@ async def process_image_prompt_endpoint():
           db.session.commit()
 
 
-
-
       if user.daily_prompt_count >= 10:
           app.logger.info(f"User {user.username} exceeded daily image processing limit.")
           return jsonify({
@@ -1157,19 +897,13 @@ async def process_image_prompt_endpoint():
           }), 429
 
 
-
-
   data = request.get_json()
   image_data_b64 = data.get('image_data')
   language_code = data.get('language_code', 'en-US') # Not directly used by Gemini Vision, but good to pass
 
 
-
-
   if not image_data_b64:
       return jsonify({"error": "No image data provided."}), 400
-
-
 
 
   try:
@@ -1177,8 +911,6 @@ async def process_image_prompt_endpoint():
     
       # Call the Gemini API for image understanding
       recognized_text = await asyncio.to_thread(ask_gemini_for_image_text, image_data_bytes)
-
-
 
 
       # Update last_prompt_request after successful image processing
@@ -1190,21 +922,13 @@ async def process_image_prompt_endpoint():
       app.logger.info(f"User {user.username}'s last prompt request time updated and count incremented after image processing.")
 
 
-
-
       return jsonify({"recognized_text": recognized_text})
   except Exception as e:
       app.logger.exception("Error during image processing endpoint:")
       return jsonify({"error": f"An unexpected server error occurred during image processing: {e}. Please check server logs for details."}), 500
 
 
-
-
 # --- END NEW: Image Processing Endpoint ---
-
-
-
-
 
 
 
@@ -1217,8 +941,6 @@ def check_cooldown_endpoint():
   now = datetime.utcnow() # Use utcnow for consistency
 
 
-
-
   cooldown_active = False
   remaining_time = 0
   if user.last_prompt_request:
@@ -1226,8 +948,6 @@ def check_cooldown_endpoint():
       if time_since_last_request < COOLDOWN_SECONDS:
           cooldown_active = True
           remaining_time = int(COOLDOWN_SECONDS - time_since_last_request)
-
-
 
 
   daily_limit_reached = False
@@ -1245,8 +965,6 @@ def check_cooldown_endpoint():
           daily_limit_reached = True
 
 
-
-
   return jsonify({
       "cooldown_active": cooldown_active,
       "remaining_time": remaining_time,
@@ -1255,10 +973,6 @@ def check_cooldown_endpoint():
       "is_admin": user.is_admin
   }), 200
 # --- END UPDATED ---
-
-
-
-
 
 
 
@@ -1272,8 +986,6 @@ def admin_news():
   return render_template('admin_news.html', news_items=news_items, current_user=current_user)
 
 
-
-
 @app.route('/admin/news/add', methods=['POST'])
 @login_required
 @admin_required
@@ -1284,13 +996,9 @@ def add_news():
   published_date_str = request.form.get('published_date') # NEW: Get published_date string
 
 
-
-
   if not title or not url:
       flash('Title and URL are required to add news.', 'danger')
       return redirect(url_for('admin_news'))
-
-
 
 
   published_date = None
@@ -1302,8 +1010,6 @@ def add_news():
           return redirect(url_for('admin_news'))
 
 
-
-
   try:
       new_news = News(title=title, url=url, description=description, published_date=published_date, user_id=current_user.id) # Use published_date
       db.session.add(new_news)
@@ -1313,8 +1019,6 @@ def add_news():
       db.session.rollback()
       flash(f'Error adding news item: {e}', 'danger')
   return redirect(url_for('admin_news'))
-
-
 
 
 @app.route('/admin/news/delete/<int:news_id>', methods=['POST'])
@@ -1330,8 +1034,6 @@ def delete_news(news_id):
       db.session.rollback()
       flash(f'Error deleting news item: {e}', 'danger')
   return redirect(url_for('admin_news'))
-
-
 
 
 # --- NEW: Repost News Route ---
@@ -1352,8 +1054,6 @@ def repost_news(news_id):
 # --- END UPDATED: Admin News Management Routes ---
 
 
-
-
 # --- UPDATED: Admin Jobs Management Routes (added published_date) ---
 @app.route('/admin/jobs', methods=['GET'])
 @login_required
@@ -1361,8 +1061,6 @@ def repost_news(news_id):
 def admin_jobs():
   job_listings = Job.query.order_by(Job.timestamp.desc()).all()
   return render_template('admin_jobs.html', job_listings=job_listings, current_user=current_user)
-
-
 
 
 @app.route('/admin/jobs/add', methods=['POST'])
@@ -1377,13 +1075,9 @@ def add_job():
   published_date_str = request.form.get('published_date') # NEW: Get published_date string for jobs
 
 
-
-
   if not title or not company or not url:
       flash('Title, Company, and URL are required to add a job listing.', 'danger')
       return redirect(url_for('admin_jobs'))
-
-
 
 
   published_date = None
@@ -1395,8 +1089,6 @@ def add_job():
           return redirect(url_for('admin_jobs'))
 
 
-
-
   try:
       new_job = Job(title=title, company=company, location=location, url=url, description=description, published_date=published_date, user_id=current_user.id) # Use published_date
       db.session.add(new_job)
@@ -1406,8 +1098,6 @@ def add_job():
       db.session.rollback()
       flash(f'Error adding job listing: {e}', 'danger')
   return redirect(url_for('admin_jobs'))
-
-
 
 
 @app.route('/admin/jobs/delete/<int:job_id>', methods=['POST'])
@@ -1423,8 +1113,6 @@ def delete_job(job_id):
       db.session.rollback()
       flash(f'Error deleting job listing: {e}', 'danger')
   return redirect(url_for('admin_jobs'))
-
-
 
 
 @app.route('/admin/jobs/repost/<int:job_id>', methods=['POST'])
@@ -1445,10 +1133,6 @@ def repost_job(job_id):
 
 
 
-
-
-
-
 # --- NEW: Change Password Route ---
 @app.route('/change_password', methods=['GET', 'POST'])
 @login_required
@@ -1459,13 +1143,9 @@ def change_password():
       confirm_new_password = request.form.get('confirm_new_password')
 
 
-
-
       if not current_password or not new_password or not confirm_new_password:
           flash('All fields are required.', 'danger')
           return render_template('change_password.html', current_user=current_user)
-
-
 
 
       if not current_user.check_password(current_password):
@@ -1473,20 +1153,14 @@ def change_password():
           return render_template('change_password.html', current_user=current_user)
 
 
-
-
       if new_password != confirm_new_password:
           flash('New password and confirmation do not match.', 'danger')
           return render_template('change_password.html', current_user=current_user)
 
 
-
-
       if len(new_password) < 6: # Example: enforce minimum password length
           flash('New password must be at least 6 characters long.', 'danger')
           return render_template('change_password.html', current_user=current_user)
-
-
 
 
       try:
@@ -1500,12 +1174,8 @@ def change_password():
           app.logger.error(f"Error changing password for user {current_user.username}: {e}")
 
 
-
-
   return render_template('change_password.html', current_user=current_user)
 # --- END NEW: Change Password Route ---
-
-
 
 
 # --- NEW: Forgot Password Routes ---
@@ -1514,77 +1184,61 @@ def forgot_password():
   return render_template('forgot_password.html')
 
 
-
-
 @app.route('/send_reset_link', methods=['POST'])
 async def send_reset_link():
-  username = request.form.get('username')
-  user = User.query.filter_by(username=username).first()
-   if user:
-      if not user.email:
-          flash('This account does not have an email address associated for password reset. Please contact support.', 'danger')
-          return redirect(url_for('forgot_password'))
+    username = request.form.get('username')
+    user = User.query.filter_by(username=username).first()
+    if user:
+        if not user.email:
+            flash('This account does not have an email address associated for password reset. Please contact support.', 'danger')
+            return redirect(url_for('forgot_password'))
 
 
-
-
-      # Generate a unique token
-      token = str(uuid.uuid4())
-      # Set token expiration (e.g., 1 hour from now)
-      expiration = datetime.utcnow() + timedelta(hours=1)
+        # Generate a unique token
+        token = str(uuid.uuid4())
+        # Set token expiration (e.g., 1 hour from now)
+        expiration = datetime.utcnow() + timedelta(hours=1)
     
-      user.password_reset_token = token
-      user.password_reset_expiration = expiration
-      db.session.commit()
+        user.password_reset_token = token
+        user.password_reset_expiration = expiration
+        db.session.commit()
     
-      reset_link = url_for('reset_password', token=token, _external=True)
+        reset_link = url_for('reset_password', token=token, _external=True)
     
-      try:
-          msg = Message('Password Reset Request for SuperPrompter',
-                        sender=app.config['MAIL_USERNAME'],
-                        recipients=[user.email])
-          msg.body = f"""
+        try:
+            msg = Message('Password Reset Request for SuperPrompter',
+                          sender=app.config['MAIL_USERNAME'],
+                          recipients=[user.email])
+            msg.body = f"""
 Dear {user.username},
 
 
-
-
 You have requested a password reset for your SuperPrompter account.
-
-
 
 
 Please click on the following link to reset your password:
 {reset_link}
 
 
-
-
 This link will expire in 1 hour.
-
-
 
 
 If you did not request a password reset, please ignore this email.
 
 
-
-
 Sincerely,
 The SuperPrompter Team
 """
-          mail.send(msg)
-          app.logger.info(f"Password reset email sent to {user.email} for user {user.username}")
-          flash('A password reset link has been sent to your email address. Please check your inbox (and spam folder).', 'info')
-      except Exception as e:
-          app.logger.error(f"Failed to send password reset email to {user.email}: {e}", exc_info=True)
-          flash('Failed to send password reset email. Please try again later or contact support.', 'danger')
-  else:
-      # For security, always give a generic success message even if the user doesn't exist
-      flash('If an account with that username exists, a password reset link has been sent to the associated email address.', 'info')
-   return redirect(url_for('login'))
-
-
+            mail.send(msg)
+            app.logger.info(f"Password reset email sent to {user.email} for user {user.username}")
+            flash('A password reset link has been sent to your email address. Please check your inbox (and spam folder).', 'info')
+        except Exception as e:
+            app.logger.error(f"Failed to send password reset email to {user.email}: {e}", exc_info=True)
+            flash('Failed to send password reset email. Please try again later or contact support.', 'danger')
+    else:
+        # For security, always give a generic success message even if the user doesn't exist
+        flash('If an account with that username exists, a password reset link has been sent to the associated email address.', 'info')
+    return redirect(url_for('login'))
 
 
 @app.route('/reset_password/<token>', methods=['GET', 'POST'])
@@ -1593,13 +1247,9 @@ def reset_password(token):
   now = datetime.utcnow()
 
 
-
-
   if not user or user.password_reset_expiration < now:
       flash('The password reset link is invalid or has expired.', 'danger')
       return redirect(url_for('forgot_password'))
-
-
 
 
   if request.method == 'POST':
@@ -1607,13 +1257,9 @@ def reset_password(token):
       confirm_new_password = request.form.get('confirm_new_password')
 
 
-
-
       if not new_password or not confirm_new_password:
           flash('Both new password fields are required.', 'danger')
           return render_template('reset_password.html', token=token)
-
-
 
 
       if new_password != confirm_new_password:
@@ -1621,13 +1267,9 @@ def reset_password(token):
           return render_template('reset_password.html', token=token)
 
 
-
-
       if len(new_password) < 6: # Example: enforce minimum password length
           flash('New password must be at least 6 characters long.', 'danger')
           return render_template('reset_password.html', token=token)
-
-
 
 
       user.set_password(new_password)
@@ -1642,10 +1284,6 @@ def reset_password(token):
 
 
 
-
-
-
-
 # --- Save Prompt Endpoint ---
 @app.route('/save_prompt', methods=['POST'])
 @login_required
@@ -1656,13 +1294,9 @@ def save_prompt():
  prompt_content = data.get('prompt_text')
 
 
-
-
  if not prompt_content or not prompt_type:
      app.logger.warning(f"Attempted to save empty prompt text or type. Type: '{prompt_type}', Content: '{prompt_content[:50] if prompt_content else ''}'")
      return jsonify({"success": False, "message": "No content or type provided for saving."}), 400
-
-
 
 
  timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -1674,12 +1308,8 @@ def save_prompt():
  })
 
 
-
-
  app.logger.info(f"Prompt of type '{prompt_type}' saved to memory at {timestamp} by {current_user.username if current_user.is_authenticated else 'anonymous'}. Content: '{prompt_content[:50]}...'")
  return jsonify({"success": True, "message": "Prompt saved temporarily!"}), 200
-
-
 
 
 # --- Get Saved Prompts Endpoint ---
@@ -1697,8 +1327,6 @@ def get_saved_prompts_endpoint():
      return jsonify(anonymous_prompts), 200
 
 
-
-
 # --- NEW: Get Raw Prompts Endpoint ---
 @app.route('/get_raw_prompts', methods=['GET'])
 @login_required
@@ -1709,16 +1337,12 @@ def get_raw_prompts_endpoint():
      return jsonify([]), 200
 
 
-
-
  try:
      # Fetch last 10 raw prompts for the current user, ordered by timestamp descending
      raw_prompts = RawPrompt.query.filter_by(user_id=current_user.id) \
                                   .order_by(RawPrompt.timestamp.desc()) \
                                   .limit(10) \
                                   .all()
-
-
 
 
      # Format for JSON response
@@ -1729,17 +1353,11 @@ def get_raw_prompts_endpoint():
      } for p in raw_prompts]
 
 
-
-
      return jsonify(formatted_prompts), 200
  except Exception as e:
      app.logger.error(f"Error fetching raw prompts for user {current_user.username}: {e}")
      return jsonify({"error": "Failed to retrieve past raw requests."}), 500
 # --- END NEW ---
-
-
-
-
 
 
 
@@ -1755,12 +1373,8 @@ def download_prompts_txt():
      prompts_to_download = [p for p in saved_prompts_in_memory if p.get('user') == "anonymous"]
 
 
-
-
  if not prompts_to_download:
      return "No prompts to download for this user.", 404
-
-
 
 
  lines = []
@@ -1774,12 +1388,8 @@ def download_prompts_txt():
      lines.append("\n")
 
 
-
-
  text_content = "\n".join(lines).strip()
  filename = f"saved_prompts_{current_user.username if current_user.is_authenticated else 'anonymous'}.txt"
-
-
 
 
  response = make_response(text_content)
@@ -1787,10 +1397,6 @@ def download_prompts_txt():
  response.headers["Content-type"] = "text/plain"
  app.logger.info(f"Generated and sending {filename} for download.")
  return response
-
-
-
-
 
 
 
@@ -1803,15 +1409,11 @@ def register():
      return redirect(url_for('app_home')) # Redirect to app home if already logged in
 
 
-
-
  if request.method == 'POST':
      username = request.form['username']
      password = request.form['password']
      # NEW: Get email from registration form
      email = request.form.get('email') # Make sure to add this field to your register.html
-
-
 
 
      user = User.query.filter_by(username=username).first()
@@ -1836,15 +1438,11 @@ def register():
  return render_template('register.html') # Initial GET request, no suggestions
 
 
-
-
 # NEW: Helper function to generate unique username suggestions
 def generate_unique_username_suggestions(base_username, num_suggestions=3):
   suggestions = []
   attempts = 0
   max_attempts_per_suggestion = 10 # Prevent infinite loops
-
-
 
 
   while len(suggestions) < num_suggestions and attempts < num_suggestions * max_attempts_per_suggestion:
@@ -1854,8 +1452,6 @@ def generate_unique_username_suggestions(base_username, num_suggestions=3):
       # Ensure the suggestion is not too long
       if len(new_username) > 80: # Max length for username field
           new_username = f"{base_username[:76]}{suffix}" # Truncate base_username if needed
-
-
 
 
       if not User.query.filter_by(username=new_username).first():
@@ -1872,10 +1468,6 @@ def generate_unique_username_suggestions(base_username, num_suggestions=3):
 
 
 
-
-
-
-
 @app.route('/login', methods=['GET', 'POST'])
 def login():
  if current_user.is_authenticated:
@@ -1883,14 +1475,10 @@ def login():
      return redirect(url_for('app_home')) # Redirect to app home if already logged in
 
 
-
-
  if request.method == 'POST':
      username = request.form['username']
      password = request.form['password']
      remember_me = 'remember_me' in request.form
-
-
 
 
      user = User.query.filter_by(username=username).first()
@@ -1903,8 +1491,6 @@ def login():
  return render_template('login.html')
 
 
-
-
 @app.route('/logout')
 @login_required # Only logged-in users can log out
 def logout():
@@ -1914,8 +1500,6 @@ def logout():
 # --- END UPDATED: Authentication Routes ---
 
 
-
-
 # NEW: Newsletter Subscription Route
 @app.route('/subscribe_newsletter', methods=['POST'])
 def subscribe_newsletter():
@@ -1923,12 +1507,10 @@ def subscribe_newsletter():
   if not email:
       flash('Email address is required to subscribe.', 'danger')
       return redirect(url_for('landing'))
-   # Basic email format validation
+  # Basic email format validation
   if not re.match(r"[^@]+@[^@]+\.[^@]+", email):
       flash('Invalid email address format.', 'danger')
       return redirect(url_for('landing'))
-
-
 
 
   existing_subscriber = NewsletterSubscriber.query.filter_by(email=email).first()
@@ -1951,18 +1533,12 @@ def subscribe_newsletter():
 
 
 
-
-
-
-
 # --- Database Initialization (Run once to create tables) ---
 # This block ensures tables are created when the app starts.
 # In production, you might use Flask-Migrate or a separate script.
 with app.app_context():
  db.create_all()
  app.logger.info("Database tables created/checked.")
-
-
 
 
  # NEW: Create an admin user if one doesn't exist for easy testing
@@ -1978,10 +1554,6 @@ with app.app_context():
 
 
 
-
-
-
-
 # --- Main App Run ---
 if __name__ == '__main__':
  # Important: For async Flask routes, you should use an ASGI server in production.
@@ -1993,6 +1565,3 @@ if __name__ == '__main__':
  # you can use `nest_asyncio.apply()` (install with `pip install nest-asyncio`), but this is
  # generally not recommended for production as it can hide underlying architectural issues.
  app.run(debug=True)
-
-
-
