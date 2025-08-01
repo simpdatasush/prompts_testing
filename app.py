@@ -217,18 +217,6 @@ class Job(db.Model):
 # --- END UPDATED: Job Model ---
 
 
-# NEW: NewsletterSubscriber Model
-class NewsletterSubscriber(db.Model):
-   id = db.Column(db.Integer, primary_key=True)
-   email = db.Column(db.String(120), unique=True, nullable=False)
-   subscribed_on = db.Column(db.DateTime, default=datetime.utcnow)
-
-
-   def __repr__(self):
-       return f'<Subscriber {self.email}>'
-# END NEW: NewsletterSubscriber Model
-
-
 
 
 # --- NEW: Flask-Login User Loader ---
@@ -316,7 +304,7 @@ def filter_gemini_response(text):
 
 
 # --- Gemini API interaction function (NOW SYNCHRONOUS) ---
-def ask_gemini_for_prompt(prompt_instruction, max_output_tokens=512):
+def ask_gemini_for_prompt(prompt_instruction, max_output_tokens=1024):
   if not GEMINI_API_CONFIGURED:
       # This check is also done in the endpoint, but kept here for robustness
       return "Gemini API Key is not configured or the AI model failed to initialize."
@@ -497,25 +485,8 @@ def landing():
   return render_template('landing.html', news_items=news_items, job_listings=job_listings, current_user=current_user)
 
 
-# REVERTED: Route to view a specific news item (redirect directly to external URL)
-@app.route('/view_news/<int:news_id>')
-def view_news(news_id):
-   news_item = News.query.get_or_404(news_id)
-   return redirect(news_item.url)
-
-
-# REVERTED: Route to view a specific job listing (redirect directly to external URL)
-@app.route('/view_job/<int:job_id>')
-def view_job(job_id):
-   job_listing = Job.query.get_or_404(job_id)
-   return redirect(job_listing.url)
-
-
-
-
 # Renamed original index route to /app_home
 @app.route('/app_home')
-@login_required # REQUIRE LOGIN FOR APP HOME PAGE
 def app_home():
   # Pass current_user object to the template to show login/logout status
   return render_template('index.html', current_user=current_user)
@@ -1269,12 +1240,12 @@ def register():
           flash('this username already exists', 'danger') # Updated message
           # Generate suggestions if username exists
           suggestions = generate_unique_username_suggestions(username)
-          return render_template('register.html', suggestions=suggestions, username=username, email=email) # Pass suggestions and original inputs
+          return render_template('register.html', suggestions=suggestions) # Pass suggestions
       else:
           # NEW: Check if email already exists
           if email and User.query.filter_by(email=email).first():
               flash('Email already registered. Please use a different email or log in.', 'danger')
-              return render_template('register.html', username=username, email=email) # Re-render without suggestions for email conflict
+              return render_template('register.html') # Re-render without suggestions for email conflict
           else:
               new_user = User(username=username, email=email) # Pass email to User constructor
               new_user.set_password(password)
@@ -1350,38 +1321,6 @@ def logout():
 # --- END UPDATED: Authentication Routes ---
 
 
-# NEW: Newsletter Subscription Route
-@app.route('/subscribe_newsletter', methods=['POST'])
-def subscribe_newsletter():
-   email = request.form.get('email')
-   if not email:
-       flash('Email address is required to subscribe.', 'danger')
-       return redirect(url_for('landing'))
-  
-   # Basic email format validation
-   if not re.match(r"[^@]+@[^@]+\.[^@]+", email):
-       flash('Invalid email address format.', 'danger')
-       return redirect(url_for('landing'))
-
-
-   existing_subscriber = NewsletterSubscriber.query.filter_by(email=email).first()
-   if existing_subscriber:
-       flash('You are already subscribed to our newsletter!', 'info')
-   else:
-       try:
-           new_subscriber = NewsletterSubscriber(email=email)
-           db.session.add(new_subscriber)
-           db.session.commit()
-           flash('Successfully subscribed to our newsletter! Thank you!', 'success')
-       except Exception as e:
-           db.session.rollback()
-           app.logger.error(f"Error subscribing email {email} to newsletter: {e}")
-           flash('Failed to subscribe to newsletter. Please try again later.', 'danger')
-          
-   return redirect(url_for('landing'))
-# END NEW: Newsletter Subscription Route
-
-
 
 
 # --- Database Initialization (Run once to create tables) ---
@@ -1416,4 +1355,3 @@ if __name__ == '__main__':
   # you can use `nest_asyncio.apply()` (install with `pip install nest-asyncio`), but this is
   # generally not recommended for production as it can hide underlying architectural issues.
   app.run(debug=True)
-
