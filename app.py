@@ -1440,30 +1440,29 @@ def register():
 
 # NEW: Helper function to generate unique username suggestions
 def generate_unique_username_suggestions(base_username, num_suggestions=3):
-  suggestions = []
-  attempts = 0
-  max_attempts_per_suggestion = 10 # Prevent infinite loops
+    suggestions = []
+    attempts = 0
+    max_attempts_per_suggestion = 10  # Prevent infinite loops
 
-
-  while len(suggestions) < num_suggestions and attempts < num_suggestions * max_attempts_per_suggestion:
-      suffix = ''.join(random.choices(string.digits, k=4)) # 4 random digits
-      new_username = f"{base_username}{suffix}"
+    while len(suggestions) < num_suggestions and attempts < num_suggestions * max_attempts_per_suggestion:
+        suffix = ''.join(random.choices(string.digits, k=4))  # 4 random digits
+        new_username = f"{base_username}{suffix}"
     
-      # Ensure the suggestion is not too long
-      if len(new_username) > 80: # Max length for username field
-          new_username = f"{base_username[:76]}{suffix}" # Truncate base_username if needed
+        # Ensure the suggestion is not too long
+        if len(new_username) > 80:  # Max length for username field
+            new_username = f"{base_username[:76]}{suffix}"  # Truncate base_username if needed
 
 
-      if not User.query.filter_by(username=new_username).first():
-          suggestions.append(new_username)
-      attempts += 1
-   # If we still don't have enough suggestions, try more generic ones
-  while len(suggestions) < num_suggestions:
-      random_suffix = ''.join(random.choices(string.ascii_lowercase + string.digits, k=6))
-      generic_username = f"user_{random_suffix}"
-      if not User.query.filter_by(username=generic_username).first():
-          suggestions.append(generic_username)
-   return suggestions
+        if not User.query.filter_by(username=new_username).first():
+            suggestions.append(new_username)
+        attempts += 1
+    # If we still don't have enough suggestions, try more generic ones
+    while len(suggestions) < num_suggestions:
+        random_suffix = ''.join(random.choices(string.ascii_lowercase + string.digits, k=6))
+        generic_username = f"user_{random_suffix}"
+        if not User.query.filter_by(username=generic_username).first():
+            suggestions.append(generic_username)
+    return suggestions
 
 
 
