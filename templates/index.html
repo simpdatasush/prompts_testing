@@ -470,15 +470,6 @@
           transform: translateY(0);
       }
 
-      .modal-header-custom {
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-          margin-bottom: 15px;
-          padding-bottom: 10px;
-          border-bottom: 1px solid #eee;
-      }
-
       .modal-header-custom h4 {
           margin: 0;
           color: #2c3e50;
@@ -696,8 +687,7 @@
                         <h5>Technical Variant</h5>
                         <span id="technical_token_count" class="token-count">0 chars</span>
                         <div>
-                            <button class="btn btn-sm btn-outline-secondary mr-1" onclick="copyPromptText('technical_output')"><i class="fas fa-copy"></i> Copy</button>
-                            <button class="btn btn-sm btn-outline-info" onclick="openFullContextView('Technical Variant', 'technical_output')"><i class="fas fa-expand-alt"></i> View Full</button>
+                            <button class="btn btn-sm btn-outline-secondary mr-1" onclick="copyPromptText('technical_output')"><i class="fas fa-expand-alt"></i> View Full</button>
                         </div>
                     </div>
                     <div class="card-body">
@@ -854,7 +844,7 @@
                "generation_failed":  "❌ Fallo al generar indicaciones:" ,
                "reverse_prompt_failed": "❌ Fallo al inferir el prompt inverso:",
                "generation_complete":  "✨ Todas las tareas de generación de indicaciones completadas." ,
-               "reverse_prompt_complete": "✨ Prompt inverso inferido con éxito.",
+               "reverse_prompt_complete": "✨ Prompt inverso infecido con éxito.",
                "no_input_provided": "Para habilitar la generación de indicaciones, por favor, comparta su entrada primero.", // NEW message
                "api_key_not_configured": "La clave API de Gemini no está configurada o el modelo de IA no se pudo inicializar.",
                "image_processing": "🖼️ Procesando imagen y extrayendo texto...",
@@ -862,7 +852,7 @@
                "image_error":  "❌ Error de procesamiento de imagen:" ,
                "no_image_selected":  "❗ Por favor, seleccione un archivo de imagen primero." ,
                "copy_success":  "✅ Indicación copiada al portapapeles." ,
-               "copy_fail":  "❌ Error al copiar la indicación al portapapeles."
+               "copy_fail":  "❌ Échec de la copia de la invite en el portapapeles."
            },
            "fr-FR": {
                "application_ready": "Application prête.",
@@ -888,7 +878,7 @@
                "image_processing": "🖼️ Traitement de l'image et extraction du texto...",
                "image_success":  "✅ Texto extraído de la imagen. Haga clic en \"Générer les invites\" para afiner." ,
                "image_error":  "❌ Error de procesamiento de imagen :" ,
-               "no_image_selected":  "❗ Veuillez sélectionner un archivo de imagen en primer lieu." ,
+               "no_image_selected":  "❗ Veuillez sélectionner un archivo de imagen en premier lieu." ,
                "copy_success":  "✅ Invite copiada en el portapapeles !" ,
                "copy_fail":  "❌ Échec de la copia de la invite en el portapapeles."
            },
@@ -1330,8 +1320,6 @@
            setLLMWebsiteButtonsDisabled(true, promptMode); // Disable LLM website buttons immediately
            reversePromptButton.textContent = 'Inferring...';
            cooldownTimerDisplay.style.display = 'none';
-
-           console.log("Frontend: Sending request to /reverse_prompt...");
 
            try {
                const response = await fetch('/reverse_prompt', {
