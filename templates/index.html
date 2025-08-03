@@ -848,7 +848,7 @@
                "no_input_provided": "Para habilitar la generación de indicaciones, por favor, comparta su entrada primero.", // NEW message
                "api_key_not_configured": "La clave API de Gemini no está configurada o el modelo de IA no se pudo inicializar.",
                "image_processing": "🖼️ Procesando imagen y extrayendo texto...",
-               "image_success":  "✅ Texto extraído de la imagen. Haga clic en \"Générer les invites\" para afinar." ,
+               "image_success":  "✅ Texto extraído de la imagen. Haga clic en \"Générer les invites\" para afiner." ,
                "image_error":  "❌ Error de procesamiento de imagen:" ,
                "no_image_selected":  "❗ Por favor, seleccione un archivo de imagen primero." ,
                "copy_success":  "✅ Indicación copiada al portapapeles." ,
@@ -880,7 +880,7 @@
                "image_error":  "❌ Error de procesamiento de imagen :" ,
                "no_image_selected":  "❗ Veuillez sélectionner un archivo de imagen en premier lieu." ,
                "copy_success":  "✅ Invite copiada en el portapapeles !" ,
-               "copy_fail":  "❌ Échec de la copia de la invite en el portapapeles."
+               "copy_fail":  "❌ Échec de la copie de la invite en el portapapeles."
            },
            "de-DE": {
                "application_ready": "Anwendung bereit.",
@@ -1227,8 +1227,8 @@
                        appOutput.className = 'mt-4 warning';
                        startCooldownTimer(errorData.remaining_time);
                    } else if (errorData.daily_limit_reached) { // Handle daily limit error
-                       // NEW: Open the payment modal
-                       $('#paymentModalMessage').html(errorData.error);
+                       // NEW: Open the payment modal and set the appOutput message
+                       $('#paymentModalMessage').text(errorData.error);
                        $('#paymentLinkButton').attr('href', errorData.payment_link);
                        $('#paymentModal').modal('show');
                        
