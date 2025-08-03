@@ -181,10 +181,11 @@ class JobListing(db.Model):
 # NEW: SamplePrompt Model for the new collection
 class SamplePrompt(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    raw_prompt = db.Column(db.Text, nullable=True)
+    raw_prompt = db.Column(db.Text, nullable=False) # Changed to not nullable
     polished_prompt = db.Column(db.Text, nullable=False)
     creative_prompt = db.Column(db.Text, nullable=False)
     technical_prompt = db.Column(db.Text, nullable=False)
+    display_type = db.Column(db.String(20), nullable=False, default='polished') # New column
     timestamp = db.Column(db.DateTime, default=datetime.utcnow)
 
     def __repr__(self):
@@ -440,7 +441,7 @@ async def generate_prompts_async(raw_input, language_code="en-US", prompt_mode='
     if model_to_use_for_main_gen_func == ask_gemini_for_structured_prompt:
         main_prompt_result = await asyncio.to_thread(model_to_use_for_main_gen_func, base_instruction, generation_config)
     else: # ask_gemini_for_text_prompt
-        main_prompt_result = await asyncio.to_thread(model_to_use_for_main_gen_func, base_instruction, max_output_tokens=512)
+        main_prompt_result = await asyncio.to_thread(ask_gemini_for_text_prompt, base_instruction, max_output_tokens=512)
 
 
     if "Error" in main_prompt_result or "not configured" in main_prompt_result or "quota" in main_prompt_result.lower(): # Check for quota error
@@ -582,7 +583,20 @@ def landing():
     job_listings = JobListing.query.order_by(JobListing.timestamp.desc()).limit(6).all()
     # NEW: Fetch latest 3 SamplePrompts for the landing page
     sample_prompts = SamplePrompt.query.order_by(SamplePrompt.timestamp.desc()).limit(3).all()
-    return render_template('landing.html', news_items=news_items, job_listings=job_listings, sample_prompts=sample_prompts, current_user=current_user)
+
+    # Process sample_prompts to include the selected display_type's content
+    display_prompts = []
+    for prompt in sample_prompts:
+        display_prompt_text = getattr(prompt, prompt.display_type + '_prompt', prompt.polished_prompt)
+        display_prompts.append({
+            'id': prompt.id,
+            'raw_prompt': prompt.raw_prompt,
+            'display_prompt_text': display_prompt_text,
+            'display_type': prompt.display_type,
+            'timestamp': prompt.timestamp
+        })
+
+    return render_template('landing.html', news_items=news_items, job_listings=job_listings, sample_prompts=display_prompts, current_user=current_user)
 
 
 # UPDATED: Route to view a specific news item (using NewsItem model)
@@ -966,9 +980,10 @@ def add_prompt():
     polished_prompt = request.form.get('polished_prompt')
     creative_prompt = request.form.get('creative_prompt')
     technical_prompt = request.form.get('technical_prompt')
+    display_type = request.form.get('display_type', 'polished') # NEW: Get display_type from form
 
-    if not polished_prompt or not creative_prompt or not technical_prompt:
-        flash('Polished, Creative, and Technical prompts are required.', 'danger')
+    if not raw_prompt or not polished_prompt or not creative_prompt or not technical_prompt:
+        flash('All prompt fields are required.', 'danger')
         return redirect(url_for('admin_prompts'))
 
     try:
@@ -976,7 +991,8 @@ def add_prompt():
             raw_prompt=raw_prompt,
             polished_prompt=polished_prompt,
             creative_prompt=creative_prompt,
-            technical_prompt=technical_prompt
+            technical_prompt=technical_prompt,
+            display_type=display_type # NEW: Save display_type
         )
         db.session.add(new_prompt)
         db.session.commit()
@@ -1452,3 +1468,5 @@ if __name__ == '__main__':
     # you can use `nest_asyncio.apply()` (install with `pip install nest-asyncio`), but this is
     # generally not recommended for production as it can hide underlying architectural issues.
     app.run(debug=True)
+
+
