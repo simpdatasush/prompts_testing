@@ -544,10 +544,12 @@
         </div>
         <div class="auth-section">
             <a href="{{ url_for('app_home') }}" class="btn btn-outline-light btn-sm mr-2">App Home</a>
-            <a href="{{ url_for('admin_news') }}" class="btn btn-outline-light btn-sm mr-2">Manage News</a>
-            <a href="{{ url_for('admin_jobs') }}" class="btn btn-outline-light btn-sm mr-2">Manage Jobs</a>
-            <a href="{{ url_for('admin_prompts') }}" class="btn btn-outline-light btn-sm mr-2">Manage Prompts</a>
-            <a href="{{ url_for('admin_users') }}" class="btn btn-outline-light btn-sm mr-2">Manage Users</a>
+            {% if current_user.is_authenticated and current_user.is_admin %}
+              <a href="{{ url_for('admin_news') }}" class="btn btn-outline-light btn-sm mr-2">Manage News</a>
+              <a href="{{ url_for('admin_jobs') }}" class="btn btn-outline-light btn-sm mr-2">Manage Jobs</a>
+              <a href="{{ url_for('admin_prompts') }}" class="btn btn-outline-light btn-sm mr-2">Manage Prompts</a>
+              <a href="{{ url_for('admin_users') }}" class="btn btn-outline-light btn-sm mr-2">Manage Users</a>
+            {% endif %}
             {% if current_user.is_authenticated %}
                 <span class="navbar-text mr-2">Logged in as: <strong>{{ current_user.username }}</strong></span>
                 <a href="{{ url_for('logout') }}" class="btn btn-outline-light btn-sm">Logout</a>
@@ -865,7 +867,7 @@
                "image_processing": "🖼️ Traitement de l'image et extraction du texto...",
                "image_success":  "✅ Texto extraído de la imagen. Haga clic en \"Générer les invites\" para afiner." ,
                "image_error":  "❌ Error de procesamiento de imagen :" ,
-               "no_image_selected":  "❗ Veuillez sélectionner un archivo de imagen en premier lieu." ,
+               "no_image_selected":  "❗ Veuillez sélectionner un archivo de imagen en primer lieu." ,
                "copy_success":  "✅ Invite copiada en el portapapeles !" ,
                "copy_fail":  "❌ Échec de la copia de la invite en el portapapeles."
            },
