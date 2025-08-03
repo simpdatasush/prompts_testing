@@ -6,7 +6,7 @@
 import asyncio
 import os
 import google.generativeai as genai
-from flask import Flask, render_template, request, jsonify, make_response, redirect, url_for, flash
+from flask import Flask, render_template, request, jsonify, make_response, redirect, url_for, flash, send_file
 import logging
 from datetime import datetime, timedelta # Import timedelta for time calculations
 import re # Import for regular expressions
@@ -177,6 +177,18 @@ class JobListing(db.Model):
 
     def __repr__(self):
         return f"JobListing('{self.title}', '{self.company}', '{self.location}')"
+
+# NEW: SamplePrompt Model for the new collection
+class SamplePrompt(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    raw_prompt = db.Column(db.Text, nullable=True)
+    polished_prompt = db.Column(db.Text, nullable=False)
+    creative_prompt = db.Column(db.Text, nullable=False)
+    technical_prompt = db.Column(db.Text, nullable=False)
+    timestamp = db.Column(db.DateTime, default=datetime.utcnow)
+
+    def __repr__(self):
+        return f"SamplePrompt('{self.polished_prompt[:30]}...', '{self.timestamp}')"
 
 # NEW: NewsletterSubscriber Model (from provided docx)
 class NewsletterSubscriber(db.Model):
@@ -568,7 +580,9 @@ def landing():
     news_items = NewsItem.query.order_by(NewsItem.timestamp.desc()).limit(6).all()
     # Fetch latest 6 job listings for the landing page
     job_listings = JobListing.query.order_by(JobListing.timestamp.desc()).limit(6).all()
-    return render_template('landing.html', news_items=news_items, job_listings=job_listings, current_user=current_user)
+    # NEW: Fetch latest 3 SamplePrompts for the landing page
+    sample_prompts = SamplePrompt.query.order_by(SamplePrompt.timestamp.desc()).limit(3).all()
+    return render_template('landing.html', news_items=news_items, job_listings=job_listings, sample_prompts=sample_prompts, current_user=current_user)
 
 
 # UPDATED: Route to view a specific news item (using NewsItem model)
@@ -583,6 +597,12 @@ def view_news(news_id):
 def view_job(job_id):
     item = JobListing.query.get_or_404(job_id)
     return render_template('shared_content_landing.html', item=item, item_type='job')
+
+# NEW: Route to view a specific sample prompt
+@app.route('/view_prompt/<int:prompt_id>')
+def view_prompt(prompt_id):
+    item = SamplePrompt.query.get_or_404(prompt_id)
+    return render_template('shared_content_landing.html', item=item, item_type='prompt')
 
 
 # Renamed original index route to /app_home
@@ -931,6 +951,69 @@ def download_prompts_txt():
     response.headers["Content-Disposition"] = "attachment; filename=saved_prompts.txt"
     response.headers["Content-type"] = "text/plain"
     return response
+
+# NEW: Admin Prompts Management Routes (using SamplePrompt model)
+@app.route('/admin/prompts', methods=['GET'])
+@admin_required
+def admin_prompts():
+    sample_prompts = SamplePrompt.query.order_by(SamplePrompt.timestamp.desc()).all()
+    return render_template('admin_prompts.html', sample_prompts=sample_prompts, current_user=current_user)
+
+@app.route('/admin/prompts/add', methods=['POST'])
+@admin_required
+def add_prompt():
+    raw_prompt = request.form.get('raw_prompt')
+    polished_prompt = request.form.get('polished_prompt')
+    creative_prompt = request.form.get('creative_prompt')
+    technical_prompt = request.form.get('technical_prompt')
+
+    if not polished_prompt or not creative_prompt or not technical_prompt:
+        flash('Polished, Creative, and Technical prompts are required.', 'danger')
+        return redirect(url_for('admin_prompts'))
+
+    try:
+        new_prompt = SamplePrompt(
+            raw_prompt=raw_prompt,
+            polished_prompt=polished_prompt,
+            creative_prompt=creative_prompt,
+            technical_prompt=technical_prompt
+        )
+        db.session.add(new_prompt)
+        db.session.commit()
+        flash('Sample prompt added successfully!', 'success')
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Error adding sample prompt: {e}', 'danger')
+        app.logger.error(f"Error adding sample prompt: {e}")
+    return redirect(url_for('admin_prompts'))
+
+@app.route('/admin/prompts/delete/<int:prompt_id>', methods=['POST'])
+@admin_required
+def delete_prompt(prompt_id):
+    prompt = SamplePrompt.query.get_or_404(prompt_id)
+    try:
+        db.session.delete(prompt)
+        db.session.commit()
+        flash('Sample prompt deleted successfully!', 'success')
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Error deleting sample prompt: {e}', 'danger')
+        app.logger.error(f"Error deleting sample prompt: {e}")
+    return redirect(url_for('admin_prompts'))
+
+@app.route('/admin/prompts/repost/<int:prompt_id>', methods=['POST'])
+@admin_required
+def repost_prompt(prompt_id):
+    prompt = SamplePrompt.query.get_or_404(prompt_id)
+    try:
+        prompt.timestamp = datetime.utcnow()
+        db.session.commit()
+        flash('Sample prompt reposted successfully (timestamp updated)!', 'success')
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Error reposting sample prompt: {e}', 'danger')
+        app.logger.error(f"Error reposting sample prompt: {e}")
+    return redirect(url_for('admin_prompts'))
 
 
 # --- Admin News Management Routes (using NewsItem model) ---
@@ -1327,6 +1410,17 @@ def logout():
     logout_user()
     flash('You have been logged out.', 'info')
     return redirect(url_for('landing')) # Redirect to landing page after logout
+
+# NEW: Admin route for downloading the database
+@app.route('/admin/download_database', methods=['GET'])
+@admin_required
+def download_database():
+    try:
+        db_path = os.path.join(app.root_path, 'site.db')
+        return send_file(db_path, as_attachment=True, download_name='site.db')
+    except Exception as e:
+        flash(f"Error downloading database: {e}", 'danger')
+        return redirect(url_for('admin_jobs'))
 
 
 # --- Database Initialization (Run once to create tables) ---
