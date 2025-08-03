@@ -402,13 +402,14 @@
                <div class="col-md-6 col-lg-4">
                    <div class="card">
                        <div class="card-body">
+                           <h5 class="card-title">Prompt Example #{{ loop.index }}</h5>
                            <div class="card-prompt-group">
                                <strong>Raw Prompt:</strong>
                                <pre>{{ prompt.raw_prompt | truncate(150) if prompt.raw_prompt else 'N/A' }}</pre>
                            </div>
                            <div class="card-prompt-group">
-                               <strong>Polished Prompt:</strong>
-                               <pre>{{ prompt.polished_prompt | truncate(150) }}</pre>
+                               <strong>{{ prompt.display_type.capitalize() }} Prompt:</strong>
+                               <pre>{{ prompt.display_prompt_text | truncate(150) }}</pre>
                            </div>
                             <p class="meta-info">Added: {{ prompt.timestamp.strftime('%Y-%m-%d %H:%M') }}</p>
                        </div>
@@ -506,3 +507,6 @@
    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
 </body>
 </html>
+
+
+
