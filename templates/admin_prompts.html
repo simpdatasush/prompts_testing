@@ -2,10 +2,10 @@
 <html lang="en">
 <head>
    <meta charset="UTF-8">
-   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <meta name="viewport" content="width=device-width, initial-sclae=1.0">
    <title>Admin - Manage Prompts</title>
-   <link rel="stylesheet" href="[https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css](https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css)">
-   <link rel="stylesheet" href="[https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css](https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css)">
+   <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css">
    <style>
        body {
            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -169,16 +169,14 @@
 <body>
    <header class="app-header">
        <div class="logo-section">
-           <img src="[https://placehold.co/40x40/007bff/ffffff?text=AI](https://placehold.co/40x40/007bff/ffffff?text=AI)" alt="SuperPrompter Logo" class="app-logo">
+           <img src="https://placehold.co/40x40/007bff/ffffff?text=AI" alt="SuperPrompter Logo" class="app-logo">
            <h1 class="header-title">SuperPrompter</h1>
        </div>
        <div class="auth-section">
            <a href="{{ url_for('app_home') }}" class="btn btn-outline-light btn-sm mr-2">App Home</a>
            <a href="{{ url_for('admin_news') }}" class="btn btn-outline-light btn-sm mr-2">Manage News</a>
            <a href="{{ url_for('admin_jobs') }}" class="btn btn-outline-light btn-sm mr-2">Manage Jobs</a>
-           {% if current_user.is_authenticated and current_user.is_admin %}
-               <a href="{{ url_for('admin_prompts') }}" class="btn btn-outline-light btn-sm mr-2">Manage Prompts</a>
-           {% endif %}
+           <a href="{{ url_for('admin_prompts') }}" class="btn btn-outline-light btn-sm mr-2">Manage Prompts</a>
            {% if current_user.is_authenticated %}
                <span class="navbar-text mr-2">Logged in as: <strong>{{ current_user.username }}</strong></span>
                <a href="{{ url_for('logout') }}" class="btn btn-outline-light btn-sm">Logout</a>
@@ -193,8 +191,7 @@
 
    <div class="container">
        <h2>Admin - Manage Sample Prompts</h2>
-
-
+      
 
 
        {% with messages = get_flashed_messages(with_categories=true) %}
@@ -213,8 +210,8 @@
        <h3>Add New Sample Prompt</h3>
        <form method="POST" action="{{ url_for('add_prompt') }}">
            <div class="form-group">
-               <label for="raw_prompt">Raw Prompt (Optional):</label>
-               <textarea class="form-control" id="raw_prompt" name="raw_prompt" rows="2"></textarea>
+               <label for="raw_prompt">Raw Prompt:</label>
+               <textarea class="form-control" id="raw_prompt" name="raw_prompt" rows="2" required></textarea>
            </div>
            <div class="form-group">
                <label for="polished_prompt">Polished Prompt:</label>
@@ -227,6 +224,14 @@
            <div class="form-group">
                <label for="technical_prompt">Technical Prompt:</label>
                <textarea class="form-control" id="technical_prompt" name="technical_prompt" rows="3" required></textarea>
+           </div>
+           <div class="form-group">
+               <label for="display_type">Display on Landing Page:</label>
+               <select class="form-control" id="display_type" name="display_type" required>
+                   <option value="polished">Polished</option>
+                   <option value="creative">Creative</option>
+                   <option value="technical">Technical</option>
+               </select>
            </div>
            <button type="submit" class="btn btn-primary">Add Prompt</button>
        </form>
@@ -245,6 +250,7 @@
                        <th>Polished Prompt</th>
                        <th>Creative Prompt</th>
                        <th>Technical Prompt</th>
+                       <th>Display Type</th>
                        <th>Added Date</th>
                        <th>Actions</th>
                    </tr>
@@ -253,12 +259,14 @@
                    {% for prompt in sample_prompts %}
                    <tr>
                        <td>{{ prompt.id }}</td>
-                       <td>{{ prompt.raw_prompt | truncate(50) if prompt.raw_prompt else 'N/A' }}</td>
-                       <td>{{ prompt.polished_prompt | truncate(50) }}</td>
-                       <td>{{ prompt.creative_prompt | truncate(50) }}</td>
-                       <td>{{ prompt.technical_prompt | truncate(50) }}</td>
+                       <td class="text-truncate" style="max-width: 150px;">{{ prompt.raw_prompt }}</td>
+                       <td class="text-truncate" style="max-width: 150px;">{{ prompt.polished_prompt }}</td>
+                       <td class="text-truncate" style="max-width: 150px;">{{ prompt.creative_prompt }}</td>
+                       <td class="text-truncate" style="max-width: 150px;">{{ prompt.technical_prompt }}</td>
+                       <td>{{ prompt.display_type.capitalize() }}</td>
                        <td>{{ prompt.timestamp.strftime('%Y-%m-%d %H:%M') }}</td>
                        <td>
+                           <button class="btn btn-info btn-sm btn-action" onclick="viewPromptDetails({{ prompt.id }}, '{{ prompt.raw_prompt | escape }}', '{{ prompt.polished_prompt | escape }}', '{{ prompt.creative_prompt | escape }}', '{{ prompt.technical_prompt | escape }}')">View</button>
                            <form action="{{ url_for('repost_prompt', prompt_id=prompt.id) }}" method="POST" style="display:inline;">
                                <button type="submit" class="btn btn-info btn-sm btn-action">Repost</button>
                            </form>
@@ -277,6 +285,35 @@
    </div>
 
 
+   <!-- Modal for viewing full prompt content -->
+   <div class="modal fade" id="promptModal" tabindex="-1" aria-labelledby="promptModalLabel" aria-hidden="true">
+     <div class="modal-dialog modal-lg">
+       <div class="modal-content">
+         <div class="modal-header">
+           <h5 class="modal-title" id="promptModalLabel">Prompt Details</h5>
+           <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+             <span aria-hidden="true">&times;</span>
+           </button>
+         </div>
+         <div class="modal-body">
+           <h6>Raw Prompt:</h6>
+           <pre id="rawPromptContent" class="p-2 bg-light rounded"></pre>
+           <h6 class="mt-3">Polished Prompt:</h6>
+           <pre id="polishedPromptContent" class="p-2 bg-light rounded"></pre>
+           <h6 class="mt-3">Creative Prompt:</h6>
+           <pre id="creativePromptContent" class="p-2 bg-light rounded"></pre>
+           <h6 class="mt-3">Technical Prompt:</h6>
+           <pre id="technicalPromptContent" class="p-2 bg-light rounded"></pre>
+         </div>
+         <div class="modal-footer">
+           <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+         </div>
+       </div>
+     </div>
+   </div>
+   <!-- End Modal -->
+
+
 
 
    <footer class="footer">
@@ -284,5 +321,21 @@
          This is developed by Sushrut Kulkarni &nbsp; Email: <a href="mailto:info@promptsgenerator.ai">info@promptsgenerator.ai</a>
      </div>
    </footer>
+  
+   <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+   <script src="https://cdn.jsdelivr.net/npm/popper.js@1.16.1/dist/umd/popper.min.js"></script>
+   <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+   <script>
+       function viewPromptDetails(id, raw, polished, creative, technical) {
+           $('#rawPromptContent').text(raw);
+           $('#polishedPromptContent').text(polished);
+           $('#creativePromptContent').text(creative);
+           $('#technicalPromptContent').text(technical);
+           $('#promptModal').modal('show');
+       }
+   </script>
 </body>
 </html>
+
+
+
