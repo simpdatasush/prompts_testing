@@ -1104,7 +1104,7 @@
                } else if (data.daily_limit_reached) {
                    canGenerate = false;
                    messageType = 'danger';
-                   statusMessage = `Daily limit reached: You have used ${data.daily_count}/${data.user_daily_limit} generations today.`;
+                   statusMessage = `Daily limit reached: You have used ${data.daily_count}/${data.user_daily_limit} generations today. If you want to generate more please subscribe.`;
                    cooldownTimerDisplay.style.display = 'none'; // Ensure timer is hidden
                } else {
                    // If not on cooldown or limit, show daily count for non-admins
