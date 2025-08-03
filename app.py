@@ -71,7 +71,9 @@ logging.basicConfig(level=logging.INFO) # Simplified logging setup
 
 # --- Cooldown and Daily Limit Configuration ---
 COOLDOWN_SECONDS = 60 # 60 seconds cooldown as requested
-DAILY_LIMIT = 10 # Number of generations allowed per day for non-admin users
+FREE_DAILY_LIMIT = 3 # New default for free users
+PAID_DAILY_LIMIT = 10 # New default for paid users
+PAYMENT_LINK = "https://buymeacoffee.com/simpaisush"
 
 
 # --- Language Mapping for Gemini Instructions ---
@@ -112,6 +114,12 @@ class User(db.Model, UserMixin):
     reset_token = db.Column(db.String(100), unique=True, nullable=True)
     reset_token_expiration = db.Column(db.DateTime, nullable=True)
     email = db.Column(db.String(120), unique=True, nullable=True) # Email field for password reset
+    
+    # NEW: Columns for user management and payment
+    is_locked = db.Column(db.Boolean, default=False)
+    subscription_type = db.Column(db.String(50), nullable=False, default='free') # 'free', 'one-time', 'monthly'
+    payment_date = db.Column(db.DateTime, nullable=True)
+    daily_limit = db.Column(db.Integer, default=FREE_DAILY_LIMIT) # NEW: Per-user daily limit
 
     # Relationship for saved prompts (using SavedPrompt model)
     saved_prompts = db.relationship('SavedPrompt', backref='author', lazy=True)
@@ -639,8 +647,15 @@ async def generate(): # This remains async
     user = current_user # Get the current user object
     now = datetime.utcnow() # Use utcnow for consistency with database default
 
+    # --- Check if the user is locked out ---
+    if user.is_locked:
+        return jsonify({
+            "error": "Your account is locked. Please contact support.",
+            "account_locked": True
+        }), 403 # Forbidden
+        
     # --- Cooldown Check using database timestamp ---
-    if user.last_generation_time: # Changed from last_prompt_request
+    if user.last_generation_time:
         time_since_last_request = (now - user.last_generation_time).total_seconds()
         if time_since_last_request < COOLDOWN_SECONDS:
             remaining_time = int(COOLDOWN_SECONDS - time_since_last_request)
@@ -655,17 +670,19 @@ async def generate(): # This remains async
     # --- Daily Limit Check ---
     if not user.is_admin: # Admins are exempt from the daily limit
         today = now.date()
-        if user.daily_generation_date != today: # Changed from last_count_reset_date
+        if user.daily_generation_date != today:
             user.daily_generation_count = 0
-            user.daily_generation_date = today # Changed from last_count_reset_date
+            user.daily_generation_date = today
             db.session.add(user) # Mark user as modified
             db.session.commit() # Commit reset immediately to prevent race conditions on count
 
-        if user.daily_generation_count >= DAILY_LIMIT: # Max 10 generations per day
-            app.logger.info(f"User {user.username} exceeded daily prompt limit.")
+        if user.daily_generation_count >= user.daily_limit: # Check against per-user limit
+            app.logger.info(f"User {user.username} exceeded their daily prompt limit of {user.daily_limit}.")
+            # NEW: Return a specific payment message instead of just an error
             return jsonify({
-                "error": "You have reached your daily limit of 10 prompt generations. Please try again tomorrow.",
-                "daily_limit_reached": True
+                "error": f"You have reached your daily limit of {user.daily_limit} prompt generations. If you are looking for more prompts, kindly make a payment to increase your limit.",
+                "daily_limit_reached": True,
+                "payment_link": PAYMENT_LINK
             }), 429 # 429 Too Many Requests
     # --- END NEW: Daily Limit Check ---
 
@@ -716,6 +733,13 @@ async def reverse_prompt():
     user = current_user
     now = datetime.utcnow()
 
+    # --- Check if the user is locked out ---
+    if user.is_locked:
+        return jsonify({
+            "error": "Your account is locked. Please contact support.",
+            "account_locked": True
+        }), 403 # Forbidden
+
     # Apply cooldown to reverse prompting as well
     if user.last_generation_time: # Changed from last_prompt_request
         time_since_last_request = (now - user.last_generation_time).total_seconds()
@@ -737,11 +761,13 @@ async def reverse_prompt():
             db.session.add(user)
             db.session.commit()
 
-        if user.daily_generation_count >= DAILY_LIMIT: # Max 10 generations per day
-            app.logger.info(f"User {user.username} exceeded daily reverse prompt limit.")
+        if user.daily_generation_count >= user.daily_limit: # Check against per-user limit
+            app.logger.info(f"User {user.username} exceeded their daily reverse prompt limit of {user.daily_limit}.")
+            # NEW: Return a specific payment message instead of just an error
             return jsonify({
-                "error": "You have reached your daily limit of 10 prompt generations. Please try again tomorrow.",
-                "daily_limit_reached": True
+                "error": f"You have reached your daily limit of {user.daily_limit} generations. If you are looking for more prompts, kindly make a payment to increase your limit.",
+                "daily_limit_reached": True,
+                "payment_link": PAYMENT_LINK
             }), 429
     # --- END NEW: Daily Limit Check ---
 
@@ -798,6 +824,13 @@ async def reverse_prompt():
 async def process_image_prompt():
     user = current_user
     now = datetime.utcnow()
+    
+    # --- Check if the user is locked out ---
+    if user.is_locked:
+        return jsonify({
+            "error": "Your account is locked. Please contact support.",
+            "account_locked": True
+        }), 403 # Forbidden
 
     # Apply cooldown to image processing as well
     if user.last_generation_time: # Changed from last_prompt_request
@@ -820,11 +853,12 @@ async def process_image_prompt():
             db.session.add(user)
             db.session.commit()
 
-        if user.daily_generation_count >= DAILY_LIMIT:
-            app.logger.info(f"User {user.username} exceeded daily image processing limit.")
+        if user.daily_generation_count >= user.daily_limit:
+            app.logger.info(f"User {user.username} exceeded their daily image processing limit of {user.daily_limit}.")
             return jsonify({
-                "error": "You have reached your daily limit of 10 image processing requests. Please try again tomorrow.",
-                "daily_limit_reached": True
+                "error": f"You have reached your daily limit of {user.daily_limit} generations. If you are looking for more prompts, kindly make a payment to increase your limit.",
+                "daily_limit_reached": True,
+                "payment_link": PAYMENT_LINK
             }), 429
 
     data = request.get_json()
@@ -872,16 +906,20 @@ def check_cooldown():
 
     daily_limit_reached = False
     daily_count = 0
-    if not user.is_admin: # Check daily limit only for non-admins
+    # NEW: Check against the user's specific daily limit
+    user_daily_limit = user.daily_limit if not user.is_admin else 999999
+    
+    if user.is_locked:
+        daily_limit_reached = True
+    elif not user.is_admin: # Check daily limit only for non-admins
         today = now.date()
         if user.daily_generation_date != today: # Changed from last_count_reset_date
             # If the last reset date is not today, reset the count for the current session's check
-            # (The actual DB reset happens on the next prompt generation)
             daily_count = 0
         else:
             daily_count = user.daily_generation_count # Changed from daily_prompt_count
         
-        if daily_count >= DAILY_LIMIT:
+        if daily_count >= user_daily_limit:
             daily_limit_reached = True
 
     return jsonify({
@@ -889,6 +927,7 @@ def check_cooldown():
         "remaining_time": remaining_time,
         "daily_limit_reached": daily_limit_reached,
         "daily_count": daily_count,
+        "user_daily_limit": user_daily_limit,
         "is_admin": user.is_admin
     }), 200
 
@@ -1438,6 +1477,47 @@ def download_database():
         flash(f"Error downloading database: {e}", 'danger')
         return redirect(url_for('admin_jobs'))
 
+
+# NEW: Admin User Management Routes
+@app.route('/admin/users')
+@admin_required
+def admin_users():
+    users = User.query.all()
+    return render_template('admin_users.html', users=users, current_user=current_user)
+
+@app.route('/admin/users/toggle_access/<int:user_id>', methods=['POST'])
+@admin_required
+def toggle_user_access(user_id):
+    user = User.query.get_or_404(user_id)
+    if user.is_admin:
+        flash("Cannot lock or unlock an admin account.", "danger")
+    else:
+        user.is_locked = not user.is_locked
+        if not user.is_locked:
+            flash(f"User {user.username} has been unlocked.", "success")
+        else:
+            flash(f"User {user.username} has been locked.", "info")
+        db.session.commit()
+    return redirect(url_for('admin_users'))
+
+# NEW: Admin route to set user subscription type
+@app.route('/admin/users/update_quota/<int:user_id>', methods=['POST'])
+@admin_required
+def update_user_quota(user_id):
+    user = User.query.get_or_404(user_id)
+    new_limit_str = request.form.get('new_limit')
+
+    try:
+        new_limit = int(new_limit_str)
+        if new_limit < 0:
+            raise ValueError("Limit cannot be negative.")
+        user.daily_limit = new_limit
+        db.session.commit()
+        flash(f"Daily prompt limit for {user.username} has been updated to {new_limit}.", "success")
+    except (ValueError, TypeError) as e:
+        flash(f"Invalid limit value. Please enter a positive integer. Error: {e}", "danger")
+
+    return redirect(url_for('admin_users'))
 
 # --- Database Initialization (Run once to create tables) ---
 # This block ensures tables are created when the app starts.
