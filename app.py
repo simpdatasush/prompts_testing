@@ -120,13 +120,14 @@ class User(db.Model, UserMixin):
     subscription_type = db.Column(db.String(50), nullable=False, default='free') # 'free', 'one-time', 'monthly'
     payment_date = db.Column(db.DateTime, nullable=True)
     daily_limit = db.Column(db.Integer, default=FREE_DAILY_LIMIT) # NEW: Per-user daily limit
+    api_key = db.Column(db.String(100), unique=True, nullable=True) # NEW: API Key for each user
 
     # Relationship for saved prompts (using SavedPrompt model)
     saved_prompts = db.relationship('SavedPrompt', backref='author', lazy=True)
     raw_prompts = db.relationship('RawPrompt', backref='requester', lazy=True)
     news_items = db.relationship('NewsItem', backref='admin_poster', lazy=True) # Renamed from News
     job_listings = db.relationship('JobListing', backref='admin_poster', lazy=True) # Renamed from Job
-
+    api_logs = db.relationship('ApiRequestLog', backref='api_user', lazy=True) # NEW: API Request logs
 
     def set_password(self, password):
         self.password_hash = generate_password_hash(password)
@@ -208,6 +209,19 @@ class NewsletterSubscriber(db.Model):
     def __repr__(self):
         return f'<Subscriber {self.email}>'
 
+# NEW: ApiRequestLog Model for tracking API usage
+class ApiRequestLog(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    request_timestamp = db.Column(db.DateTime, default=datetime.utcnow)
+    endpoint = db.Column(db.String(100), nullable=False)
+    status_code = db.Column(db.Integer, nullable=False)
+    latency_ms = db.Column(db.Float, nullable=False)
+    raw_input = db.Column(db.Text, nullable=True)
+
+    def __repr__(self):
+        return f"ApiRequestLog(user_id={self.user_id}, endpoint='{self.endpoint}', status_code={self.status_code})"
+
 
 # --- Flask-Login User Loader ---
 @login_manager.user_loader
@@ -223,6 +237,23 @@ def admin_required(f):
             return redirect(url_for('login'))
         return f(*args, **kwargs)
     return decorated_function
+
+# --- API Key Required Decorator ---
+def api_key_required(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        api_key = request.headers.get('X-API-KEY')
+        user = User.query.filter_by(api_key=api_key).first()
+        if not user:
+            return jsonify({"error": "Invalid or missing API key."}), 401
+        
+        # Check for locked status
+        if user.is_locked:
+            return jsonify({"error": "Account is locked. Please contact support."}), 403
+            
+        return f(user, *args, **kwargs)
+    return decorated_function
+
 
 # --- Helper Function for Exponential Backoff ---
 async def generate_content_with_retry(model, prompt_parts, generation_config=None, stream=False):
@@ -817,6 +848,129 @@ async def reverse_prompt():
         app.logger.exception("Error during reverse prompt generation in endpoint:")
         return jsonify({"error": f"An unexpected server error occurred: {e}. Please check server logs for details."}), 500
 
+# NEW: API ENDPOINT
+@app.route('/api/v1/generate', methods=['POST'])
+@api_key_required
+async def api_generate(user):
+    # API-specific logic for daily limit check
+    now = datetime.utcnow()
+    today = now.date()
+
+    if user.daily_generation_date != today:
+        user.daily_generation_count = 0
+        user.daily_generation_date = today
+        db.session.add(user)
+        db.session.commit()
+
+    # Log the API request start
+    start_time = datetime.utcnow()
+    api_log = ApiRequestLog(user_id=user.id, endpoint='/api/v1/generate', status_code=0) # Status code 0 for in-progress
+
+    if user.daily_generation_count >= user.daily_limit:
+        api_log.status_code = 429
+        api_log.latency_ms = (datetime.utcnow() - start_time).total_seconds() * 1000
+        db.session.add(api_log)
+        db.session.commit()
+        return jsonify({
+            "error": f"API daily limit of {user.daily_limit} generations reached.",
+        }), 429
+
+    data = request.get_json()
+    prompt_input = data.get('raw_input', '').strip()
+    language_code = data.get('language_code', 'en-US')
+    
+    if not prompt_input:
+        api_log.status_code = 400
+        api_log.latency_ms = (datetime.utcnow() - start_time).total_seconds() * 1000
+        db.session.add(api_log)
+        db.session.commit()
+        return jsonify({"error": "Missing 'raw_input' field in request body."}), 400
+
+    try:
+        results = await generate_prompts_async(prompt_input, language_code)
+
+        user.daily_generation_count += 1
+        db.session.add(user)
+        db.session.commit()
+
+        api_log.status_code = 200
+        api_log.raw_input = prompt_input # Store raw input for tracking
+        api_log.latency_ms = (datetime.utcnow() - start_time).total_seconds() * 1000
+        db.session.add(api_log)
+        db.session.commit()
+
+        return jsonify(results), 200
+    except Exception as e:
+        api_log.status_code = 500
+        api_log.raw_input = prompt_input
+        api_log.latency_ms = (datetime.utcnow() - start_time).total_seconds() * 1000
+        db.session.add(api_log)
+        db.session.commit()
+        logging.exception("Error during API prompt generation:")
+        return jsonify({"error": f"An unexpected server error occurred: {e}"}), 500
+
+# NEW: API REVERSE PROMPT ENDPOINT
+@app.route('/api/v1/reverse', methods=['POST'])
+@api_key_required
+async def api_reverse_prompt(user):
+    # API-specific logic for daily limit check
+    now = datetime.utcnow()
+    today = now.date()
+
+    if user.daily_generation_date != today:
+        user.daily_generation_count = 0
+        user.daily_generation_date = today
+        db.session.add(user)
+        db.session.commit()
+    
+    # Log the API request start
+    start_time = datetime.utcnow()
+    api_log = ApiRequestLog(user_id=user.id, endpoint='/api/v1/reverse', status_code=0) # Status code 0 for in-progress
+
+
+    if user.daily_generation_count >= user.daily_limit:
+        api_log.status_code = 429
+        api_log.latency_ms = (datetime.utcnow() - start_time).total_seconds() * 1000
+        db.session.add(api_log)
+        db.session.commit()
+        return jsonify({
+            "error": f"API daily limit of {user.daily_limit} generations reached.",
+        }), 429
+
+    data = request.get_json()
+    input_text = data.get('raw_input', '').strip()
+    language_code = data.get('language_code', 'en-US')
+
+    if not input_text:
+        api_log.status_code = 400
+        api_log.latency_ms = (datetime.utcnow() - start_time).total_seconds() * 1000
+        db.session.add(api_log)
+        db.session.commit()
+        return jsonify({"error": "Missing 'raw_input' field in request body."}), 400
+    
+    try:
+        inferred_prompt = await generate_reverse_prompt_async(input_text, language_code)
+        
+        user.daily_generation_count += 1
+        db.session.add(user)
+        db.session.commit()
+
+        api_log.status_code = 200
+        api_log.raw_input = input_text
+        api_log.latency_ms = (datetime.utcnow() - start_time).total_seconds() * 1000
+        db.session.add(api_log)
+        db.session.commit()
+
+        return jsonify({"inferred_prompt": inferred_prompt}), 200
+    except Exception as e:
+        api_log.status_code = 500
+        api_log.raw_input = input_text
+        api_log.latency_ms = (datetime.utcnow() - start_time).total_seconds() * 1000
+        db.session.add(api_log)
+        db.session.commit()
+        logging.exception("Error during API reverse prompt generation:")
+        return jsonify({"error": f"An unexpected server error occurred: {e}"}), 500
+
 
 # --- NEW: Image Processing Endpoint ---
 @app.route('/process_image_prompt', methods=['POST'])
@@ -906,7 +1060,7 @@ def check_cooldown():
 
     daily_limit_reached = False
     daily_count = 0
-    # NEW: Check against the user's specific daily limit
+    
     user_daily_limit = user.daily_limit if not user.is_admin else 999999
     
     if user.is_locked:
@@ -1500,7 +1654,7 @@ def toggle_user_access(user_id):
         db.session.commit()
     return redirect(url_for('admin_users'))
 
-# NEW: Admin route to set user subscription type
+# NEW: Admin route to update user's daily limit
 @app.route('/admin/users/update_quota/<int:user_id>', methods=['POST'])
 @admin_required
 def update_user_quota(user_id):
@@ -1519,6 +1673,27 @@ def update_user_quota(user_id):
 
     return redirect(url_for('admin_users'))
 
+# NEW: Admin API Performance Route
+@app.route('/admin/api_performance')
+@admin_required
+def admin_api_performance():
+    api_logs = ApiRequestLog.query.order_by(ApiRequestLog.request_timestamp.desc()).limit(100).all()
+    # To get usernames for the logs
+    users = {user.id: user for user in User.query.all()}
+    return render_template('admin_api_performance.html', api_logs=api_logs, users=users, current_user=current_user)
+
+@app.route('/admin/users/generate_api_key/<int:user_id>', methods=['POST'])
+@admin_required
+def generate_api_key(user_id):
+    user = User.query.get_or_404(user_id)
+    new_api_key = str(uuid.uuid4())
+    user.api_key = new_api_key
+    db.session.commit()
+    flash(f"New API key generated for {user.username}.", "success")
+    return redirect(url_for('admin_users'))
+
+
+
 # --- Database Initialization (Run once to create tables) ---
 # This block ensures tables are created when the app starts.
 # In production, you might use Flask-Migrate or a separate script.
@@ -1528,7 +1703,7 @@ with app.app_context():
 
     # NEW: Create an admin user if one doesn't exist for easy testing
     if not User.query.filter_by(username='admin').first():
-        admin_user = User(username='admin', is_admin=True)
+        admin_user = User(username='admin', is_admin=True, daily_limit=999999)
         admin_user.set_password('adminpass') # Set a default password for the admin
         # For admin, set a dummy email or leave None if not required for testing password reset
         admin_user.email = 'admin@example.com' # Assign a dummy email for admin
@@ -1548,5 +1723,3 @@ if __name__ == '__main__':
     # you can use `nest_asyncio.apply()` (install with `pip install nest-asyncio`), but this is
     # generally not recommended for production as it can hide underlying architectural issues.
     app.run(debug=True)
-
-
