@@ -839,9 +839,7 @@ def reverse_prompt(): # CHANGED FROM ASYNC
         else:
             prompt_instruction = f"Analyze the following text/code and infer a concise, high-level prompt idea that could have generated it. Respond in {language_code}. Input: {escaped_input_text}"
 
-        app.logger.info(f"Sending reverse prompt instruction to Gemini (length: {len(prompt_instruction)} chars))")
-
-        inferred_prompt = asyncio.run(generate_reverse_prompt_async(input_text, language_code))
+        inferred_prompt = asyncio.run(generate_reverse_prompt_async(input_text, language_code, prompt_mode))
 
         return jsonify({"inferred_prompt": inferred_prompt})
     except Exception as e:
@@ -1627,7 +1625,7 @@ def api_generate(user):
         }), 400
 
     try:
-        results = asyncio.run(generate_prompts_async(prompt_input, language_code, prompt_mode))
+        results = asyncio.run(generate_prompts_async(raw_input=prompt_input, language_code=language_code, prompt_mode=prompt_mode))
 
         # --- Update user stats and save raw_input ---
         user.last_generation_time = now
