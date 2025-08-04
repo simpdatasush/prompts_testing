@@ -480,7 +480,7 @@ async def generate_prompts_async(raw_input, language_code="en-US", prompt_mode='
     if model_to_use_for_main_gen_func == ask_gemini_for_structured_prompt:
         main_prompt_result = asyncio.run(model_to_use_for_main_gen_func, base_instruction, generation_config)
     else: # ask_gemini_for_text_prompt
-        main_prompt_result = asyncio.run(ask_gemini_for_text_prompt, base_instruction, max_output_tokens=512)
+        main_prompt_result = asyncio.run(ask_gemini_for_text_prompt, base_instruction, max_output_tokens=2048)
 
 
     if "Error" in main_prompt_result or "not configured" in main_prompt_result or "quota" in main_prompt_result.lower(): # Check for quota error
@@ -1741,3 +1741,5 @@ if __name__ == '__main__':
     # you can use `nest_asyncio.apply()` (install with `pip install nest-asyncio`), but this is
     # generally not recommended for production as it can hide underlying architectural issues.
     app.run(debug=True)
+
+
