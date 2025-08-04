@@ -478,9 +478,9 @@ async def generate_prompts_async(raw_input, language_code="en-US", prompt_mode='
 
     
     if model_to_use_for_main_gen_func == ask_gemini_for_structured_prompt:
-        main_prompt_result = await asyncio.to_thread(model_to_use_for_main_gen_func, base_instruction, generation_config)
+        main_prompt_result = asyncio.run(model_to_use_for_main_gen_func, base_instruction, generation_config)
     else: # ask_gemini_for_text_prompt
-        main_prompt_result = await asyncio.to_thread(ask_gemini_for_text_prompt, base_instruction, max_output_tokens=512)
+        main_prompt_result = asyncio.run(ask_gemini_for_text_prompt, base_instruction, max_output_tokens=512)
 
 
     if "Error" in main_prompt_result or "not configured" in main_prompt_result or "quota" in main_prompt_result.lower(): # Check for quota error
@@ -561,9 +561,9 @@ async def generate_prompts_async(raw_input, language_code="en-US", prompt_mode='
         creative_coroutine = asyncio.to_thread(ask_gemini_for_text_prompt, language_instruction_prefix + f"Rewrite the following prompt to be more creative and imaginative, encouraging novel ideas and approaches:\n\n{polished_output}{strict_instruction_suffix}")
         technical_coroutine = asyncio.to_thread(ask_gemini_for_text_prompt, language_instruction_prefix + f"Rewrite the following prompt to be more technical, precise, and detailed, focusing on specific requirements and constraints:\n\n{polished_output}{strict_instruction_suffix}")
 
-        creative_output, technical_output = await asyncio.gather(
+        creative_output, technical_output = asyncio.run(asyncio.gather(
             creative_coroutine, technical_coroutine
-        )
+        ))
 
     return {
         "polished": polished_output,
@@ -606,7 +606,7 @@ async def generate_reverse_prompt_async(input_text, language_code="en-US", promp
 
     app.logger.info(f"Sending reverse prompt instruction to Gemini (length: {len(prompt_instruction)} chars))")
 
-    reverse_prompt_result = await asyncio.to_thread(ask_gemini_for_text_prompt, prompt_instruction, max_output_tokens=512)
+    reverse_prompt_result = asyncio.run(ask_gemini_for_text_prompt(prompt_instruction, max_output_tokens=512))
 
     return reverse_prompt_result
 
@@ -841,7 +841,7 @@ async def reverse_prompt():
 
         app.logger.info(f"Sending reverse prompt instruction to Gemini (length: {len(prompt_instruction)} chars))")
 
-        reverse_prompt_result = await asyncio.to_thread(ask_gemini_for_text_prompt, prompt_instruction, max_output_tokens=512)
+        reverse_prompt_result = asyncio.run(ask_gemini_for_text_prompt(prompt_instruction, max_output_tokens=512))
 
         return jsonify({"inferred_prompt": reverse_prompt_result})
     except Exception as e:
@@ -887,7 +887,7 @@ async def api_generate(user):
         return jsonify({"error": "Missing 'raw_input' field in request body."}), 400
 
     try:
-        results = await generate_prompts_async(prompt_input, language_code)
+        results = asyncio.run(generate_prompts_async(prompt_input, language_code))
 
         user.daily_generation_count += 1
         db.session.add(user)
@@ -949,7 +949,7 @@ async def api_reverse_prompt(user):
         return jsonify({"error": "Missing 'raw_input' field in request body."}), 400
     
     try:
-        inferred_prompt = await generate_reverse_prompt_async(input_text, language_code)
+        inferred_prompt = asyncio.run(generate_reverse_prompt_async(input_text, language_code))
         
         user.daily_generation_count += 1
         db.session.add(user)
@@ -1027,7 +1027,7 @@ async def process_image_prompt():
         image_data_bytes = base64.b64decode(image_data_b64) # Decode base64 string to bytes
         
         # Call the Gemini API for image understanding
-        recognized_text = await asyncio.to_thread(ask_gemini_for_image_text, image_data_bytes)
+        recognized_text = asyncio.run(ask_gemini_for_image_text(image_data_bytes))
 
         # Update last_generation_time after successful image processing
         user.last_generation_time = now
