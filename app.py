@@ -674,7 +674,7 @@ def llm_benchmark():
 
 @app.route('/generate', methods=['POST'])
 @login_required # Protect this route
-async def generate(): # This remains async
+def generate(): # CHANGED FROM ASYNC
     user = current_user # Get the current user object
     now = datetime.utcnow() # Use utcnow for consistency with database default
 
@@ -730,7 +730,7 @@ async def generate(): # This remains async
         })
 
     try:
-        results = await generate_prompts_async(prompt_input, language_code, prompt_mode)
+        results = asyncio.run(generate_prompts_async(prompt_input, language_code, prompt_mode))
 
         # --- Update last_generation_time in database and Save raw_input ---
         user.last_generation_time = now # Record the time of this successful request
@@ -760,7 +760,7 @@ async def generate(): # This remains async
 # --- NEW: Reverse Prompt Endpoint ---
 @app.route('/reverse_prompt', methods=['POST'])
 @login_required
-async def reverse_prompt():
+def reverse_prompt(): # CHANGED FROM ASYNC
     user = current_user
     now = datetime.utcnow()
 
@@ -841,136 +841,18 @@ async def reverse_prompt():
 
         app.logger.info(f"Sending reverse prompt instruction to Gemini (length: {len(prompt_instruction)} chars))")
 
-        reverse_prompt_result = asyncio.run(ask_gemini_for_text_prompt(prompt_instruction, max_output_tokens=512))
+        inferred_prompt = asyncio.run(generate_reverse_prompt_async(input_text, language_code))
 
-        return jsonify({"inferred_prompt": reverse_prompt_result})
+        return jsonify({"inferred_prompt": inferred_prompt})
     except Exception as e:
         app.logger.exception("Error during reverse prompt generation in endpoint:")
         return jsonify({"error": f"An unexpected server error occurred: {e}. Please check server logs for details."}), 500
 
-# NEW: API ENDPOINT
-@app.route('/api/v1/generate', methods=['POST'])
-@api_key_required
-def api_generate(user):
-    # API-specific logic for daily limit check
-    now = datetime.utcnow()
-    today = now.date()
-    start_time = datetime.utcnow()
-    api_log = ApiRequestLog(user_id=user.id, endpoint='/api/v1/generate', status_code=0) # Status code 0 for in-progress
 
-    if user.daily_generation_date != today:
-        user.daily_generation_count = 0
-        user.daily_generation_date = today
-        db.session.add(user)
-        db.session.commit()
-
-    if user.daily_generation_count >= user.daily_limit:
-        api_log.status_code = 429
-        api_log.latency_ms = (datetime.utcnow() - start_time).total_seconds() * 1000
-        db.session.add(api_log)
-        db.session.commit()
-        return jsonify({
-            "error": f"API daily limit of {user.daily_limit} generations reached.",
-        }), 429
-
-    data = request.get_json()
-    prompt_input = data.get('raw_input', '').strip()
-    language_code = data.get('language_code', 'en-US')
-    
-    if not prompt_input:
-        api_log.status_code = 400
-        api_log.latency_ms = (datetime.utcnow() - start_time).total_seconds() * 1000
-        db.session.add(api_log)
-        db.session.commit()
-        return jsonify({"error": "Missing 'raw_input' field in request body."}), 400
-
-    try:
-        results = asyncio.run(generate_prompts_async(prompt_input, language_code))
-
-        user.daily_generation_count += 1
-        db.session.add(user)
-        db.session.commit()
-
-        api_log.status_code = 200
-        api_log.raw_input = prompt_input # Store raw input for tracking
-        api_log.latency_ms = (datetime.utcnow() - start_time).total_seconds() * 1000
-        db.session.add(api_log)
-        db.session.commit()
-
-        return jsonify(results), 200
-    except Exception as e:
-        api_log.status_code = 500
-        api_log.raw_input = prompt_input
-        api_log.latency_ms = (datetime.utcnow() - start_time).total_seconds() * 1000
-        db.session.add(api_log)
-        db.session.commit()
-        logging.exception("Error during API prompt generation:")
-        return jsonify({"error": f"An unexpected server error occurred: {e}"}), 500
-
-# NEW: API REVERSE PROMPT ENDPOINT
-@app.route('/api/v1/reverse', methods=['POST'])
-@api_key_required
-def api_reverse_prompt(user):
-    # API-specific logic for daily limit check
-    now = datetime.utcnow()
-    today = now.date()
-    start_time = datetime.utcnow()
-    api_log = ApiRequestLog(user_id=user.id, endpoint='/api/v1/reverse', status_code=0) # Status code 0 for in-progress
-
-    if user.daily_generation_date != today:
-        user.daily_generation_count = 0
-        user.daily_generation_date = today
-        db.session.add(user)
-        db.session.commit()
-    
-    if user.daily_generation_count >= user.daily_limit:
-        api_log.status_code = 429
-        api_log.latency_ms = (datetime.utcnow() - start_time).total_seconds() * 1000
-        db.session.add(api_log)
-        db.session.commit()
-        return jsonify({
-            "error": f"API daily limit of {user.daily_limit} generations reached.",
-        }), 429
-
-    data = request.get_json()
-    input_text = data.get('raw_input', '').strip()
-    language_code = data.get('language_code', 'en-US')
-
-    if not input_text:
-        api_log.status_code = 400
-        api_log.latency_ms = (datetime.utcnow() - start_time).total_seconds() * 1000
-        db.session.add(api_log)
-        db.session.commit()
-        return jsonify({"error": "Missing 'raw_input' field in request body."}), 400
-    
-    try:
-        inferred_prompt = asyncio.run(generate_reverse_prompt_async(input_text, language_code))
-        
-        user.daily_generation_count += 1
-        db.session.add(user)
-        db.session.commit()
-
-        api_log.status_code = 200
-        api_log.raw_input = input_text
-        api_log.latency_ms = (datetime.utcnow() - start_time).total_seconds() * 1000
-        db.session.add(api_log)
-        db.session.commit()
-
-        return jsonify({"inferred_prompt": inferred_prompt}), 200
-    except Exception as e:
-        api_log.status_code = 500
-        api_log.raw_input = input_text
-        api_log.latency_ms = (datetime.utcnow() - start_time).total_seconds() * 1000
-        db.session.add(api_log)
-        db.session.commit()
-        logging.exception("Error during API reverse prompt generation:")
-        return jsonify({"error": f"An unexpected server error occurred: {e}"}), 500
-
-
-# --- NEW: Image Processing Endpoint ---
+# NEW: Image Processing Endpoint ---
 @app.route('/process_image_prompt', methods=['POST'])
 @login_required
-async def process_image_prompt():
+def process_image_prompt(): # CHANGED FROM ASYNC
     user = current_user
     now = datetime.utcnow()
     
@@ -1210,6 +1092,7 @@ def delete_prompt(prompt_id):
 def repost_prompt(prompt_id):
     prompt = SamplePrompt.query.get_or_404(prompt_id)
     try:
+        # Update timestamp to now to bring it to the top of the list
         prompt.timestamp = datetime.utcnow()
         db.session.commit()
         flash('Sample prompt reposted successfully (timestamp updated)!', 'success')
@@ -1519,7 +1402,7 @@ def subscribe_newsletter():
             new_subscriber = NewsletterSubscriber(email=email)
             db.session.add(new_subscriber)
             db.session.commit()
-            flash('Successfully subscribed to our newsletter! Thank you!', 'success')
+            flash('Successfully subscribed to our newsletter! Thank a you!', 'success')
         except Exception as e:
             db.session.rollback()
             app.logger.error(f"Error subscribing email {email} to newsletter: {e}")
