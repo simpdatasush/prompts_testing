@@ -26,37 +26,21 @@
            align-items: center;
            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
        }
-
-
-
-
        .app-header .logo-section {
            display: flex;
            align-items: center;
        }
-
-
-
-
        .app-header .app-logo {
            height: 40px;
            margin-right: 15px;
            border-radius: 5px;
        }
-
-
-
-
        .app-header h1.header-title {
            margin: 0;
            font-size: 1.8rem;
            color: #ffffff;
            text-align: left;
        }
-
-
-
-
        .app-header .auth-section a,
        .app-header .auth-section span {
            color: #ffffff;
@@ -65,18 +49,11 @@
            text-decoration: none;
            transition: color 0.2s ease;
        }
-
-
-
-
        .app-header .auth-section a:hover {
            color: #007bff;
            text-decoration: underline;
        }
-
-
-
-
+       /* Main Container */
        .container {
            flex-grow: 1;
            max-width: 900px;
@@ -178,6 +155,7 @@
            <a href="{{ url_for('admin_jobs') }}" class="btn btn-outline-light btn-sm mr-2">Manage Jobs</a>
            <a href="{{ url_for('admin_prompts') }}" class="btn btn-outline-light btn-sm mr-2">Manage Prompts</a>
            <a href="{{ url_for('admin_users') }}" class="btn btn-primary btn-sm mr-2">Manage Users</a>
+           <a href="{{ url_for('admin_api_performance') }}" class="btn btn-outline-light btn-sm mr-2">API Performance</a>
            {% if current_user.is_authenticated %}
                <span class="navbar-text mr-2">Logged in as: <strong>{{ current_user.username }}</strong></span>
                <a href="{{ url_for('logout') }}" class="btn btn-outline-light btn-sm">Logout</a>
@@ -211,7 +189,8 @@
                        <th>ID</th>
                        <th>Username</th>
                        <th>Email</th>
-                       <th>Current Daily Limit</th>
+                       <th>Daily Limit</th>
+                       <th>API Key</th>
                        <th>Access Status</th>
                        <th>Actions</th>
                    </tr>
@@ -232,6 +211,7 @@
                                N/A
                            {% endif %}
                        </td>
+                       <td>{{ user.api_key if user.api_key else 'N/A' }}</td>
                        <td>
                            {% if user.is_locked %}
                                <span class="badge badge-danger">Locked</span>
@@ -245,6 +225,9 @@
                                    <button type="submit" class="btn btn-sm btn-{{ 'success' if user.is_locked else 'warning' }} btn-action">
                                        {{ 'Unlock' if user.is_locked else 'Lock' }}
                                    </button>
+                               </form>
+                               <form action="{{ url_for('generate_api_key', user_id=user.id) }}" method="POST" style="display:inline;">
+                                   <button type="submit" class="btn btn-sm btn-secondary btn-action">Generate API Key</button>
                                </form>
                            {% else %}
                                <span class="text-muted">Admin</span>
