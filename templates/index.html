@@ -527,8 +527,8 @@
       }
       /* New styling for subscribe button */
       .subscribe-btn {
-            background-color: #007bff;
-            border-color: #007bff;
+            background-color: #28a745;
+            border-color: #28a745;
             color: #ffffff;
             font-weight: bold;
             padding: 8px 16px;
@@ -537,8 +537,8 @@
             transition: all 0.2s ease;
       }
       .subscribe-btn:hover {
-          background-color: #0056b3;
-          border-color: #0056b3;
+          background-color: #218838;
+          border-color: #218838;
           text-decoration: none;
       }
   </style>
@@ -550,18 +550,16 @@
             <h1>Creative AI</h1>
         </div>
         <div class="auth-section">
-            {% if current_user.is_authenticated and current_user.is_admin %}
-                <a href="{{ url_for('app_home') }}" class="btn btn-outline-light btn-sm mr-2">App Home</a>
-                <a href="{{ url_for('admin_news') }}" class="btn btn-outline-light btn-sm mr-2">Manage News</a>
-                <a href="{{ url_for('admin_jobs') }}" class="btn btn-outline-light btn-sm mr-2">Manage Jobs</a>
-                <a href="{{ url_for('admin_prompts') }}" class="btn btn-outline-light btn-sm mr-2">Manage Prompts</a>
-                <a href="{{ url_for('admin_users') }}" class="btn btn-outline-light btn-sm mr-2">Manage Users</a>
+            {% if current_user.is_authenticated %}
+                {% if current_user.is_admin %}
+                    <a href="{{ url_for('app_home') }}" class="btn btn-outline-light btn-sm mr-2">App Home</a>
+                    <a href="{{ url_for('admin_news') }}" class="btn btn-outline-light btn-sm mr-2">Manage News</a>
+                    <a href="{{ url_for('admin_jobs') }}" class="btn btn-outline-light btn-sm mr-2">Manage Jobs</a>
+                    <a href="{{ url_for('admin_prompts') }}" class="btn btn-outline-light btn-sm mr-2">Manage Prompts</a>
+                    <a href="{{ url_for('admin_users') }}" class="btn btn-outline-light btn-sm mr-2">Manage Users</a>
+                    <a href="{{ url_for('admin_api_performance') }}" class="btn btn-outline-light btn-sm mr-2">API Performance</a>
+                {% endif %}
                 <span class="navbar-text mr-2">Logged in as: <strong>{{ current_user.username }}</strong></span>
-                <a href="{{ url_for('logout') }}" class="btn btn-outline-light btn-sm">Logout</a>
-            {% elif current_user.is_authenticated %}
-                <a href="{{ url_for('llm_benchmark') }}" class="btn btn-outline-light btn-sm mr-2">LLM Benchmarks</a>
-                <a href="https://buymeacoffee.com/simpaisush" target="_blank" class="subscribe-btn mr-2">Subscribe</a>
-                <span class="navbar-text mr-2">Welcome, <strong class="username">{{ current_user.username }}</strong>!</span>
                 <a href="{{ url_for('logout') }}" class="btn btn-outline-light btn-sm">Logout</a>
             {% else %}
                 <a href="{{ url_for('llm_benchmark') }}" class="btn btn-outline-light btn-sm mr-2">LLM Benchmarks</a>
@@ -880,7 +878,7 @@
                "image_error":  "❌ Error de procesamiento de imagen :" ,
                "no_image_selected":  "❗ Veuillez sélectionner un archivo de imagen en premier lieu." ,
                "copy_success":  "✅ Invite copiada en el portapapeles !" ,
-               "copy_fail":  "❌ Échec de la copie de la invite en el portapapeles."
+               "copy_fail":  "❌ Échec de la copia de la invite en el portapapeles."
            },
            "de-DE": {
                "application_ready": "Anwendung bereit.",
@@ -1104,6 +1102,7 @@
                } else if (data.daily_limit_reached) {
                    canGenerate = false;
                    messageType = 'danger';
+                   // NEW: Updated message to be more explicit for popup blocker fallback
                    statusMessage = `Daily limit reached: You have used ${data.daily_count}/${data.user_daily_limit} generations today. If you want to generate more please subscribe.`;
                    cooldownTimerDisplay.style.display = 'none'; // Ensure timer is hidden
                } else {
@@ -1227,8 +1226,8 @@
                        appOutput.className = 'mt-4 warning';
                        startCooldownTimer(errorData.remaining_time);
                    } else if (errorData.daily_limit_reached) { // Handle daily limit error
-                       // NEW: Open the payment modal and set the appOutput message
-                       $('#paymentModalMessage').text(errorData.error);
+                       // NEW: Open the payment modal
+                       $('#paymentModalMessage').html(errorData.error);
                        $('#paymentLinkButton').attr('href', errorData.payment_link);
                        $('#paymentModal').modal('show');
                        
