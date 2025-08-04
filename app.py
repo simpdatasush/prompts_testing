@@ -1570,6 +1570,151 @@ def generate_api_key(user_id):
     flash(f"New API key generated for {user.username}.", "success")
     return redirect(url_for('admin_users'))
 
+# NEW: API endpoint for external clients using API keys to generate prompts
+@app.route('/api/v1/generate', methods=['POST'])
+@api_key_required
+def api_generate(user):
+    """
+    API endpoint to generate polished, creative, and technical prompts.
+    Requires an API key in the 'X-API-KEY' header.
+    """
+    now = datetime.utcnow()
+
+    # --- Check if the user is locked out ---
+    if user.is_locked:
+        return jsonify({
+            "error": "Your account is locked. Please contact support.",
+            "account_locked": True
+        }), 403 # Forbidden
+
+    # --- Cooldown Check using database timestamp ---
+    if user.last_generation_time:
+        time_since_last_request = (now - user.last_generation_time).total_seconds()
+        if time_since_last_request < COOLDOWN_SECONDS:
+            remaining_time = int(COOLDOWN_SECONDS - time_since_last_request)
+            app.logger.info(f"API user {user.username} is on cooldown. Remaining: {remaining_time}s")
+            return jsonify({
+                "error": f"Please wait {remaining_time} seconds before generating new prompts.",
+                "cooldown_active": True,
+                "remaining_time": remaining_time
+            }), 429 # 429 Too Many Requests
+    
+    # --- Daily Limit Check ---
+    if not user.is_admin:
+        today = now.date()
+        if user.daily_generation_date != today:
+            user.daily_generation_count = 0
+            user.daily_generation_date = today
+            db.session.add(user)
+            db.session.commit()
+
+        if user.daily_generation_count >= user.daily_limit:
+            app.logger.info(f"API user {user.username} exceeded their daily prompt limit of {user.daily_limit}.")
+            return jsonify({
+                "error": f"You have reached your daily limit of {user.daily_limit} prompt generations. Please upgrade your plan.",
+                "daily_limit_reached": True,
+                "payment_link": PAYMENT_LINK
+            }), 429
+
+    data = request.get_json()
+    prompt_input = data.get('raw_input', '').strip()
+    language_code = data.get('language_code', 'en-US')
+    prompt_mode = data.get('prompt_mode', 'text')
+
+    if not prompt_input:
+        return jsonify({
+            "error": "Please provide some text to generate prompts."
+        }), 400
+
+    try:
+        results = asyncio.run(generate_prompts_async(prompt_input, language_code, prompt_mode))
+
+        # --- Update user stats and save raw_input ---
+        user.last_generation_time = now
+        if not user.is_admin:
+            user.daily_generation_count += 1
+        db.session.add(user)
+        db.session.commit()
+        app.logger.info(f"API user {user.username}'s last prompt request time updated and count incremented. (API Forward Prompt)")
+
+        return jsonify(results)
+    except Exception as e:
+        app.logger.exception("Error during API prompt generation in /api/v1/generate:")
+        return jsonify({"error": f"An unexpected server error occurred: {e}"}), 500
+
+
+# NEW: API endpoint for reverse prompting
+@app.route('/api/v1/reverse', methods=['POST'])
+@api_key_required
+def api_reverse_prompt(user):
+    """
+    API endpoint to infer a prompt from a given text or code.
+    Requires an API key in the 'X-API-KEY' header.
+    """
+    now = datetime.utcnow()
+
+    # --- Check if the user is locked out ---
+    if user.is_locked:
+        return jsonify({
+            "error": "Your account is locked. Please contact support.",
+            "account_locked": True
+        }), 403 # Forbidden
+
+    # Apply cooldown to reverse prompting as well
+    if user.last_generation_time:
+        time_since_last_request = (now - user.last_generation_time).total_seconds()
+        if time_since_last_request < COOLDOWN_SECONDS:
+            remaining_time = int(COOLDOWN_SECONDS - time_since_last_request)
+            app.logger.info(f"API user {user.username} is on cooldown for reverse prompt. Remaining: {remaining_time}s")
+            return jsonify({
+                "error": f"Please wait {remaining_time} seconds before performing another reverse prompt.",
+                "cooldown_active": True,
+                "remaining_time": remaining_time
+            }), 429
+
+    # --- Daily Limit Check for Reverse Prompt ---
+    if not user.is_admin:
+        today = now.date()
+        if user.daily_generation_date != today:
+            user.daily_generation_count = 0
+            user.daily_generation_date = today
+            db.session.add(user)
+            db.session.commit()
+
+        if user.daily_generation_count >= user.daily_limit:
+            app.logger.info(f"API user {user.username} exceeded their daily reverse prompt limit of {user.daily_limit}.")
+            return jsonify({
+                "error": f"You have reached your daily limit of {user.daily_limit} generations. Please upgrade your plan.",
+                "daily_limit_reached": True,
+                "payment_link": PAYMENT_LINK
+            }), 429
+
+    data = request.get_json()
+    input_text = data.get('input_text', '').strip()
+    language_code = data.get('language_code', 'en-US')
+    prompt_mode = data.get('prompt_mode', 'text')
+
+    if not input_text:
+        return jsonify({"error": "Please provide text or code to infer a prompt from."}), 400
+
+    if prompt_mode in ['image_gen', 'video_gen']:
+        return jsonify({"inferred_prompt": "Reverse prompting is not applicable for image or video generation modes."}), 200
+
+    try:
+        inferred_prompt = asyncio.run(generate_reverse_prompt_async(input_text, language_code, prompt_mode))
+
+        # Update user stats after successful reverse prompt
+        user.last_generation_time = now
+        if not user.is_admin:
+            user.daily_generation_count += 1
+        db.session.add(user)
+        db.session.commit()
+        app.logger.info(f"API user {user.username}'s last prompt request time updated and count incremented. (API Reverse Prompt)")
+
+        return jsonify({"inferred_prompt": inferred_prompt})
+    except Exception as e:
+        app.logger.exception("Error during API reverse prompt generation in /api/v1/reverse:")
+        return jsonify({"error": f"An unexpected server error occurred: {e}"}), 500
 
 
 # --- Database Initialization (Run once to create tables) ---
@@ -1598,5 +1743,3 @@ if __name__ == '__main__':
     # you can use `nest_asyncio.apply()` (install with `pip install nest-asyncio`), but this is
     # generally not recommended for production as it can hide underlying architectural issues.
     app.run(debug=True)
-
-
