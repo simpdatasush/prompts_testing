@@ -851,20 +851,18 @@ async def reverse_prompt():
 # NEW: API ENDPOINT
 @app.route('/api/v1/generate', methods=['POST'])
 @api_key_required
-async def api_generate(user):
+def api_generate(user):
     # API-specific logic for daily limit check
     now = datetime.utcnow()
     today = now.date()
+    start_time = datetime.utcnow()
+    api_log = ApiRequestLog(user_id=user.id, endpoint='/api/v1/generate', status_code=0) # Status code 0 for in-progress
 
     if user.daily_generation_date != today:
         user.daily_generation_count = 0
         user.daily_generation_date = today
         db.session.add(user)
         db.session.commit()
-
-    # Log the API request start
-    start_time = datetime.utcnow()
-    api_log = ApiRequestLog(user_id=user.id, endpoint='/api/v1/generate', status_code=0) # Status code 0 for in-progress
 
     if user.daily_generation_count >= user.daily_limit:
         api_log.status_code = 429
@@ -912,10 +910,12 @@ async def api_generate(user):
 # NEW: API REVERSE PROMPT ENDPOINT
 @app.route('/api/v1/reverse', methods=['POST'])
 @api_key_required
-async def api_reverse_prompt(user):
+def api_reverse_prompt(user):
     # API-specific logic for daily limit check
     now = datetime.utcnow()
     today = now.date()
+    start_time = datetime.utcnow()
+    api_log = ApiRequestLog(user_id=user.id, endpoint='/api/v1/reverse', status_code=0) # Status code 0 for in-progress
 
     if user.daily_generation_date != today:
         user.daily_generation_count = 0
@@ -923,11 +923,6 @@ async def api_reverse_prompt(user):
         db.session.add(user)
         db.session.commit()
     
-    # Log the API request start
-    start_time = datetime.utcnow()
-    api_log = ApiRequestLog(user_id=user.id, endpoint='/api/v1/reverse', status_code=0) # Status code 0 for in-progress
-
-
     if user.daily_generation_count >= user.daily_limit:
         api_log.status_code = 429
         api_log.latency_ms = (datetime.utcnow() - start_time).total_seconds() * 1000
@@ -1714,11 +1709,8 @@ with app.app_context():
 
 # --- Main App Run ---
 if __name__ == '__main__':
-    # Important: For async Flask routes, you should use an ASGI server in production.
-    # For local development with auto-reloading, Hypercorn is a good choice.
-    # To run with Hypercorn:
-    # 1. Install it: pip install hypercorn
-    # 2. Run: hypercorn app:app --reload
+    # The following line has been removed to allow the async routes to work
+    # in a proper ASGI environment.
     # If you must use app.run() for quick tests and encounter the 'event loop closed' error,
     # you can use `nest_asyncio.apply()` (install with `pip install nest-asyncio`), but this is
     # generally not recommended for production as it can hide underlying architectural issues.
