@@ -674,16 +674,16 @@ def llm_benchmark():
 
 @app.route('/generate', methods=['POST'])
 @login_required # Protect this route
-async def generate(): # CHANGED FROM ASYNC
-    user = current_user # Get the current user object
-    now = datetime.utcnow() # Use utcnow for consistency with database default
+async def generate():
+    user = current_user
+    now = datetime.utcnow()
 
     # --- Check if the user is locked out ---
     if user.is_locked:
         return jsonify({
             "error": "Your account is locked. Please contact support.",
             "account_locked": True
-        }), 403 # Forbidden
+        }), 403
         
     # --- Cooldown Check using database timestamp ---
     if user.last_generation_time:
@@ -695,32 +695,31 @@ async def generate(): # CHANGED FROM ASYNC
                 "error": f"Please wait {remaining_time} seconds before generating new prompts.",
                 "cooldown_active": True,
                 "remaining_time": remaining_time
-            }), 429 # 429 Too Many Requests
+            }), 429
     # --- END UPDATED ---
 
     # --- Daily Limit Check ---
-    if not user.is_admin: # Admins are exempt from the daily limit
+    if not user.is_admin:
         today = now.date()
         if user.daily_generation_date != today:
             user.daily_generation_count = 0
             user.daily_generation_date = today
-            db.session.add(user) # Mark user as modified
-            db.session.commit() # Commit reset immediately to prevent race conditions on count
+            db.session.add(user)
+            db.session.commit()
 
-        if user.daily_generation_count >= user.daily_limit: # Check against per-user limit
+        if user.daily_generation_count >= user.daily_limit:
             app.logger.info(f"User {user.username} exceeded their daily prompt limit of {user.daily_limit}.")
-            # NEW: Return a specific payment message instead of just an error
             return jsonify({
                 "error": f"You have reached your daily limit of {user.daily_limit} prompt generations. If you are looking for more prompts, kindly make a payment to increase your limit.",
                 "daily_limit_reached": True,
                 "payment_link": PAYMENT_LINK
-            }), 429 # 429 Too Many Requests
+            }), 429
     # --- END NEW: Daily Limit Check ---
 
     prompt_input = request.form.get('prompt_input', '').strip()
     language_code = request.form.get('language_code', 'en-US')
     is_json_mode = request.form.get('is_json_mode') == 'true'
-    prompt_mode = request.form.get('prompt_mode', 'text') # 'text', 'image_gen', 'video_gen'
+    prompt_mode = request.form.get('prompt_mode', 'text')
 
     if not prompt_input:
         return jsonify({
@@ -733,10 +732,10 @@ async def generate(): # CHANGED FROM ASYNC
         results = await generate_prompts_async(prompt_input, language_code, prompt_mode)
 
         # --- Update last_generation_time in database and Save raw_input ---
-        user.last_generation_time = now # Record the time of this successful request
-        if not user.is_admin: # Only increment count for non-admin users
+        user.last_generation_time = now
+        if not user.is_admin:
             user.daily_generation_count += 1
-        db.session.add(user) # Add the user object back to the session to mark it as modified
+        db.session.add(user)
         db.session.commit()
         app.logger.info(f"User {user.username}'s last prompt request time updated and count incremented. (Forward Prompt)")
 
@@ -748,7 +747,7 @@ async def generate(): # CHANGED FROM ASYNC
                 app.logger.info(f"Raw prompt saved for user {current_user.username}")
             except Exception as e:
                 app.logger.error(f"Error saving raw prompt for user {current_user.username}: {e}")
-                db.session.rollback() # Rollback in case of error
+                db.session.rollback()
         # --- END UPDATED ---
 
         return jsonify(results)
@@ -760,7 +759,7 @@ async def generate(): # CHANGED FROM ASYNC
 # --- NEW: Reverse Prompt Endpoint ---
 @app.route('/reverse_prompt', methods=['POST'])
 @login_required
-async def reverse_prompt(): # CHANGED FROM ASYNC
+async def reverse_prompt():
     user = current_user
     now = datetime.utcnow()
 
@@ -769,10 +768,10 @@ async def reverse_prompt(): # CHANGED FROM ASYNC
         return jsonify({
             "error": "Your account is locked. Please contact support.",
             "account_locked": True
-        }), 403 # Forbidden
+        }), 403
 
     # Apply cooldown to reverse prompting as well
-    if user.last_generation_time: # Changed from last_prompt_request
+    if user.last_generation_time:
         time_since_last_request = (now - user.last_generation_time).total_seconds()
         if time_since_last_request < COOLDOWN_SECONDS:
             remaining_time = int(COOLDOWN_SECONDS - time_since_last_request)
@@ -784,17 +783,16 @@ async def reverse_prompt(): # CHANGED FROM ASYNC
             }), 429
 
     # --- NEW: Daily Limit Check for Reverse Prompt ---
-    if not user.is_admin: # Admins are exempt from the daily limit
+    if not user.is_admin:
         today = now.date()
-        if user.daily_generation_date != today: # Changed from last_count_reset_date
+        if user.daily_generation_date != today:
             user.daily_generation_count = 0
-            user.daily_generation_date = today # Changed from last_count_reset_date
+            user.daily_generation_date = today
             db.session.add(user)
             db.session.commit()
 
-        if user.daily_generation_count >= user.daily_limit: # Check against per-user limit
+        if user.daily_generation_count >= user.daily_limit:
             app.logger.info(f"User {user.username} exceeded their daily reverse prompt limit of {user.daily_limit}.")
-            # NEW: Return a specific payment message instead of just an error
             return jsonify({
                 "error": f"You have reached your daily limit of {user.daily_limit} generations. If you are looking for more prompts, kindly make a payment to increase your limit.",
                 "daily_limit_reached": True,
@@ -827,11 +825,9 @@ async def reverse_prompt(): # CHANGED FROM ASYNC
     # Escape curly braces in input_text to prevent f-string parsing errors
     escaped_input_text = input_text.replace('{', '{{').replace('}', '}}')
 
-    try: # Added try block here
+    try:
         if prompt_mode == 'text':
             prompt_instruction = f"Analyze the following text/code and infer a concise, high-level prompt idea that could have generated it. Respond in {language_code}. Input: {escaped_input_text}"
-        # The image_gen and video_gen cases below are now effectively unreachable due to the early return above.
-        # However, keeping them for clarity of original intent if the restriction were to be lifted.
         elif prompt_mode == 'image_gen':
             prompt_instruction = f"The user has provided a natural language description for an image. Infer a concise, natural language prompt idea for image generation based on this input. Input: {escaped_input_text}"
         elif prompt_mode == 'video_gen':
@@ -852,7 +848,7 @@ async def reverse_prompt(): # CHANGED FROM ASYNC
 # NEW: Image Processing Endpoint ---
 @app.route('/process_image_prompt', methods=['POST'])
 @login_required
-async def process_image_prompt(): # CHANGED FROM ASYNC
+async def process_image_prompt():
     user = current_user
     now = datetime.utcnow()
     
@@ -861,10 +857,10 @@ async def process_image_prompt(): # CHANGED FROM ASYNC
         return jsonify({
             "error": "Your account is locked. Please contact support.",
             "account_locked": True
-        }), 403 # Forbidden
+        }), 403
 
     # Apply cooldown to image processing as well
-    if user.last_generation_time: # Changed from last_prompt_request
+    if user.last_generation_time:
         time_since_last_request = (now - user.last_generation_time).total_seconds()
         if time_since_last_request < COOLDOWN_SECONDS:
             remaining_time = int(COOLDOWN_SECONDS - time_since_last_request)
@@ -878,9 +874,9 @@ async def process_image_prompt(): # CHANGED FROM ASYNC
     # Daily limit check for image processing
     if not user.is_admin:
         today = now.date()
-        if user.daily_generation_date != today: # Changed from last_count_reset_date
+        if user.daily_generation_date != today:
             user.daily_generation_count = 0
-            user.daily_generation_date = today # Changed from last_count_reset_date
+            user.daily_generation_date = today
             db.session.add(user)
             db.session.commit()
 
@@ -894,14 +890,14 @@ async def process_image_prompt(): # CHANGED FROM ASYNC
 
     data = request.get_json()
     image_data_b64 = data.get('image_data')
-    language_code = data.get('language_code', 'en-US') # Not directly used by Gemini Vision, but good to pass
+    language_code = data.get('language_code', 'en-US')
 
 
     if not image_data_b64:
         return jsonify({"error": "No image data provided."}), 400
 
     try:
-        image_data_bytes = base64.b64decode(image_data_b64) # Decode base64 string to bytes
+        image_data_bytes = base64.b64decode(image_data_b64)
         
         # Call the Gemini API for image understanding
         recognized_text = await asyncio.to_thread(ask_gemini_for_image_text, image_data_bytes)
@@ -920,681 +916,125 @@ async def process_image_prompt(): # CHANGED FROM ASYNC
         return jsonify({"error": f"An unexpected server error occurred during image processing: {e}. Please check server logs for details."}), 500
 
 
-# --- UPDATED: Endpoint to check cooldown status for frontend ---
-@app.route('/check_cooldown', methods=['GET'])
-@login_required
-def check_cooldown():
-    user = current_user
-    now = datetime.utcnow() # Use utcnow for consistency
-
-    cooldown_active = False
-    remaining_time = 0
-    if user.last_generation_time: # Changed from last_prompt_request
-        time_since_last_request = (now - user.last_generation_time).total_seconds()
-        if time_since_last_request < COOLDOWN_SECONDS:
-            cooldown_active = True
-            remaining_time = int(COOLDOWN_SECONDS - time_since_last_request)
-
-    daily_limit_reached = False
-    daily_count = 0
-    
-    user_daily_limit = user.daily_limit if not user.is_admin else 999999
-    
-    if user.is_locked:
-        daily_limit_reached = True
-    elif not user.is_admin: # Check daily limit only for non-admins
-        today = now.date()
-        if user.daily_generation_date != today: # Changed from last_count_reset_date
-            # If the last reset date is not today, reset the count for the current session's check
-            daily_count = 0
-        else:
-            daily_count = user.daily_generation_count # Changed from daily_prompt_count
-        
-        if daily_count >= user_daily_limit:
-            daily_limit_reached = True
-
-    return jsonify({
-        "cooldown_active": cooldown_active,
-        "remaining_time": remaining_time,
-        "daily_limit_reached": daily_limit_reached,
-        "daily_count": daily_count,
-        "user_daily_limit": user_daily_limit,
-        "is_admin": user.is_admin
-    }), 200
-
-
-# --- Save Prompt Endpoint (using SavedPrompt model) ---
-@app.route('/save_prompt', methods=['POST'])
-@login_required
-def save_prompt():
-    data = request.get_json()
-    prompt_text = data.get('prompt_text')
-    prompt_type = data.get('prompt_type') # 'polished', 'creative', 'technical'
-
-    if not prompt_text or not prompt_type:
-        return jsonify({'success': False, 'message': 'Missing prompt text or type.'}), 400
-
-    try:
-        new_saved_prompt = SavedPrompt(
-            user_id=current_user.id,
-            text=prompt_text,
-            type=prompt_type,
-            timestamp=datetime.utcnow()
-        )
-        db.session.add(new_saved_prompt)
-        db.session.commit()
-        return jsonify({'success': True, 'message': 'Prompt saved successfully!'})
-    except Exception as e:
-        logging.error(f"Error saving prompt: {e}")
-        return jsonify({'success': False, 'message': f'Database error: {e}'}), 500
-
-# --- Get Saved Prompts Endpoint (using SavedPrompt model) ---
-@app.route('/get_saved_prompts', methods=['GET'])
-@login_required
-def get_saved_prompts():
-    saved_prompts = SavedPrompt.query.filter_by(user_id=current_user.id).order_by(SavedPrompt.timestamp.desc()).all()
-    prompts_data = []
-    for prompt in saved_prompts:
-        prompts_data.append({
-            'text': prompt.text,
-            'type': prompt.type,
-            'timestamp': prompt.timestamp.strftime('%Y-%m-%d %H:%M:%S')
-        })
-    return jsonify(prompts_data)
-
-# --- Get Raw Prompts Endpoint (using RawPrompt model) ---
-@app.route('/get_raw_prompts', methods=['GET'])
-@login_required
-def get_raw_prompts():
-    raw_prompts = RawPrompt.query.filter_by(user_id=current_user.id).order_by(RawPrompt.timestamp.desc()).limit(10).all()
-    prompts_data = []
-    for prompt in raw_prompts:
-        prompts_data.append({
-            'raw_text': prompt.raw_text,
-            'timestamp': prompt.timestamp.strftime('%Y-%m-%d %H:%M:%S')
-        })
-    return jsonify(prompts_data)
-
-
-# --- Download Prompts as TXT Endpoint (using SavedPrompt model) ---
-@app.route('/download_prompts_txt', methods=['GET'])
-@login_required
-def download_prompts_txt():
-    saved_prompts = SavedPrompt.query.filter_by(user_id=current_user.id).order_by(SavedPrompt.timestamp.desc()).all()
-    
-    output = []
-    output.append("--- Your Saved Prompts ---\n\n")
-    for prompt in saved_prompts:
-        output.append(f"Type: {prompt.type.capitalize()}\n")
-        output.append(f"Timestamp: {prompt.timestamp.strftime('%Y-%m-%d %H:%M:%S')}\n")
-        output.append("Prompt:\n")
-        output.append(f"{prompt.text}\n")
-        output.append("-" * 30 + "\n\n")
-
-    response = make_response("".join(output))
-    response.headers["Content-Disposition"] = "attachment; filename=saved_prompts.txt"
-    response.headers["Content-type"] = "text/plain"
-    return response
-
-# NEW: Admin Prompts Management Routes (using SamplePrompt model)
-@app.route('/admin/prompts', methods=['GET'])
-@admin_required
-def admin_prompts():
-    sample_prompts = SamplePrompt.query.order_by(SamplePrompt.timestamp.desc()).all()
-    return render_template('admin_prompts.html', sample_prompts=sample_prompts, current_user=current_user)
-
-@app.route('/admin/prompts/add', methods=['POST'])
-@admin_required
-def add_prompt():
-    raw_prompt = request.form.get('raw_prompt')
-    polished_prompt = request.form.get('polished_prompt')
-    creative_prompt = request.form.get('creative_prompt')
-    technical_prompt = request.form.get('technical_prompt')
-    display_type = request.form.get('display_type', 'polished') # NEW: Get display_type from form
-
-    if not raw_prompt or not polished_prompt or not creative_prompt or not technical_prompt:
-        flash('All prompt fields are required.', 'danger')
-        return redirect(url_for('admin_prompts'))
-
-    try:
-        new_prompt = SamplePrompt(
-            raw_prompt=raw_prompt,
-            polished_prompt=polished_prompt,
-            creative_prompt=creative_prompt,
-            technical_prompt=technical_prompt,
-            display_type=display_type # NEW: Save display_type
-        )
-        db.session.add(new_prompt)
-        db.session.commit()
-        flash('Sample prompt added successfully!', 'success')
-    except Exception as e:
-        db.session.rollback()
-        flash(f'Error adding sample prompt: {e}', 'danger')
-        app.logger.error(f"Error adding sample prompt: {e}")
-    return redirect(url_for('admin_prompts'))
-
-@app.route('/admin/prompts/delete/<int:prompt_id>', methods=['POST'])
-@admin_required
-def delete_prompt(prompt_id):
-    prompt = SamplePrompt.query.get_or_404(prompt_id)
-    try:
-        db.session.delete(prompt)
-        db.session.commit()
-        flash('Sample prompt deleted successfully!', 'success')
-    except Exception as e:
-        db.session.rollback()
-        flash(f'Error deleting sample prompt: {e}', 'danger')
-        app.logger.error(f"Error deleting sample prompt: {e}")
-    return redirect(url_for('admin_prompts'))
-
-@app.route('/admin/prompts/repost/<int:prompt_id>', methods=['POST'])
-@admin_required
-def repost_prompt(prompt_id):
-    prompt = SamplePrompt.query.get_or_404(prompt_id)
-    try:
-        # Update timestamp to now to bring it to the top of the list
-        prompt.timestamp = datetime.utcnow()
-        db.session.commit()
-        flash('Sample prompt reposted successfully (timestamp updated)!', 'success')
-    except Exception as e:
-        db.session.rollback()
-        flash(f'Error reposting sample prompt: {e}', 'danger')
-        app.logger.error(f"Error reposting sample prompt: {e}")
-    return redirect(url_for('admin_prompts'))
-
-
-# --- Admin News Management Routes (using NewsItem model) ---
-@app.route('/admin/news', methods=['GET'])
-@admin_required
-def admin_news():
-    news_items = NewsItem.query.order_by(NewsItem.timestamp.desc()).all()
-    return render_template('admin_news.html', news_items=news_items, current_user=current_user)
-
-@app.route('/admin/news/add', methods=['POST'])
-@admin_required
-def add_news():
-    title = request.form.get('title')
-    url = request.form.get('url')
-    description = request.form.get('description')
-    published_date_str = request.form.get('published_date')
-
-    published_date = None
-    if published_date_str:
-        try:
-            published_date = datetime.strptime(published_date_str, '%Y-%m-%d').date() # Changed to .date()
-        except ValueError:
-            flash('Invalid published date format. Please use YYYY-MM-DD.', 'danger')
-            return redirect(url_for('admin_news'))
-
-    if not title or not url:
-        flash('Title and URL are required for news items.', 'danger')
-        return redirect(url_for('admin_news'))
-
-    try:
-        new_news = NewsItem(
-            title=title,
-            url=url,
-            description=description,
-            published_date=published_date,
-            user_id=current_user.id # Assign current admin user
-        )
-        db.session.add(new_news)
-        db.session.commit()
-        flash('News item added successfully!', 'success')
-    except Exception as e:
-        db.session.rollback()
-        flash(f'Error adding news item: {e}', 'danger')
-        app.logger.error(f"Error adding news item: {e}")
-    return redirect(url_for('admin_news'))
-
-@app.route('/admin/news/delete/<int:news_id>', methods=['POST'])
-@admin_required
-def delete_news(news_id):
-    news_item = NewsItem.query.get_or_404(news_id)
-    try:
-        db.session.delete(news_item)
-        db.session.commit()
-        flash('News item deleted successfully!', 'success')
-    except Exception as e:
-        db.session.rollback()
-        flash(f'Error deleting news item: {e}', 'danger')
-        app.logger.error(f"Error deleting news item: {e}")
-    return redirect(url_for('admin_news'))
-
-@app.route('/admin/news/repost/<int:news_id>', methods=['POST'])
-@admin_required
-def repost_news(news_id):
-    news_item = NewsItem.query.get_or_404(news_id)
-    try:
-        # Update timestamp to now to bring it to the top of the list
-        news_item.timestamp = datetime.utcnow()
-        db.session.commit()
-        flash('News item reposted successfully (timestamp updated)!', 'success')
-    except Exception as e:
-        db.session.rollback()
-        flash(f'Error reposting news item: {e}', 'danger')
-        app.logger.error(f"Error reposting news item: {e}")
-    return redirect(url_for('admin_news'))
-
-
-# --- Admin Jobs Management Routes (using JobListing model) ---
-@app.route('/admin/jobs', methods=['GET'])
-@admin_required
-def admin_jobs():
-    job_listings = JobListing.query.order_by(JobListing.timestamp.desc()).all()
-    return render_template('admin_jobs.html', job_listings=job_listings, current_user=current_user)
-
-@app.route('/admin/jobs/add', methods=['POST'])
-@admin_required
-def add_job():
-    title = request.form.get('title')
-    company = request.form.get('company')
-    location = request.form.get('location')
-    url = request.form.get('url')
-    description = request.form.get('description')
-    published_date_str = request.form.get('published_date')
-
-    published_date = None
-    if published_date_str:
-        try:
-            published_date = datetime.strptime(published_date_str, '%Y-%m-%d').date() # Changed to .date()
-        except ValueError:
-            flash('Invalid published date format. Please use YYYY-MM-DD.', 'danger')
-            return redirect(url_for('admin_jobs'))
-
-    if not title or not company or not url:
-        flash('Job Title, Company, and URL are required for job listings.', 'danger')
-        return redirect(url_for('admin_jobs'))
-
-    try:
-        new_job = JobListing(
-            title=title,
-            company=company,
-            location=location,
-            url=url,
-            description=description,
-            published_date=published_date,
-            user_id=current_user.id # Assign current admin user
-        )
-        db.session.add(new_job)
-        db.session.commit()
-        flash('Job listing added successfully!', 'success')
-    except Exception as e:
-        db.session.rollback()
-        flash(f'Error adding job listing: {e}', 'danger')
-        app.logger.error(f"Error adding job listing: {e}")
-    return redirect(url_for('admin_jobs'))
-
-@app.route('/admin/jobs/delete/<int:job_id>', methods=['POST'])
-@admin_required
-def delete_job(job_id):
-    job_listing = JobListing.query.get_or_404(job_id)
-    try:
-        db.session.delete(job_listing)
-        db.session.commit()
-        flash('Job listing deleted successfully!', 'success')
-    except Exception as e:
-        db.session.rollback()
-        flash(f'Error deleting job listing: {e}', 'danger')
-        app.logger.error(f"Error deleting job listing: {e}")
-    return redirect(url_for('admin_jobs'))
-
-@app.route('/admin/jobs/repost/<int:job_id>', methods=['POST'])
-@admin_required
-def repost_job(job_id):
-    job_listing = JobListing.query.get_or_404(job_id)
-    try:
-        # Update timestamp to now to bring it to the top of the list
-        job_listing.timestamp = datetime.utcnow()
-        db.session.commit()
-        flash('Job listing reposted successfully (timestamp updated)!', 'success')
-    except Exception as e:
-        db.session.rollback()
-        flash(f'Error reposting job listing: {e}', 'danger')
-        app.logger.error(f"Error reposting job listing: {e}")
-    return redirect(url_for('admin_jobs'))
-
-
-# --- Change Password Route ---
-@app.route('/change_password', methods=['GET', 'POST'])
-@login_required
-def change_password():
-    if request.method == 'POST':
-        current_password = request.form.get('current_password')
-        new_password = request.form.get('new_password')
-        confirm_new_password = request.form.get('confirm_new_password')
-
-        if not current_password or not new_password or not confirm_new_password:
-            flash('All fields are required.', 'danger')
-            return render_template('change_password.html', current_user=current_user)
-
-        if not current_user.check_password(current_password):
-            flash('Current password is incorrect.', 'danger')
-            return render_template('change_password.html', current_user=current_user)
-
-        if new_password != confirm_new_password:
-            flash('New password and confirmation do not match.', 'danger')
-            return render_template('change_password.html', current_user=current_user)
-
-        if len(new_password) < 6: # Example: enforce minimum password length
-            flash('New password must be at least 6 characters long.', 'danger')
-            return render_template('change_password.html', current_user=current_user)
-
-        try:
-            current_user.set_password(new_password)
-            db.session.commit()
-            flash('Your password has been changed successfully!', 'success')
-            return redirect(url_for('app_home')) # Redirect to app_home
-        except Exception as e:
-            db.session.rollback()
-            flash(f'An error occurred while changing your password: {e}', 'danger')
-            app.logger.error(f"Error changing password for user {current_user.username}: {e}")
-
-    return render_template('change_password.html', current_user=current_user)
-
-
-# --- Forgot Password Routes ---
-@app.route('/forgot_password', methods=['GET'])
-def forgot_password():
-    return render_template('forgot_password.html')
-
-@app.route('/send_reset_link', methods=['POST'])
-async def send_reset_link():
-    username = request.form.get('username')
-    user = User.query.filter_by(username=username).first()
-    if user:
-        if not user.email:
-            flash('This account does not have an email address associated for password reset. Please contact support.', 'danger')
-            return redirect(url_for('forgot_password'))
-
-        # Generate a unique token
-        token = str(uuid.uuid4())
-        # Set token expiration (e.g., 1 hour from now)
-        expiration = datetime.utcnow() + timedelta(hours=1)
-        
-        user.reset_token = token # Changed from password_reset_token
-        user.reset_token_expiration = expiration # Changed from password_reset_expiration
-        db.session.commit()
-        
-        reset_link = url_for('reset_password', token=token, _external=True)
-        
-        try:
-            msg = Message('Password Reset Request for SuperPrompter',
-                          sender=app.config['MAIL_USERNAME'],
-                          recipients=[user.email])
-            msg.body = f"""
-Dear {user.username},
-
-You have requested a password reset for your SuperPrompter account.
-
-Please click on the following link to reset your password:
-{reset_link}
-
-This link will expire in 1 hour.
-
-If you did not request a password reset, please ignore this email.
-
-Sincerely,
-The SuperPrompter Team
-"""
-            mail.send(msg)
-            app.logger.info(f"Password reset email sent to {user.email} for user {user.username}")
-            flash('A password reset link has been sent to your email address. Please check your inbox (and spam folder).', 'info')
-        except Exception as e:
-            app.logger.error(f"Failed to send password reset email to {user.email}: {e}", exc_info=True)
-            flash('Failed to send password reset email. Please try again later or contact support.', 'danger')
-    else:
-        # For security, always give a generic success message even if the user doesn't exist
-        flash('If an account with that username exists, a password reset link has been sent to the associated email address.', 'info')
-    return redirect(url_for('login'))
-
-@app.route('/reset_password/<token>', methods=['GET', 'POST'])
-def reset_password(token):
-    user = User.query.filter_by(reset_token=token).first() # Changed from password_reset_token
+# NEW: API ENDPOINT
+@app.route('/api/v1/generate', methods=['POST'])
+@api_key_required
+async def api_generate(user):
+    # API-specific logic for daily limit check
     now = datetime.utcnow()
+    today = now.date()
+    start_time = datetime.utcnow()
+    api_log = ApiRequestLog(user_id=user.id, endpoint='/api/v1/generate', status_code=0)
 
-    if not user or user.reset_token_expiration < now: # Changed from password_reset_expiration
-        flash('The password reset link is invalid or has expired.', 'danger')
-        return redirect(url_for('forgot_password'))
-
-    if request.method == 'POST':
-        new_password = request.form.get('new_password')
-        confirm_new_password = request.form.get('confirm_new_password')
-
-        if not new_password or not confirm_new_password:
-            flash('Both new password fields are required.', 'danger')
-            return render_template('reset_password.html', token=token)
-
-        if new_password != confirm_new_password:
-            flash('New password and confirmation do not match.', 'danger')
-            return render_template('reset_password.html', token=token)
-
-        if len(new_password) < 6: # Example: enforce minimum password length
-            flash('New password must be at least 6 characters long.', 'danger')
-            return render_template('reset_password.html', token=token)
-
-        user.set_password(new_password)
-        user.reset_token = None # Invalidate the token after use
-        user.reset_token_expiration = None
+    if user.daily_generation_date != today:
+        user.daily_generation_count = 0
+        user.daily_generation_date = today
+        db.session.add(user)
         db.session.commit()
-        flash('Your password has been reset successfully! Please log in with your new password.', 'success')
-        return redirect(url_for('login'))
-    return render_template('reset_password.html', token=token)
 
+    if user.daily_generation_count >= user.daily_limit:
+        api_log.status_code = 429
+        api_log.latency_ms = (datetime.utcnow() - start_time).total_seconds() * 1000
+        db.session.add(api_log)
+        db.session.commit()
+        return jsonify({
+            "error": f"API daily limit of {user.daily_limit} generations reached.",
+        }), 429
 
-# NEW: Newsletter Subscription Route
-@app.route('/subscribe_newsletter', methods=['POST'])
-def subscribe_newsletter():
-    email = request.form.get('email')
-    if not email:
-        flash('Email address is required to subscribe.', 'danger')
-        return redirect(url_for('landing'))
-    # Basic email format validation
-    if not re.match(r"[^@]+@[^@]+\.[^@]+", email):
-        flash('Invalid email address format.', 'danger')
-        return redirect(url_for('landing'))
+    data = request.get_json()
+    prompt_input = data.get('raw_input', '').strip()
+    language_code = data.get('language_code', 'en-US')
+    
+    if not prompt_input:
+        api_log.status_code = 400
+        api_log.latency_ms = (datetime.utcnow() - start_time).total_seconds() * 1000
+        db.session.add(api_log)
+        db.session.commit()
+        return jsonify({"error": "Missing 'raw_input' field in request body."}), 400
 
-    existing_subscriber = NewsletterSubscriber.query.filter_by(email=email).first()
-    if existing_subscriber:
-        flash('You are already subscribed to our newsletter!', 'info')
-    else:
-        try:
-            new_subscriber = NewsletterSubscriber(email=email)
-            db.session.add(new_subscriber)
-            db.session.commit()
-            flash('Successfully subscribed to our newsletter! Thank a you!', 'success')
-        except Exception as e:
-            db.session.rollback()
-            app.logger.error(f"Error subscribing email {email} to newsletter: {e}")
-            flash('Failed to subscribe to newsletter. Please try again later.', 'danger')
-        
-    return redirect(url_for('landing'))
-
-
-# --- UPDATED: Authentication Routes for automatic redirect ---
-@app.route('/register', methods=['GET', 'POST'])
-def register():
-    if current_user.is_authenticated:
-        flash('You are already registered and logged in.', 'info')
-        return redirect(url_for('app_home')) # Redirect to app home if already logged in
-
-    if request.method == 'POST':
-        username = request.form['username']
-        password = request.form['password']
-        # NEW: Get email from registration form
-        email = request.form.get('email') # Make sure to add this field to your register.html
-
-        user = User.query.filter_by(username=username).first()
-        if user:
-            flash('this username already exists', 'danger') # Updated message
-            # Generate suggestions if username exists
-            suggestions = generate_unique_username_suggestions(username)
-            return render_template('register.html', suggestions=suggestions, username=username, email=email) # Pass suggestions and original inputs
-        else:
-            # NEW: Check if email already exists
-            if email and User.query.filter_by(email=email).first():
-                flash('Email already registered. Please use a different email or log in.', 'danger')
-                return render_template('register.html', username=username, email=email) # Re-render without suggestions for email conflict
-            else:
-                new_user = User(username=username, email=email) # Pass email to User constructor
-                new_user.set_password(password)
-                db.session.add(new_user)
-                db.session.commit()
-                login_user(new_user) # Automatically log in the new user
-                flash('Registration successful! You are now logged in.', 'success')
-                return redirect(url_for('app_home')) # Redirect to app home after registration
-    return render_template('register.html') # Initial GET request, no suggestions
-
-# NEW: Helper function to generate unique username suggestions
-def generate_unique_username_suggestions(base_username, num_suggestions=3):
-    suggestions = []
-    attempts = 0
-    max_attempts_per_suggestion = 10 # Prevent infinite loops
-
-    while len(suggestions) < num_suggestions and attempts < num_suggestions * max_attempts_per_suggestion:
-        suffix = ''.join(random.choices(string.digits, k=4)) # 4 random digits
-        new_username = f"{base_username}{suffix}"
-        
-        # Ensure the suggestion is not too long
-        if len(new_username) > 80: # Max length for username field
-            new_username = f"{base_username[:76]}{suffix}" # Truncate base_username if needed
-
-        if not User.query.filter_by(username=new_username).first():
-            suggestions.append(new_username)
-        attempts += 1
-    # If we still don't have enough suggestions, try more generic ones
-    while len(suggestions) < num_suggestions:
-        random_suffix = ''.join(random.choices(string.ascii_lowercase + string.digits, k=6))
-        generic_username = f"user_{random_suffix}"
-        if not User.query.filter_by(username=generic_username).first():
-            suggestions.append(generic_username)
-    return suggestions
-
-
-@app.route('/login', methods=['GET', 'POST'])
-def login():
-    if current_user.is_authenticated:
-        flash('You are already logged in.', 'info')
-        return redirect(url_for('app_home')) # Redirect to app home if already logged in
-
-    if request.method == 'POST':
-        username = request.form['username']
-        password = request.form['password']
-        remember_me = 'remember_me' in request.form
-
-        user = User.query.filter_by(username=username).first()
-        if user and user.check_password(password):
-            login_user(user, remember=remember_me)
-            flash('Logged in successfully!', 'success')
-            return redirect(url_for('app_home')) # Redirect to app home after login
-        else:
-            flash('Login Unsuccessful. Please check username and password.', 'danger')
-    return render_template('login.html')
-
-@app.route('/logout')
-@login_required # Only logged-in users can log out
-def logout():
-    logout_user()
-    flash('You have been logged out.', 'info')
-    return redirect(url_for('landing')) # Redirect to landing page after logout
-
-# NEW: Admin route for downloading the database
-@app.route('/admin/download_database', methods=['GET'])
-@admin_required
-def download_database():
     try:
-        db_path = os.path.join(app.root_path, 'site.db')
-        return send_file(db_path, as_attachment=True, download_name='site.db')
+        results = await generate_prompts_async(prompt_input, language_code)
+
+        user.daily_generation_count += 1
+        db.session.add(user)
+        db.session.commit()
+
+        api_log.status_code = 200
+        api_log.raw_input = prompt_input
+        api_log.latency_ms = (datetime.utcnow() - start_time).total_seconds() * 1000
+        db.session.add(api_log)
+        db.session.commit()
+
+        return jsonify(results), 200
     except Exception as e:
-        flash(f"Error downloading database: {e}", 'danger')
-        return redirect(url_for('admin_jobs'))
-
-
-# NEW: Admin User Management Routes
-@app.route('/admin/users')
-@admin_required
-def admin_users():
-    users = User.query.all()
-    return render_template('admin_users.html', users=users, current_user=current_user)
-
-@app.route('/admin/users/toggle_access/<int:user_id>', methods=['POST'])
-@admin_required
-def toggle_user_access(user_id):
-    user = User.query.get_or_404(user_id)
-    if user.is_admin:
-        flash("Cannot lock or unlock an admin account.", "danger")
-    else:
-        user.is_locked = not user.is_locked
-        if not user.is_locked:
-            flash(f"User {user.username} has been unlocked.", "success")
-        else:
-            flash(f"User {user.username} has been locked.", "info")
+        api_log.status_code = 500
+        api_log.raw_input = prompt_input
+        api_log.latency_ms = (datetime.utcnow() - start_time).total_seconds() * 1000
+        db.session.add(api_log)
         db.session.commit()
-    return redirect(url_for('admin_users'))
+        logging.exception("Error during API prompt generation:")
+        return jsonify({"error": f"An unexpected server error occurred: {e}"}), 500
 
-# NEW: Admin route to update user's daily limit
-@app.route('/admin/users/update_quota/<int:user_id>', methods=['POST'])
-@admin_required
-def update_user_quota(user_id):
-    user = User.query.get_or_404(user_id)
-    new_limit_str = request.form.get('new_limit')
+# NEW: API REVERSE PROMPT ENDPOINT
+@app.route('/api/v1/reverse', methods=['POST'])
+@api_key_required
+async def api_reverse_prompt(user):
+    # API-specific logic for daily limit check
+    now = datetime.utcnow()
+    today = now.date()
+    start_time = datetime.utcnow()
+    api_log = ApiRequestLog(user_id=user.id, endpoint='/api/v1/reverse', status_code=0)
 
+    if user.daily_generation_date != today:
+        user.daily_generation_count = 0
+        user.daily_generation_date = today
+        db.session.add(user)
+        db.session.commit()
+    
+    if user.daily_generation_count >= user.daily_limit:
+        api_log.status_code = 429
+        api_log.latency_ms = (datetime.utcnow() - start_time).total_seconds() * 1000
+        db.session.add(api_log)
+        db.session.commit()
+        return jsonify({
+            "error": f"API daily limit of {user.daily_limit} generations reached.",
+        }), 429
+
+    data = request.get_json()
+    input_text = data.get('raw_input', '').strip()
+    language_code = data.get('language_code', 'en-US')
+
+    if not input_text:
+        api_log.status_code = 400
+        api_log.latency_ms = (datetime.utcnow() - start_time).total_seconds() * 1000
+        db.session.add(api_log)
+        db.session.commit()
+        return jsonify({"error": "Missing 'raw_input' field in request body."}), 400
+    
     try:
-        new_limit = int(new_limit_str)
-        if new_limit < 0:
-            raise ValueError("Limit cannot be negative.")
-        user.daily_limit = new_limit
+        inferred_prompt = await generate_reverse_prompt_async(input_text, language_code)
+        
+        user.daily_generation_count += 1
+        db.session.add(user)
         db.session.commit()
-        flash(f"Daily prompt limit for {user.username} has been updated to {new_limit}.", "success")
-    except (ValueError, TypeError) as e:
-        flash(f"Invalid limit value. Please enter a positive integer. Error: {e}", "danger")
 
-    return redirect(url_for('admin_users'))
-
-# NEW: Admin API Performance Route
-@app.route('/admin/api_performance')
-@admin_required
-def admin_api_performance():
-    api_logs = ApiRequestLog.query.order_by(ApiRequestLog.request_timestamp.desc()).limit(100).all()
-    # To get usernames for the logs
-    users = {user.id: user for user in User.query.all()}
-    return render_template('admin_api_performance.html', api_logs=api_logs, users=users, current_user=current_user)
-
-@app.route('/admin/users/generate_api_key/<int:user_id>', methods=['POST'])
-@admin_required
-def generate_api_key(user_id):
-    user = User.query.get_or_404(user_id)
-    new_api_key = str(uuid.uuid4())
-    user.api_key = new_api_key
-    db.session.commit()
-    flash(f"New API key generated for {user.username}.", "success")
-    return redirect(url_for('admin_users'))
-
-
-
-# --- Database Initialization (Run once to create tables) ---
-# This block ensures tables are created when the app starts.
-# In production, you might use Flask-Migrate or a separate script.
-with app.app_context():
-    db.create_all()
-    app.logger.info("Database tables created/checked.")
-
-    # NEW: Create an admin user if one doesn't exist for easy testing
-    if not User.query.filter_by(username='admin').first():
-        admin_user = User(username='admin', is_admin=True, daily_limit=999999)
-        admin_user.set_password('adminpass') # Set a default password for the admin
-        # For admin, set a dummy email or leave None if not required for testing password reset
-        admin_user.email = 'admin@example.com' # Assign a dummy email for admin
-        db.session.add(admin_user)
+        api_log.status_code = 200
+        api_log.raw_input = input_text
+        api_log.latency_ms = (datetime.utcnow() - start_time).total_seconds() * 1000
+        db.session.add(api_log)
         db.session.commit()
-        app.logger.info("Default admin user 'admin' created with password 'adminpass'.")
+
+        return jsonify({"inferred_prompt": inferred_prompt}), 200
+    except Exception as e:
+        api_log.status_code = 500
+        api_log.raw_input = input_text
+        api_log.latency_ms = (datetime.utcnow() - start_time).total_seconds() * 1000
+        db.session.add(api_log)
+        db.session.commit()
+        logging.exception("Error during API reverse prompt generation:")
+        return jsonify({"error": f"An unexpected server error occurred: {e}"}), 500
 
 
 # --- Main App Run ---
 if __name__ == '__main__':
-    # The following line has been removed to allow the async routes to work
-    # in a proper ASGI environment.
-    # If you must use app.run() for quick tests and encounter the 'event loop closed' error,
-    # you can use `nest_asyncio.apply()` (install with `pip install nest-asyncio`), but this is
-    # generally not recommended for production as it can hide underlying architectural issues.
     app.run(debug=True)
