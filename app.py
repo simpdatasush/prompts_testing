@@ -606,7 +606,7 @@ async def generate_reverse_prompt_async(input_text, language_code="en-US", promp
 
     app.logger.info(f"Sending reverse prompt instruction to Gemini (length: {len(prompt_instruction)} chars))")
 
-    reverse_prompt_result = asyncio.run(ask_gemini_for_text_prompt(prompt_instruction, max_output_tokens=512))
+    reverse_prompt_result = asyncio.run(ask_gemini_for_text_prompt(prompt_instruction, max_output_tokens=2048))
 
     return reverse_prompt_result
 
