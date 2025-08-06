@@ -223,6 +223,31 @@ class ApiRequestLog(db.Model):
         return f"ApiRequestLog(user_id={self.user_id}, endpoint='{self.endpoint}', status_code={self.status_code})"
 
 
+# NEW: Message Model for Prompts Circle/Messenger
+class Message(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    content = db.Column(db.Text, nullable=False)
+    timestamp = db.Column(db.DateTime, default=datetime.utcnow)
+    is_approved = db.Column(db.Boolean, default=False) # For admin moderation
+    
+    # Relationship to the User who sent the message
+    sender = db.relationship('User', backref='messages', lazy=True)
+
+    def __repr__(self):
+        return f"Message(ID: {self.id}, Sender: {self.user_id}, Approved: {self.is_approved}, Time: {self.timestamp})"
+
+# NEW: MessengerSetting Model for Admin Controls
+class MessengerSetting(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    allow_posting = db.Column(db.Boolean, default=True)
+    moderation_enabled = db.Column(db.Boolean, default=False)
+    disallowed_keywords = db.Column(db.Text, default="") # Comma-separated keywords
+
+    def __repr__(self):
+        return f"MessengerSettings(Posting: {self.allow_posting}, Moderation: {self.moderation_enabled})"
+
+
 # --- Flask-Login User Loader ---
 @login_manager.user_loader
 def load_user(user_id):
@@ -956,7 +981,7 @@ def check_cooldown():
         "remaining_time": remaining_time,
         "daily_limit_reached": daily_limit_reached,
         "daily_count": daily_count,
-        "user_daily_limit": user_daily_limit,
+        "user_daily_limit": user.daily_limit,
         "is_admin": user.is_admin
     }), 200
 
@@ -1732,6 +1757,17 @@ with app.app_context():
         db.session.commit()
         app.logger.info("Default admin user 'admin' created with password 'adminpass'.")
 
+    # NEW: Initialize Messenger Settings if not present
+    if not MessengerSetting.query.first():
+        default_settings = MessengerSetting(
+            allow_posting=True,
+            moderation_enabled=False,
+            disallowed_keywords=""
+        )
+        db.session.add(default_settings)
+        db.session.commit()
+        app.logger.info("Default Messenger Settings created.")
+
 
 # --- Main App Run ---
 if __name__ == '__main__':
@@ -1741,3 +1777,5 @@ if __name__ == '__main__':
     # you can use `nest_asyncio.apply()` (install with `pip install nest-asyncio`), but this is
     # generally not recommended for production as it can hide underlying architectural issues.
     app.run(debug=True)
+
+
