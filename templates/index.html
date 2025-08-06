@@ -557,12 +557,10 @@
                 <a href="{{ url_for('admin_prompts') }}" class="btn btn-outline-light btn-sm mr-2">Manage Prompts</a>
                 <a href="{{ url_for('admin_users') }}" class="btn btn-outline-light btn-sm mr-2">Manage Users</a>
                 <a href="{{ url_for('admin_api_performance') }}" class="btn btn-outline-light btn-sm mr-2">API Performance</a>
-                <a href="{{ url_for('admin_messenger_settings') }}" class="btn btn-outline-light btn-sm mr-2">Messenger Settings</a>
                 <span class="navbar-text mr-2">Logged in as: <strong>{{ current_user.username }}</strong></span>
                 <a href="{{ url_for('logout') }}" class="btn btn-outline-light btn-sm">Logout</a>
             {% elif current_user.is_authenticated %}
                 <a href="{{ url_for('llm_benchmark') }}" class="btn btn-outline-light btn-sm mr-2">LLM Benchmarks</a>
-                <a href="{{ url_for('prompts_circle') }}" class="btn btn-outline-light btn-sm mr-2">Prompts Circle</a>
                 <a href="https://buymeacoffee.com/simpaisush" target="_blank" class="subscribe-btn mr-2">Subscribe</a>
                 <span class="navbar-text mr-2">Welcome, <strong class="username">{{ current_user.username }}</strong>!</span>
                 <a href="{{ url_for('logout') }}" class="btn btn-outline-light btn-sm">Logout</a>
@@ -1685,7 +1683,7 @@
            } else {
                appOutput.textContent = `Error: Unknown LLM key: ${llmKey}`;
                appOutput.className = 'mt-4 danger';
-               console.error(`Unknown LLM key: ${llmKey}`);
+               console.error(`Unknown LLM key: ${ll-key}`);
            }
        }
 
@@ -1743,5 +1741,3 @@
    </script>
 </body>
 </html>
-
-
