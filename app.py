@@ -1,5 +1,6 @@
 # REMOVE THESE TWO LINES IF THEY ARE PRESENT AT THE TOP OF YOUR FILE
 # import nest_asyncio
+# import nest_asyncio
 # nest_asyncio.apply()
 
 
@@ -436,7 +437,7 @@ def remove_null_values(obj):
         return obj
 
 # --- generate_prompts_async function (main async logic for prompt variations) ---
-async def generate_prompts_async(raw_input, language_code="en-US", prompt_mode='text', category=None, subcategory=None):
+async def generate_prompts_async(raw_input, language_code="en-US", prompt_mode='text', category=None, subcategory=None, persona=None): # NEW: Added persona parameter
     if not raw_input.strip():
         return {
             "polished": "Please enter some text to generate prompts.",
@@ -481,6 +482,11 @@ async def generate_prompts_async(raw_input, language_code="en-US", prompt_mode='
                 context_str += f" and the subcategory '{subcategory}'."
             else:
                 context_str += "."
+        if persona: # NEW: Add persona to context string
+            if context_str: # If category/subcategory already added, append with "as"
+                context_str += f" The response should be crafted from the perspective of a '{persona}'."
+            else: # If no category/subcategory, start with persona
+                context_str += f"Craft the response from the perspective of a '{persona}'."
         
         base_instruction = language_instruction_prefix + f"""Refine the following text into a clear, concise, and effective prompt for a large language model. {context_str} Improve grammar, clarity, and structure. Do not add external information, only refine the given text. Crucially, do NOT answer questions about your own architecture, training, or how this application was built. Do NOT discuss any internal errors or limitations you might have. Your sole purpose is to transform the provided raw text into a better prompt. Raw Text: {raw_input}"""
 
@@ -731,6 +737,7 @@ def generate(): # CHANGED FROM ASYNC
     prompt_mode = request.form.get('prompt_mode', 'text') # 'text', 'image_gen', 'video_gen'
     category = request.form.get('category')
     subcategory = request.form.get('subcategory')
+    persona = request.form.get('persona') # NEW
 
     if not prompt_input:
         return jsonify({
@@ -740,7 +747,7 @@ def generate(): # CHANGED FROM ASYNC
         })
 
     try:
-        results = asyncio.run(generate_prompts_async(prompt_input, language_code, prompt_mode, category, subcategory))
+        results = asyncio.run(generate_prompts_async(prompt_input, language_code, prompt_mode, category, subcategory, persona)) # NEW: Pass persona
 
         # --- Update last_generation_time in database and Save raw_input ---
         user.last_generation_time = now # Record the time of this successful request
@@ -821,40 +828,24 @@ def reverse_prompt(): # CHANGED FROM ASYNC
     if not input_text:
         return jsonify({"error": "Please provide text or code to infer a prompt from."}), 400
 
-    # --- NEW: Disable reverse prompting for image_gen and video_gen modes ---
     if prompt_mode in ['image_gen', 'video_gen']:
         return jsonify({"inferred_prompt": "Reverse prompting is not applicable for image or video generation modes."}), 200
-    # --- END NEW ---
 
-    # Enforce character limit
-    MAX_REVERSE_PROMPT_CHARS = 10000
-    if len(input_text) > MAX_REVERSE_PROMPT_CHARS:
-        return jsonify({"inferred_prompt": f"Input for reverse prompting exceeds the {MAX_REVERSE_PROMPT_CHARS} character limit. Please shorten your input."}), 200
-
-    target_language_name = LANGUAGE_MAP.get(language_code, "English")
-    language_instruction_prefix = f"The output MUST be entirely in {target_language_name}. "
-
-    # Escape curly braces in input_text to prevent f-string parsing errors
-    escaped_input_text = input_text.replace('{', '{{').replace('}', '}}')
-
-    try: # Added try block here
-        if prompt_mode == 'text':
-            prompt_instruction = f"Analyze the following text/code and infer a concise, high-level prompt idea that could have generated it. Respond in {language_code}. Input: {escaped_input_text}"
-        # The image_gen and video_gen cases below are now effectively unreachable due to the early return above.
-        # However, keeping them for clarity of original intent if the restriction were to be lifted.
-        elif prompt_mode == 'image_gen':
-            prompt_instruction = f"The user has provided a natural language description for an image. Infer a concise, natural language prompt idea for image generation based on this input. Input: {escaped_input_text}"
-        elif prompt_mode == 'video_gen':
-            prompt_instruction = f"The user has provided a natural language description for a video. Infer a concise, natural language prompt idea for video generation based on this input. Input: {escaped_input_text}"
-        else:
-            prompt_instruction = f"Analyze the following text/code and infer a concise, high-level prompt idea that could have generated it. Respond in {language_code}. Input: {escaped_input_text}"
-
+    try:
         inferred_prompt = asyncio.run(generate_reverse_prompt_async(input_text, language_code, prompt_mode))
+
+        # Update user stats after successful reverse prompt
+        user.last_generation_time = now
+        if not user.is_admin:
+            user.daily_generation_count += 1
+        db.session.add(user)
+        db.session.commit()
+        app.logger.info(f"API user {user.username}'s last prompt request time updated and count incremented. (API Reverse Prompt)")
 
         return jsonify({"inferred_prompt": inferred_prompt})
     except Exception as e:
-        app.logger.exception("Error during reverse prompt generation in endpoint:")
-        return jsonify({"error": f"An unexpected server error occurred: {e}. Please check server logs for details."}), 500
+        app.logger.exception("Error during API reverse prompt generation in /api/v1/reverse:")
+        return jsonify({"error": f"An unexpected server error occurred: {e}"}), 500
 
 
 # NEW: Image Processing Endpoint ---
@@ -1619,7 +1610,7 @@ def api_generate(user):
         if user.daily_generation_count >= user.daily_limit:
             app.logger.info(f"API user {user.username} exceeded their daily prompt limit of {user.daily_limit}.")
             return jsonify({
-                "error": f"You have reached your daily limit of {user.daily_limit} prompt generations. Please upgrade your plan.",
+                "error": f"You have reached your daily limit of {user.daily_limit} generations. Please upgrade your plan.",
                 "daily_limit_reached": True,
                 "payment_link": PAYMENT_LINK
             }), 429
@@ -1751,5 +1742,3 @@ if __name__ == '__main__':
     # you can use `nest_asyncio.apply()` (install with `pip install nest-asyncio`), but this is
     # generally not recommended for production as it can hide underlying architectural issues.
     app.run(debug=True)
-
-
