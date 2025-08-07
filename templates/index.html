@@ -594,7 +594,23 @@
                 <option value="video_gen">Video Creation</option>
             </select>
         </div>
-        <!-- END NEW: Prompt Mode Selector -->
+
+        <!-- NEW: Category Selector -->
+        <div id="text-category-selectors" class="row mt-3" style="display: none;">
+            <div class="col-md-6 mb-3">
+                <label for="category_select" class="form-label">Category:</label>
+                <select id="category_select" class="form-control">
+                    <option value="">Select a category</option>
+                </select>
+            </div>
+            <div class="col-md-6 mb-3">
+                <label for="subcategory_select" class="form-label">Subcategory:</label>
+                <select id="subcategory_select" class="form-control" disabled>
+                    <option value="">Select a subcategory</option>
+                </select>
+            </div>
+        </div>
+        <!-- END NEW: Category Selector -->
 
         <div class="prompt-input-section card">
             <div class="card-body">
@@ -850,7 +866,7 @@
                "api_key_not_configured": "La clave API de Gemini no está configurada o el modelo de IA no se pudo inicializar.",
                "image_processing": "🖼️ Procesando imagen y extrayendo texto...",
                "image_success":  "✅ Texto extraído de la imagen. Haga clic en \"Générer les invites\" para afiner." ,
-               "image_error":  "❌ Error de procesamiento de imagen:" ,
+               "image_error":  "❌ Error de procesamiento de imagen :" ,
                "no_image_selected":  "❗ Por favor, seleccione un archivo de imagen primero." ,
                "copy_success":  "✅ Indicación copiada al portapapeles." ,
                "copy_fail":  "❌ Échec de la copia de la invite en el portapapeles."
@@ -987,6 +1003,105 @@
                console.error("Error fetching raw prompts:", error);
                pastRawRequestsListElement.innerHTML = '<li class="list-group-item">Error loading past raw requests.</li>';
            }
+       }
+
+
+       const promptModeSelect = document.getElementById('prompt_mode_select');
+       const categorySelect = document.getElementById('category_select');
+       const subcategorySelect = document.getElementById('subcategory_select');
+       const textCategorySelectors = document.getElementById('text-category-selectors');
+
+
+       const PROMPT_CATEGORIES = {
+           "General Writing & Editing": ["Grammar correction", "Rephrasing", "Summarization", "Paraphrasing", "Other"],
+           "Programming & Code": ["Code generation", "Debugging", "Explanation", "Optimization", "Other"],
+           "Business & Finance": ["Business plans", "Financial analysis", "Emails", "Market research", "Other"],
+           "Education & Learning": ["Concept explanations", "Lesson plans", "Study aids", "Quiz generation", "Other"],
+           "Technical Writing & Explanation": ["API docs", "System descriptions", "Technical proposals", "Other"],
+           "Customer Support": ["Auto-replies", "Ticket handling", "FAQ generation", "User guides", "Other"],
+           "Research & Information Retrieval": ["Literature review", "Data extraction", "Comparisons", "Citations", "Other"],
+           "Data Analysis & Interpretation": ["Analyzing datasets", "Summarizing insights", "Chart explanations", "Other"],
+           "Productivity & Planning": ["Task lists", "Planners", "Time management strategies", "Workflows", "Other"],
+           "Creative Writing": ["Stories", "Poems", "Lyrics", "Fictional characters", "Worldbuilding", "Other"],
+           "Marketing & Advertising": ["Ad copy", "Slogans", "Social media posts", "SEO content", "Other"],
+           "Multilingual & Translation": ["Translation", "Localization", "Multilingual prompts", "Other"],
+           "Entertainment & Media": ["Movie/book/game recommendations", "Trivia", "Storytelling", "Other"],
+           "Career & Resume": ["Resume writing", "Cover letters", "Interview prep", "Other"],
+           "Legal & Compliance": ["Contracts", "Disclaimers", "Legal summaries (non-advisory)", "Other"],
+           "Healthcare & Wellness": ["Non-diagnostic advice", "Fitness plans", "Mental health prompts", "Other"],
+           "Image Generation & Visual Design": ["Prompts for image tools", "Scene descriptions", "Visual styles", "Other"],
+           "Event Planning": ["Agendas", "Checklists", "Invitations", "Budget planning", "Other"],
+           "UX/UI & Product Design": ["UX copy", "Persona generation", "Wireframe ideas", "Other"],
+           "Spirituality & Self-Reflection": ["Meditation scripts", "Affirmations", "Philosophical prompts", "Other"],
+           "Gaming": ["Game plots", "Character bios", "Level design", "Fan theories", "Other"],
+           "Voice, Audio & Podcasting": ["Scriptwriting", "Transcription", "Voiceover prompts", "Other"],
+           "AI & Prompt Engineering": ["LLM tuning", "Meta-prompts", "Dataset generation", "Evaluations", "Other"],
+           "News & Current Affairs": ["Summaries", "Debate simulations", "Editorial writing", "Other"],
+           "Travel & Culture": ["Itineraries", "Local tips", "Cultural do’s and don’ts", "Other"],
+           "Other": ["General", "Custom", "Uncategorized"],
+       };
+
+
+       function populateCategories() {
+           categorySelect.innerHTML = '<option value="">Select a category</option>';
+           for (const category in PROMPT_CATEGORIES) {
+               const option = document.createElement('option');
+               option.value = category;
+               option.textContent = category;
+               categorySelect.appendChild(option);
+           }
+           subcategorySelect.innerHTML = '<option value="">Select a subcategory</option>';
+           subcategorySelect.disabled = true;
+       }
+
+       function populateSubcategories() {
+           const selectedCategory = categorySelect.value;
+           subcategorySelect.innerHTML = '<option value="">Select a subcategory</option>';
+           subcategorySelect.disabled = true;
+
+           if (selectedCategory && PROMPT_CATEGORIES[selectedCategory]) {
+               PROMPT_CATEGORIES[selectedCategory].forEach(sub => {
+                   const option = document.createElement('option');
+                   option.value = sub;
+                   option.textContent = sub;
+                   subcategorySelect.appendChild(option);
+               });
+               subcategorySelect.disabled = false;
+           }
+       }
+
+       function handlePromptModeChange() {
+           const selectedMode = promptModeSelect.value;
+           
+           // Show/hide category selectors based on mode
+           if (selectedMode === 'text') {
+               textCategorySelectors.style.display = 'flex'; // Use flex for layout
+               populateCategories(); // Populate the category dropdown
+           } else {
+               textCategorySelectors.style.display = 'none';
+               // Clear and reset category/subcategory dropdowns when not in text mode
+               categorySelect.innerHTML = '<option value="">Select a category</option>';
+               subcategorySelect.innerHTML = '<option value="">Select a subcategory</option>';
+               subcategorySelect.disabled = true;
+           }
+
+           // Existing logic for voice/image buttons
+           if (selectedMode === 'text') {
+               voiceInputButton.disabled = false;
+               triggerImageInputButton.disabled = false;
+               processImageButton.disabled = (imageInput.files.length === 0);
+           } else {
+               voiceInputButton.disabled = true;
+               triggerImageInputButton.disabled = true;
+               processImageButton.disabled = true;
+               imageInputSection.style.display = 'none';
+               imagePreview.src = '#';
+               imageInput.value = '';
+               if (isRecording) {
+                   recognition.stop();
+               }
+           }
+           setLLMWebsiteButtonsDisabled(false, selectedMode);
        }
 
 
@@ -1170,6 +1285,8 @@
            const promptInput = document.getElementById('prompt_input').value.trim(); // Trim whitespace
            const selectedLanguage = document.getElementById('lang_select').value;
            const promptMode = document.getElementById('prompt_mode_select').value; // Get current prompt mode
+           const selectedCategory = document.getElementById('category_select').value;
+           const selectedSubcategory = document.getElementById('subcategory_select').value;
            
            // Clear previous outputs and token counts
            document.getElementById('polished_output').textContent = '';
@@ -1210,6 +1327,8 @@
                formData.append('language_code', selectedLanguage);
                formData.append('is_json_mode', 'false'); // Always send false
                formData.append('prompt_mode', promptMode); // Send prompt mode
+               formData.append('category', selectedCategory);
+               formData.append('subcategory', selectedSubcategory);
 
 
                const response = await fetch('/generate', {
@@ -1706,35 +1825,8 @@
        // --- END Full Context View Modal Functions ---
 
        // NEW: Prompt Mode Selector Logic
-       const promptModeSelect = document.getElementById('prompt_mode_select');
-
-       function handlePromptModeChange() {
-           const selectedMode = promptModeSelect.value;
-           
-           // Disable/enable voice and image input buttons based on mode
-           if (selectedMode === 'text') {
-               voiceInputButton.disabled = false;
-               triggerImageInputButton.disabled = false;
-               // Only enable processImageButton if an image is already selected
-               processImageButton.disabled = (imageInput.files.length === 0); 
-           } else {
-               voiceInputButton.disabled = true;
-               triggerImageInputButton.disabled = true;
-               processImageButton.disabled = true;
-               imageInputSection.style.display = 'none'; // Hide image input section
-               imagePreview.src = '#'; // Clear image preview
-               imageInput.value = ''; // Clear file input
-               // If voice recording is active, stop it
-               if (isRecording) {
-                   recognition.stop();
-               }
-           }
-           // Update LLM buttons based on the new mode
-           setLLMWebsiteButtonsDisabled(false, selectedMode); // Re-evaluate LLM button states
-       }
-
-       // Add event listener for the new prompt mode select
        promptModeSelect.addEventListener('change', handlePromptModeChange);
+       categorySelect.addEventListener('change', populateSubcategories);
 
        // Initial call to set button states correctly on page load
        document.addEventListener('DOMContentLoaded', handlePromptModeChange);
