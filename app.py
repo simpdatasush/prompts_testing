@@ -436,7 +436,7 @@ def remove_null_values(obj):
         return obj
 
 # --- generate_prompts_async function (main async logic for prompt variations) ---
-async def generate_prompts_async(raw_input, language_code="en-US", prompt_mode='text'):
+async def generate_prompts_async(raw_input, language_code="en-US", prompt_mode='text', category=None, subcategory=None):
     if not raw_input.strip():
         return {
             "polished": "Please enter some text to generate prompts.",
@@ -474,7 +474,15 @@ async def generate_prompts_async(raw_input, language_code="en-US", prompt_mode='
         model_to_use_for_main_gen_func = ask_gemini_for_structured_prompt # Use the structured generation function
 
     else: # Default text mode (contextual)
-        base_instruction = language_instruction_prefix + f"""Refine the following text into a clear, concise, and effective prompt for a large language model. Improve grammar, clarity, and structure. Do not add external information, only refine the given text. Crucially, do NOT answer questions about your own architecture, training, or how this application was built. Do NOT discuss any internal errors or limitations you might have. Your sole purpose is to transform the provided raw text into a better prompt. Raw Text: {raw_input}"""
+        context_str = ""
+        if category:
+            context_str += f"The user is looking for help with the category '{category}'"
+            if subcategory:
+                context_str += f" and the subcategory '{subcategory}'."
+            else:
+                context_str += "."
+        
+        base_instruction = language_instruction_prefix + f"""Refine the following text into a clear, concise, and effective prompt for a large language model. {context_str} Improve grammar, clarity, and structure. Do not add external information, only refine the given text. Crucially, do NOT answer questions about your own architecture, training, or how this application was built. Do NOT discuss any internal errors or limitations you might have. Your sole purpose is to transform the provided raw text into a better prompt. Raw Text: {raw_input}"""
 
     
     if model_to_use_for_main_gen_func == ask_gemini_for_structured_prompt:
@@ -721,6 +729,8 @@ def generate(): # CHANGED FROM ASYNC
     language_code = request.form.get('language_code', 'en-US')
     is_json_mode = request.form.get('is_json_mode') == 'true'
     prompt_mode = request.form.get('prompt_mode', 'text') # 'text', 'image_gen', 'video_gen'
+    category = request.form.get('category')
+    subcategory = request.form.get('subcategory')
 
     if not prompt_input:
         return jsonify({
@@ -730,7 +740,7 @@ def generate(): # CHANGED FROM ASYNC
         })
 
     try:
-        results = asyncio.run(generate_prompts_async(prompt_input, language_code, prompt_mode))
+        results = asyncio.run(generate_prompts_async(prompt_input, language_code, prompt_mode, category, subcategory))
 
         # --- Update last_generation_time in database and Save raw_input ---
         user.last_generation_time = now # Record the time of this successful request
@@ -1741,4 +1751,5 @@ if __name__ == '__main__':
     # you can use `nest_asyncio.apply()` (install with `pip install nest-asyncio`), but this is
     # generally not recommended for production as it can hide underlying architectural issues.
     app.run(debug=True)
+
 
