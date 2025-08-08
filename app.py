@@ -375,7 +375,7 @@ def ask_gemini_for_text_prompt(prompt_instruction, max_output_tokens=512):
 
 # --- Gemini API interaction function (Synchronous wrapper for structured_gen_model) ---
 # This function will now rely on prompt engineering for JSON output, not responseMimeType
-def ask_gemini_for_structured_prompt(prompt_instruction, generation_config=None, max_output_tokens=512):
+def ask_gemini_for_structured_prompt(prompt_instruction, generation_config=None, max_output_tokens=2048):
     try:
         # We explicitly set response_mime_type to 'application/json' for structured output
         # This is the most reliable way to get JSON from Gemini
@@ -663,8 +663,8 @@ async def generate_prompts_async(raw_input, language_code="en-US", prompt_mode='
             formatted_json = json.dumps(cleaned_json_obj, indent=2)
             
             creative_output = formatted_json # Image JSON goes into creative output
-            polished_output = ""
-            technical_output = ""
+            polished_output = "For better visualisation we support JSON prompting." # Message for polished
+            technical_output = "For better visualisation we support JSON prompting." # Message for technical
 
         except json.JSONDecodeError:
             logging.error(f"Failed to decode JSON for image mode: {json_string_to_parse}")
@@ -712,8 +712,8 @@ async def generate_prompts_async(raw_input, language_code="en-US", prompt_mode='
             formatted_json = json.dumps(cleaned_json_obj, indent=2)
 
             creative_output = formatted_json # Video JSON goes into creative output
-            polished_output = ""
-            technical_output = ""
+            polished_output = "For better visualisation we support JSON prompting." # Message for polished
+            technical_output = "For better visualisation we support JSON prompting." # Message for technical
 
         except json.JSONDecodeError:
             logging.error(f"Failed to decode JSON for video mode: {json_string_to_parse}")
@@ -2012,11 +2012,9 @@ with app.app_context():
 
 # --- Main App Run ---
 if __name__ == '__main__':
-    # The following line has been removed to allow the async routes to work
+    # The following line has the following line has been removed to allow the async routes to work
     # in a proper ASGI environment.
     # If you must use app.run() for quick tests and encounter the 'event loop closed' error,
     # you can use `nest_asyncio.apply()` (install with `pip install nest-asyncio`), but this is
     # generally not recommended for production as it can hide underlying architectural issues.
     app.run(debug=True)
-
-
