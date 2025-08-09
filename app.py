@@ -401,7 +401,7 @@ def ask_gemini_for_structured_prompt(prompt_instruction, generation_config=None,
 
 
 # --- NEW: Gemini API for Image Understanding (Synchronous wrapper for vision_model) ---
-def ask_gemini_for_image_ocr(image_data_bytes): # Renamed for clarity
+def ask_gemini_for_image_text(image_data_bytes):
     try:
         # Prepare the image for the Gemini API
         image_part = {
@@ -424,30 +424,6 @@ def ask_gemini_for_image_ocr(image_data_bytes): # Renamed for clarity
     except Exception as e:
         app.logger.error(f"Unexpected Error calling Gemini API for image text extraction: {e}", exc_info=True)
         return filter_gemini_response(f"An unexpected error occurred during image text extraction: {str(e)}")
-
-# NEW: Function for general image description
-def ask_gemini_for_image_description(image_data_bytes):
-    try:
-        image_part = {
-            "mime_type": "image/jpeg",
-            "data": image_data_bytes
-        }
-
-        prompt_parts = [
-            image_part,
-            "Describe this image in detail, focusing on its main subjects, setting, style, mood, and any notable elements. Generate a concise natural language description that could be used as a prompt for an image generation AI. Do not include any conversational filler."
-        ]
-
-        response = vision_model.generate_content(prompt_parts)
-        description_text = response.text if response and response.text else ""
-        return filter_gemini_response(description_text).strip()
-    except google_api_exceptions.GoogleAPICallError as e:
-        app.logger.error(f"Error calling Gemini API for image description: {e}", exc_info=True)
-        return filter_gemini_response(f"Error interpreting image: {str(e)}")
-    except Exception as e:
-        app.logger.error(f"Unexpected Error calling Gemini API for image description: {e}", exc_info=True)
-        return filter_gemini_response(f"An unexpected error occurred during image interpretation: {str(e)}")
-
 
 # Helper function to remove nulls recursively
 def remove_null_values(obj):
@@ -687,8 +663,8 @@ async def generate_prompts_async(raw_input, language_code="en-US", prompt_mode='
             formatted_json = json.dumps(cleaned_json_obj, indent=2)
             
             creative_output = formatted_json # Image JSON goes into creative output
-            polished_output = "For better visualisation we support JSON prompting." # Message for polished
-            technical_output = "For better visualisation we support JSON prompting." # Message for technical
+            polished_output = ""
+            technical_output = ""
 
         except json.JSONDecodeError:
             logging.error(f"Failed to decode JSON for image mode: {json_string_to_parse}")
@@ -736,8 +712,8 @@ async def generate_prompts_async(raw_input, language_code="en-US", prompt_mode='
             formatted_json = json.dumps(cleaned_json_obj, indent=2)
 
             creative_output = formatted_json # Video JSON goes into creative output
-            polished_output = "For better visualisation we support JSON prompting." # Message for polished
-            technical_output = "For better visualisation we support JSON prompting." # Message for technical
+            polished_output = ""
+            technical_output = ""
 
         except json.JSONDecodeError:
             logging.error(f"Failed to decode JSON for video mode: {json_string_to_parse}")
@@ -1118,7 +1094,7 @@ def process_image_prompt(): # CHANGED FROM ASYNC
 
     data = request.get_json()
     image_data_b64 = data.get('image_data')
-    image_analysis_type = data.get('image_analysis_type', 'extract_text') # NEW: Get analysis type
+    language_code = data.get('language_code', 'en-US') # Not directly used by Gemini Vision, but good to pass
 
 
     if not image_data_b64:
@@ -1127,13 +1103,8 @@ def process_image_prompt(): # CHANGED FROM ASYNC
     try:
         image_data_bytes = base64.b64decode(image_data_b64) # Decode base64 string to bytes
         
-        # NEW: Call the appropriate Gemini API function based on image_analysis_type
-        if image_analysis_type == 'extract_text':
-            recognized_text = asyncio.run(ask_gemini_for_image_ocr(image_data_bytes))
-        elif image_analysis_type == 'interpret_image':
-            recognized_text = asyncio.run(ask_gemini_for_image_description(image_data_bytes))
-        else:
-            recognized_text = "Error: Invalid image analysis type."
+        # Call the Gemini API for image understanding
+        recognized_text = asyncio.run(ask_gemini_for_image_text(image_data_bytes))
 
         # Update last_generation_time after successful image processing
         user.last_generation_time = now
@@ -1850,7 +1821,7 @@ def api_generate(user):
                 app.logger.info(f"API user {user.username} exceeded their daily prompt limit of {user.daily_limit}.")
                 status_code = 429
                 response_data = {
-                    "error": f"You have reached your daily limit of {user.daily_limit} generations. Please upgrade your plan.",
+                    "error": f"You have reached your daily limit of {user.daily_limit} prompt generations. Please upgrade your plan.",
                     "daily_limit_reached": True,
                     "payment_link": PAYMENT_LINK
                 }
@@ -1871,7 +1842,7 @@ def api_generate(user):
             }
             return jsonify(response_data), status_code
 
-        results = asyncio.run(generate_prompts_async(prompt_input, language_code, prompt_mode, category, subcategory, persona))
+        results = asyncio.run(generate_prompts_async(raw_input=prompt_input, language_code=language_code, prompt_mode=prompt_mode, category=category, subcategory=subcategory, persona=persona))
 
         # --- Update user stats and save raw_input ---
         user.last_generation_time = now
@@ -2041,7 +2012,7 @@ with app.app_context():
 
 # --- Main App Run ---
 if __name__ == '__main__':
-    # The following line has the following line has been removed to allow the async routes to work
+    # The following line has been removed to allow the async routes to work
     # in a proper ASGI environment.
     # If you must use app.run() for quick tests and encounter the 'event loop closed' error,
     # you can use `nest_asyncio.apply()` (install with `pip install nest-asyncio`), but this is
