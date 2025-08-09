@@ -585,57 +585,30 @@
             {% endif %}
         {% endwith %}
 
-        <!-- NEW: Prompt Mode Selector -->
-        <div class="prompt-mode-selector">
-            <label for="prompt_mode_select">Prompt Mode:</label>
-            <select id="prompt_mode_select" class="form-control">
-                <option value="text">Text Prompting</option>
-                <option value="image_gen">Image Creation</option>
-                <option value="video_gen">Video Creation</option>
-            </select>
-        </div>
-
-        <!-- NEW: Category, Subcategory, and Persona Selectors -->
-        <div id="text-category-selectors" class="row mt-3" style="display: none;">
-            <div class="col-md-6 mb-3">
-                <label for="category_select" class="form-label">Category:</label>
-                <select id="category_select" class="form-control">
-                    <option value="">Select a category</option>
-                </select>
+        <!-- NEW: Settings Section -->
+        <div class="card mb-4">
+            <div class="card-header d-flex align-items-center justify-content-between">
+                <div class="d-flex align-items-center">
+                    <i class="fas fa-cog mr-2"></i> <!-- Settings icon -->
+                    <h5 class="mb-0">Settings</h5>
+                </div>
+                <button class="btn btn-sm btn-outline-secondary" type="button" data-toggle="collapse" data-target="#settingsCollapse" aria-expanded="true" aria-controls="settingsCollapse" id="settingsToggleBtn">
+                    Hide
+                </button>
             </div>
-            <div class="col-md-6 mb-3">
-                <label for="subcategory_select" class="form-label">Subcategory:</label>
-                <select id="subcategory_select" class="form-control" disabled>
-                    <option value="">Select a subcategory</option>
-                </select>
-            </div>
-            <div id="text-persona-selector" class="col-md-6 mb-3">
-                <label for="persona_select" class="form-label">Persona:</label>
-                <select id="persona_select" class="form-control" disabled>
-                    <option value="">Select a persona</option>
-                </select>
-            </div>
-            <!-- IMPORTANT NOTE -->
-            <div class="col-12 mt-2">
-                <p class="text-muted" style="font-size: 0.9rem;">
-                    <strong>Important Note:</strong> The personas will be tied to the main category selected. Use the Category filter and either the Subcategory or Persona filter.
-                </p>
-            </div>
-            <!-- END IMPORTANT NOTE -->
-        </div>
-        <!-- END NEW: Category, Subcategory, and Persona Selectors -->
-
-        <div class="prompt-input-section card">
-            <div class="card-body">
-                <form id="promptForm">
-                    <div class="d-flex justify-content-between align-items-center mb-3">
-                        <label for="prompt_input" class="form-label mb-0">Enter your raw prompt idea (or paste text/code for reverse prompting):</label>
-                    </div>
-                    <textarea id="prompt_input" name="prompt_input" class="form-control" rows="8" placeholder="e.g., Write a story about a robot who wants to be a chef."></textarea>
-                  
-                    <div class="d-flex justify-content-between align-items-center mt-3 flex-wrap">
-                        <div class="input-controls">
-                            <label for="lang_select" class="sr-only">Voice Input & Output Language:</label>
+            <div class="collapse show" id="settingsCollapse"> <!-- Added 'show' class to be initially open -->
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="prompt_mode_select">Prompt Mode:</label>
+                            <select id="prompt_mode_select" class="form-control">
+                                <option value="text">Text Prompting</option>
+                                <option value="image_gen">Image Creation</option>
+                                <option value="video_gen">Video Creation</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="lang_select">Voice Input & Output Language:</label>
                             <select id="lang_select" class="form-control">
                                 <option value="en-US">English (US)</option>
                                 <option value="en-GB">English (UK)</option>
@@ -649,9 +622,66 @@
                                 <option value="hi-IN"> हिन्दी (भारत) </option>
                                 <!-- Add more languages as needed -->
                             </select>
-                            <button type="button" id="voice_input_button" class="btn btn-outline-secondary mt-2 mt-md-0">🎤 Start Voice Input</button>
+                        </div>
+                    </div>
+
+                    <!-- Category, Subcategory, and Persona Selectors (initially hidden for non-text modes) -->
+                    <div id="text-category-selectors" class="row mt-3">
+                        <div class="col-md-6 mb-3">
+                            <label for="category_select" class="form-label">Category:</label>
+                            <select id="category_select" class="form-control">
+                                <option value="">Select a category</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="subcategory_select" class="form-label">Subcategory:</label>
+                            <select id="subcategory_select" class="form-control" disabled>
+                                <option value="">Select a subcategory</option>
+                            </select>
+                        </div>
+                        <div id="text-persona-selector" class="col-md-6 mb-3">
+                            <label for="persona_select" class="form-label">Persona:</label>
+                            <select id="persona_select" class="form-control" disabled>
+                                <option value="">Select a persona</option>
+                            </select>
+                        </div>
+                        <div class="col-12 mt-2">
+                            <p class="text-muted" style="font-size: 0.9rem;">
+                                <strong>Important Note:</strong> The personas will be tied to the main category selected. Use the Category filter and either the Subcategory or Persona filter.
+                            </p>
+                        </div>
+                    </div>
+
+                    <!-- Image Analysis Type Selector (initially hidden for text mode) -->
+                    <div id="image-analysis-type-selector-container" class="row mt-3" style="display: none;">
+                        <div class="col-md-12 mb-3">
+                            <label for="image_analysis_type_select" class="form-label">Input Method for Image/Video Prompts:</label>
+                            <select id="image_analysis_type_select" class="form-control">
+                                <option value="voice_input">🎤 Voice Input</option>
+                                <option value="extract_text">📝 Upload Image (Extract Text)</option>
+                                <option value="interpret_image">🖼️ Upload Image (Interpret General Content)</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <!-- END NEW: Settings Section -->
+
+        <div class="prompt-input-section card">
+            <div class="card-body">
+                <form id="promptForm">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <label for="prompt_input" class="form-label mb-0">Enter your raw prompt idea (or paste text/code for reverse prompting):</label>
+                    </div>
+                    <textarea id="prompt_input" name="prompt_input" class="form-control" rows="8" placeholder="e.g., Write a story about a robot who wants to be a chef."></textarea>
+                  
+                    <div class="d-flex justify-content-between align-items-center mt-3 flex-wrap">
+                        <div class="input-controls">
+                            <!-- These buttons are now controlled by JavaScript based on settings -->
+                            <button type="button" id="voice_input_button" class="btn btn-outline-secondary mt-2 mt-md-0" style="display: none;">🎤 Start Voice Input</button>
                             <input type="file" id="image_input" accept="image/*" class="d-none">
-                            <button type="button" id="trigger_image_input" class="btn btn-outline-secondary mt-2 mt-md-0">📸 Upload Image</button>
+                            <button type="button" id="trigger_image_input" class="btn btn-outline-secondary mt-2 mt-md-0" style="display: none;">📸 Upload Image</button>
                         </div>
                         <div class="d-flex flex-column flex-md-row gap-2 mt-3 mt-md-0">
                             <button type="submit" id="generate_prompts_btn" class="btn btn-primary mb-2 mb-md-0 mr-2">Generate Prompts</button>
@@ -717,7 +747,8 @@
                         <h5>Technical Variant</h5>
                         <span id="technical_token_count" class="token-count">0 chars</span>
                         <div>
-                            <button class="btn btn-sm btn-outline-secondary mr-1" onclick="copyPromptText('technical_output')"><i class="fas fa-expand-alt"></i> View Full</button>
+                            <button class="btn btn-sm btn-outline-secondary mr-1" onclick="copyPromptText('technical_output')"><i class="fas fa-copy"></i> Copy</button>
+                            <button class="btn btn-sm btn-outline-info" onclick="openFullContextView('Technical Variant', 'technical_output')"><i class="fas fa-expand-alt"></i> View Full</button>
                         </div>
                     </div>
                     <div class="card-body">
@@ -880,7 +911,7 @@
                "image_processing": "🖼️ Procesando imagen y extrayendo texto...",
                "image_success":  "✅ Texto extraído de la imagen. Haga clic en \"Générer les invites\" para afiner." ,
                "image_error":  "❌ Error de procesamiento de imagen :" ,
-               "no_image_selected":  "❗ Por favor, seleccione un archivo de imagen primero." ,
+               "no_image_selected":  "❗ Veuillez seleccionar un archivo de imagen en primer lugar." ,
                "copy_success":  "✅ Indicación copiada al portapapeles." ,
                "copy_fail":  "❌ Échec de la copia de la invite en el portapapeles."
            },
@@ -1022,8 +1053,11 @@
        const promptModeSelect = document.getElementById('prompt_mode_select');
        const categorySelect = document.getElementById('category_select');
        const subcategorySelect = document.getElementById('subcategory_select');
-       const personaSelect = document.getElementById('persona_select'); // NEW
+       const personaSelect = document.getElementById('persona_select');
        const textCategorySelectors = document.getElementById('text-category-selectors');
+
+       const imageAnalysisTypeSelect = document.getElementById('image_analysis_type_select');
+       const imageAnalysisTypeSelectorContainer = document.getElementById('image-analysis-type-selector-container');
 
 
        const CATEGORIES_AND_SUBCATEGORIES = {
@@ -1040,14 +1074,14 @@
            "Marketing & Advertising": ["Ad copy", "Slogans", "Social media posts", "SEO content", "Other"],
            "Multilingual & Translation": ["Translation", "Localization", "Multilingual prompts", "Other"],
            "Entertainment & Media": ["Movie/book/game recommendations", "Trivia", "Storytelling", "Other"],
-           "Career & Resume": ["Resume writing", "Cover letters", "Interview prep", "Other"],
-           "Legal & Compliance": ["Contracts", "Disclaimers", "Legal summaries (non-advisory)", "Other"],
-           "Healthcare & Wellness": ["Non-diagnostic advice", "Fitness plans", "Mental health prompts", "Other"],
-           "Image Generation & Visual Design": ["Prompts for image tools", "Scene descriptions", "Visual styles", "Other"],
+           "Career & Resume": ["Job Seeker", "Career Coach", "HR Recruiter", "Hiring Manager", "Resume Writer", "Other"],
+           "Legal & Compliance": ["Lawyer", "Paralegal", "Compliance Officer", "Policy Advisor", "Contract Manager", "Other"],
+           "Healthcare & Wellness": ["Nutritionist", "Fitness Coach", "Therapist", "Health Blogger", "Wellness Consultant", "Other"],
+           "Image Generation & Visual Design": ["Graphic Designer", "Concept Artist", "Art Director", "Photographer", "AI Image Prompt Engineer", "Other"],
            "Event Planning": ["Agendas", "Checklists", "Invitations", "Budget planning", "Other"],
-           "UX/UI & Product Design": ["UX copy", "Persona generation", "Wireframe ideas", "Other"],
+           "UX/UI & Product Design": ["UX Designer", "UI Designer", "Product Designer", "Interaction Designer", "Design Researcher", "Other"],
            "Spirituality & Self-Reflection": ["Meditation scripts", "Affirmations", "Philosophical prompts", "Other"],
-           "Gaming": ["Game plots", "Character bios", "Level design", "Fan theories", "Other"],
+           "Gaming": ["Game Developer", "Game Designer", "Gamer", "Stream Host", "Lore Writer", "Other"],
            "Voice, Audio & Podcasting": ["Scriptwriting", "Transcription", "Voiceover prompts", "Other"],
            "AI & Prompt Engineering": ["LLM tuning", "Meta-prompts", "Dataset generation", "Evaluations", "Other"],
            "News & Current Affairs": ["Summaries", "Debate simulations", "Editorial writing", "Other"],
@@ -1073,11 +1107,11 @@
            "Legal & Compliance": ["Lawyer", "Paralegal", "Compliance Officer", "Policy Advisor", "Contract Manager", "Other"],
            "Healthcare & Wellness": ["Nutritionist", "Fitness Coach", "Therapist", "Health Blogger", "Wellness Consultant", "Other"],
            "Image Generation & Visual Design": ["Graphic Designer", "Concept Artist", "Art Director", "Photographer", "AI Image Prompt Engineer", "Other"],
-           "Event Planning": ["Event Planner", "Wedding Coordinator", "Conference Organizer", "Marketing Executive", "Venue Manager", "Other"],
+           "Event Planning": ["Event Planner", "Wedding Coordinator", "Conference Organizer", "Marketing Executive, Venue Manager", "Other"],
            "UX/UI & Product Design": ["UX Designer", "UI Designer", "Product Designer", "Interaction Designer", "Design Researcher", "Other"],
            "Spirituality & Self-Reflection": ["Meditation Coach", "Spiritual Guide", "Mindfulness Blogger", "Philosopher", "Self-help Author", "Other"],
            "Gaming": ["Game Developer", "Game Designer", "Gamer", "Stream Host", "Lore Writer", "Other"],
-           "Voice, Audio & Podcasting": ["Voice Actor", "Podcaster", "Audio Engineer", "Narrator", "Sound Designer", "Other"],
+           "Voice, Audio & Podcasting": ["Scriptwriting", "Transcription", "Voiceover prompts", "Other"],
            "AI & Prompt Engineering": ["Prompt Engineer", "ML Engineer", "AI Researcher", "NLP Scientist", "Chatbot Developer", "Other"],
            "News & Current Affairs": ["Journalist", "News Curator", "Political Analyst", "Opinion Writer", "Debater", "Other"],
            "Travel & Culture": ["Itineraries", "Local tips", "Cultural do’s and don’ts", "Other"],
@@ -1087,7 +1121,7 @@
 
        function populateCategories() {
            categorySelect.innerHTML = '<option value="">Select a category</option>';
-           for (const category in CATEGORIES_AND_SUBCATEGORIES) { // Use new constant
+           for (const category in CATEGORIES_AND_SUBCATEGORIES) {
                const option = document.createElement('option');
                option.value = category;
                option.textContent = category;
@@ -1095,19 +1129,19 @@
            }
            subcategorySelect.innerHTML = '<option value="">Select a subcategory</option>';
            subcategorySelect.disabled = true;
-           personaSelect.innerHTML = '<option value="">Select a persona</option>'; // NEW: Clear persona
-           personaSelect.disabled = true; // NEW: Disable persona
+           personaSelect.innerHTML = '<option value="">Select a persona</option>';
+           personaSelect.disabled = true;
        }
 
        function populateSubcategories() {
            const selectedCategory = categorySelect.value;
            subcategorySelect.innerHTML = '<option value="">Select a subcategory</option>';
            subcategorySelect.disabled = true;
-           personaSelect.innerHTML = '<option value="">Select a persona</option>'; // NEW: Clear persona when category changes
-           personaSelect.disabled = true; // NEW: Disable persona when category changes
+           personaSelect.innerHTML = '<option value="">Select a persona</option>';
+           personaSelect.disabled = true;
 
-           if (selectedCategory && CATEGORIES_AND_SUBCATEGORIES[selectedCategory]) { // Use new constant
-               CATEGORIES_AND_SUBCATEGORIES[selectedCategory].forEach(sub => { // Use new constant
+           if (selectedCategory && CATEGORIES_AND_SUBCATEGORIES[selectedCategory]) {
+               CATEGORIES_AND_SUBCATEGORIES[selectedCategory].forEach(sub => {
                    const option = document.createElement('option');
                    option.value = sub;
                    option.textContent = sub;
@@ -1115,17 +1149,17 @@
                });
                subcategorySelect.disabled = false;
            }
-           populatePersonas(); // NEW: Populate personas when category changes
+           populatePersonas();
        }
 
-       // NEW: Function to populate personas
+       // Function to populate personas
        function populatePersonas() {
            const selectedCategory = categorySelect.value;
            personaSelect.innerHTML = '<option value="">Select a persona</option>';
            personaSelect.disabled = true;
 
-           if (selectedCategory && CATEGORY_PERSONAS[selectedCategory]) { // Use new constant
-               CATEGORY_PERSONAS[selectedCategory].forEach(persona => { // Use new constant
+           if (selectedCategory && CATEGORY_PERSONAS[selectedCategory]) {
+               CATEGORY_PERSONAS[selectedCategory].forEach(persona => {
                    const option = document.createElement('option');
                    option.value = persona;
                    option.textContent = persona;
@@ -1135,39 +1169,60 @@
            }
        }
 
+       // NEW: Function to manage visibility of input method buttons
+       function updateInputMethodVisibility(selectedAnalysisType) {
+           // Hide all input-specific elements initially
+           voiceInputButton.style.display = 'none';
+           triggerImageInputButton.style.display = 'none';
+           processImageButton.style.display = 'none';
+           imageInputSection.style.display = 'none'; // Hide image preview/processing section
+
+           // Based on selected analysis type, show relevant elements
+           if (selectedAnalysisType === 'voice_input') {
+               voiceInputButton.style.display = 'inline-block';
+           } else if (selectedAnalysisType === 'extract_text' || selectedAnalysisType === 'interpret_image') {
+               triggerImageInputButton.style.display = 'inline-block';
+               // The processImageButton and imageInputSection are controlled by imageInput.files.length and imageInput.addEventListener('change')
+               // So we only need to ensure triggerImageInputButton is visible.
+               // The imageInputSection itself will become visible when a file is selected.
+           }
+       }
+
+       function handleImageAnalysisTypeChange() {
+           const selectedAnalysisType = imageAnalysisTypeSelect.value;
+           updateInputMethodVisibility(selectedAnalysisType);
+           // Re-evaluate button disabled states after changing visibility
+           updateAllButtonStates();
+       }
+
 
        function handlePromptModeChange() {
            const selectedMode = promptModeSelect.value;
            
-           // Show/hide category selectors based on mode
+           // Manage visibility of text-specific category selectors
            if (selectedMode === 'text') {
-               textCategorySelectors.style.display = 'flex'; // Use flex for layout
+               textCategorySelectors.style.display = 'flex';
+               imageAnalysisTypeSelectorContainer.style.display = 'none'; // Hide image analysis type dropdown
                populateCategories(); // Populate the category dropdown
-           } else {
+               // For text mode, default to voice input visibility
+               updateInputMethodVisibility('voice_input'); // Show voice input button by default
+           } else { // image_gen or video_gen
                textCategorySelectors.style.display = 'none';
+               imageAnalysisTypeSelectorContainer.style.display = 'inline-block'; // Show image analysis type dropdown
                // Clear and reset category/subcategory/persona dropdowns when not in text mode
                categorySelect.innerHTML = '<option value="">Select a category</option>';
                subcategorySelect.innerHTML = '<option value="">Select a subcategory</option>';
                subcategorySelect.disabled = true;
-               personaSelect.innerHTML = '<option value="">Select a persona</option>'; // NEW: Clear persona
-               personaSelect.disabled = true; // NEW: Disable persona
+               personaSelect.innerHTML = '<option value="">Select a persona</option>';
+               personaSelect.disabled = true;
+               
+               // Call to set initial state for image analysis buttons based on its default selection
+               handleImageAnalysisTypeChange(); 
            }
 
-           // Existing logic for voice/image buttons
-           if (selectedMode === 'text') {
-               voiceInputButton.disabled = false;
-               triggerImageInputButton.disabled = false;
-               processImageButton.disabled = (imageInput.files.length === 0);
-           } else {
-               voiceInputButton.disabled = true;
-               triggerImageInputButton.disabled = true;
-               processImageButton.disabled = true;
-               imageInputSection.style.display = 'none';
-               imagePreview.src = '#';
-               imageInput.value = '';
-               if (isRecording) {
-                   recognition.stop();
-               }
+           // If voice recording is active, stop it regardless of mode change
+           if (isRecording) {
+               recognition.stop();
            }
            setLLMWebsiteButtonsDisabled(false, selectedMode);
        }
@@ -1178,6 +1233,14 @@
            fetchAndDisplayRawPrompts();
            updateAllButtonStates(); // Initial check and update of all button states
            handlePromptModeChange(); // Set initial state for buttons based on default mode
+
+           // Toggle button text for settings collapse
+           $('#settingsCollapse').on('show.bs.collapse', function () {
+               $('#settingsToggleBtn').text('Hide');
+           });
+           $('#settingsCollapse').on('hide.bs.collapse', function () {
+               $('#settingsToggleBtn').text('Show');
+           });
        });
 
        // Cooldown timer variables
@@ -1317,18 +1380,18 @@
                // Enable/disable LLM website buttons based ONLY on whether there's output and current mode
                setLLMWebsiteButtonsDisabled(!hasOutput, promptMode);
 
-               // Handle voice and image input buttons based on prompt mode
+               // Handle voice and image input buttons based on prompt mode and analysis type
                if (promptMode === 'text') {
-                   voiceInputButton.disabled = !canGenerate && !isRecording; // Re-enable if not on cooldown and not recording
+                   voiceInputButton.disabled = !canGenerate && !isRecording;
                    triggerImageInputButton.disabled = !canGenerate;
                    processImageButton.disabled = !canGenerate;
-               } else {
-                   voiceInputButton.disabled = true; // Always disable for image/video generation
-                   triggerImageInputButton.disabled = true; // Always disable for image/video generation
-                   processImageButton.disabled = true; // Always disable for image/video generation
-                   imageInputSection.style.display = 'none'; // Hide image input section
-                   imagePreview.src = '#'; // Clear image preview
-                   imageInput.value = ''; // Clear file input
+                   imageAnalysisTypeSelectorContainer.style.display = 'none'; // Hide image analysis type dropdown
+               } else { // image_gen or video_gen
+                   voiceInputButton.disabled = true;
+                   triggerImageInputButton.disabled = true;
+                   processImageButton.disabled = true;
+                   imageAnalysisTypeSelectorContainer.style.display = 'inline-block'; // Show image analysis type dropdown
+                   handleImageAnalysisTypeChange(); // Re-evaluate image analysis buttons based on its selection
                }
 
 
@@ -1355,7 +1418,7 @@
            const promptMode = document.getElementById('prompt_mode_select').value; // Get current prompt mode
            const selectedCategory = document.getElementById('category_select').value;
            const selectedSubcategory = document.getElementById('subcategory_select').value;
-           const selectedPersona = document.getElementById('persona_select').value; // NEW
+           const selectedPersona = document.getElementById('persona_select').value;
            
            // Clear previous outputs and token counts
            document.getElementById('polished_output').textContent = '';
@@ -1398,7 +1461,7 @@
                formData.append('prompt_mode', promptMode); // Send prompt mode
                formData.append('category', selectedCategory);
                formData.append('subcategory', selectedSubcategory);
-               formData.append('persona', selectedPersona); // NEW
+               formData.append('persona', selectedPersona);
 
 
                const response = await fetch('/generate', {
@@ -1754,6 +1817,7 @@
        processImageButton.addEventListener('click', async function() {
            const file = imageInput.files[0];
            const selectedLanguage = langSelect.value;
+           const selectedImageAnalysisType = imageAnalysisTypeSelect.value;
 
            if (!file) {
                appOutput.textContent = getMessage("no_image_selected", selectedLanguage);
@@ -1779,7 +1843,8 @@
                        },
                        body: JSON.stringify({
                            image_data: base64data,
-                           language_code: selectedLanguage
+                           language_code: selectedLanguage,
+                           image_analysis_type: selectedImageAnalysisType
                        })
                    });
 
@@ -1800,7 +1865,7 @@
                        // Optionally, trigger generate prompts automatically
                        // document.getElementById('promptForm').requestSubmit();
                    } else {
-                       appOutput.textContent = getMessage("image_error", selectedLanguage) + ` No text recognized.`;
+                       appOutput.textContent = getMessage("image_error", selectedLanguage) + ` No text or description recognized.`;
                        appOutput.className = 'mt-4 danger';
                    }
 
@@ -1897,10 +1962,16 @@
        // NEW: Prompt Mode Selector Logic
        promptModeSelect.addEventListener('change', handlePromptModeChange);
        categorySelect.addEventListener('change', populateSubcategories);
-       categorySelect.addEventListener('change', populatePersonas); // NEW: Also populate personas when category changes
+       categorySelect.addEventListener('change', populatePersonas);
+       imageAnalysisTypeSelect.addEventListener('change', handleImageAnalysisTypeChange); // NEW
 
        // Initial call to set button states correctly on page load
-       document.addEventListener('DOMContentLoaded', handlePromptModeChange);
+       document.addEventListener('DOMContentLoaded', () => {
+           fetchAndDisplaySavedPrompts();
+           fetchAndDisplayRawPrompts();
+           updateAllButtonStates();
+           handlePromptModeChange(); // Call this here to set the initial state
+       });
    </script>
 </body>
 </html>
