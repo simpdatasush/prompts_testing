@@ -585,30 +585,57 @@
             {% endif %}
         {% endwith %}
 
-        <!-- NEW: Settings Section -->
-        <div class="card mb-4">
-            <div class="card-header d-flex align-items-center justify-content-between">
-                <div class="d-flex align-items-center">
-                    <i class="fas fa-cog mr-2"></i> <!-- Settings icon -->
-                    <h5 class="mb-0">Settings</h5>
-                </div>
-                <button class="btn btn-sm btn-outline-secondary" type="button" data-toggle="collapse" data-target="#settingsCollapse" aria-expanded="false" aria-controls="settingsCollapse" id="settingsToggleBtn">
-                    Show
-                </button>
+        <!-- NEW: Prompt Mode Selector -->
+        <div class="prompt-mode-selector">
+            <label for="prompt_mode_select">Prompt Mode:</label>
+            <select id="prompt_mode_select" class="form-control">
+                <option value="text">Text Prompting</option>
+                <option value="image_gen">Image Creation</option>
+                <option value="video_gen">Video Creation</option>
+            </select>
+        </div>
+
+        <!-- NEW: Category, Subcategory, and Persona Selectors -->
+        <div id="text-category-selectors" class="row mt-3" style="display: none;">
+            <div class="col-md-6 mb-3">
+                <label for="category_select" class="form-label">Category:</label>
+                <select id="category_select" class="form-control">
+                    <option value="">Select a category</option>
+                </select>
             </div>
-            <div class="collapse" id="settingsCollapse"> <!-- Removed 'show' class to be initially hidden -->
-                <div class="card-body">
-                    <div class="row">
-                        <div class="col-md-6 mb-3">
-                            <label for="prompt_mode_select">Prompt Mode:</label>
-                            <select id="prompt_mode_select" class="form-control">
-                                <option value="text">Text Prompting</option>
-                                <option value="image_gen">Image Creation</option>
-                                <option value="video_gen">Video Creation</option>
-                            </select>
-                        </div>
-                        <div class="col-md-6 mb-3">
-                            <label for="lang_select">Voice Input & Output Language:</label>
+            <div class="col-md-6 mb-3">
+                <label for="subcategory_select" class="form-label">Subcategory:</label>
+                <select id="subcategory_select" class="form-control" disabled>
+                    <option value="">Select a subcategory</option>
+                </select>
+            </div>
+            <div id="text-persona-selector" class="col-md-6 mb-3">
+                <label for="persona_select" class="form-label">Persona:</label>
+                <select id="persona_select" class="form-control" disabled>
+                    <option value="">Select a persona</option>
+                </select>
+            </div>
+            <!-- IMPORTANT NOTE -->
+            <div class="col-12 mt-2">
+                <p class="text-muted" style="font-size: 0.9rem;">
+                    <strong>Important Note:</strong> The personas will be tied to the main category selected. Use the Category filter and either the Subcategory or Persona filter.
+                </p>
+            </div>
+            <!-- END IMPORTANT NOTE -->
+        </div>
+        <!-- END NEW: Category, Subcategory, and Persona Selectors -->
+
+        <div class="prompt-input-section card">
+            <div class="card-body">
+                <form id="promptForm">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <label for="prompt_input" class="form-label mb-0">Enter your raw prompt idea (or paste text/code for reverse prompting):</label>
+                    </div>
+                    <textarea id="prompt_input" name="prompt_input" class="form-control" rows="8" placeholder="e.g., Write a story about a robot who wants to be a chef."></textarea>
+                  
+                    <div class="d-flex justify-content-between align-items-center mt-3 flex-wrap">
+                        <div class="input-controls">
+                            <label for="lang_select" class="sr-only">Voice Input & Output Language:</label>
                             <select id="lang_select" class="form-control">
                                 <option value="en-US">English (US)</option>
                                 <option value="en-GB">English (UK)</option>
@@ -622,66 +649,9 @@
                                 <option value="hi-IN"> हिन्दी (भारत) </option>
                                 <!-- Add more languages as needed -->
                             </select>
-                        </div>
-                    </div>
-
-                    <!-- Category, Subcategory, and Persona Selectors (initially hidden for non-text modes) -->
-                    <div id="text-category-selectors" class="row mt-3">
-                        <div class="col-md-6 mb-3">
-                            <label for="category_select" class="form-label">Category:</label>
-                            <select id="category_select" class="form-control">
-                                <option value="">Select a category</option>
-                            </select>
-                        </div>
-                        <div class="col-md-6 mb-3">
-                            <label for="subcategory_select" class="form-label">Subcategory:</label>
-                            <select id="subcategory_select" class="form-control" disabled>
-                                <option value="">Select a subcategory</option>
-                            </select>
-                        </div>
-                        <div id="text-persona-selector" class="col-md-6 mb-3">
-                            <label for="persona_select" class="form-label">Persona:</label>
-                            <select id="persona_select" class="form-control" disabled>
-                                <option value="">Select a persona</option>
-                            </select>
-                        </div>
-                        <div class="col-12 mt-2">
-                            <p class="text-muted" style="font-size: 0.9rem;">
-                                <strong>Important Note:</strong> The personas will be tied to the main category selected. Use the Category filter and either the Subcategory or Persona filter.
-                            </p>
-                        </div>
-                    </div>
-
-                    <!-- Image Analysis Type Selector (always visible, but controls buttons below) -->
-                    <div id="image-analysis-type-selector-container" class="row mt-3">
-                        <div class="col-md-12 mb-3">
-                            <label for="image_analysis_type_select" class="form-label">Input Method:</label>
-                            <select id="image_analysis_type_select" class="form-control">
-                                <option value="voice_input">🎤 Voice Input</option>
-                                <option value="extract_text">📝 Upload Image (Extract Text)</option>
-                                <option value="interpret_image">🖼️ Upload Image (Interpret General Content)</option>
-                            </select>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-        <!-- END NEW: Settings Section -->
-
-        <div class="prompt-input-section card">
-            <div class="card-body">
-                <form id="promptForm">
-                    <div class="d-flex justify-content-between align-items-center mb-3">
-                        <label for="prompt_input" class="form-label mb-0">Enter your raw prompt idea (or paste text/code for reverse prompting):</label>
-                    </div>
-                    <textarea id="prompt_input" name="prompt_input" class="form-control" rows="8" placeholder="e.g., Write a story about a robot who wants to be a chef."></textarea>
-                  
-                    <div class="d-flex justify-content-between align-items-center mt-3 flex-wrap">
-                        <div class="input-controls">
-                            <!-- These buttons are now controlled by JavaScript based on settings -->
-                            <button type="button" id="voice_input_button" class="btn btn-outline-secondary mt-2 mt-md-0" style="display: none;">🎤 Start Voice Input</button>
+                            <button type="button" id="voice_input_button" class="btn btn-outline-secondary mt-2 mt-md-0">🎤 Start Voice Input</button>
                             <input type="file" id="image_input" accept="image/*" class="d-none">
-                            <button type="button" id="trigger_image_input" class="btn btn-outline-secondary mt-2 mt-md-0" style="display: none;">📸 Upload Image</button>
+                            <button type="button" id="trigger_image_input" class="btn btn-outline-secondary mt-2 mt-md-0">📸 Upload Image</button>
                         </div>
                         <div class="d-flex flex-column flex-md-row gap-2 mt-3 mt-md-0">
                             <button type="submit" id="generate_prompts_btn" class="btn btn-primary mb-2 mb-md-0 mr-2">Generate Prompts</button>
@@ -694,12 +664,12 @@
 
                 <!-- Image Preview and Processing -->
                 <div class="image-input-section mt-4" style="display: none;">
-                    <h5>Image Input</h5> <!-- Changed heading -->
+                    <h5>Image Input (Handwritten Text)</h5>
                     <img id="image_preview" class="image-preview" src="#" alt="Image Preview" style="display: none;">
                     <div id="image_loading_spinner" class="loading-spinner"></div>
                     <button type="button" id="process_image_button" class="btn btn-info mt-3">📸 Process Image Prompt</button>
                     <p class="text-muted mt-2" style="font-size: 0.85rem;">
-                        Upload an image to extract text or interpret its general content.
+                        Upload an image containing handwritten text. The AI will attempt to recognize it and use it as your prompt.
                     </p>
                 </div>
                 <!-- END Image Preview and Processing -->
@@ -747,8 +717,7 @@
                         <h5>Technical Variant</h5>
                         <span id="technical_token_count" class="token-count">0 chars</span>
                         <div>
-                            <button class="btn btn-sm btn-outline-secondary mr-1" onclick="copyPromptText('technical_output')"><i class="fas fa-copy"></i> Copy</button>
-                            <button class="btn btn-sm btn-outline-info" onclick="openFullContextView('Technical Variant', 'technical_output')"><i class="fas fa-expand-alt"></i> View Full</button>
+                            <button class="btn btn-sm btn-outline-secondary mr-1" onclick="copyPromptText('technical_output')"><i class="fas fa-expand-alt"></i> View Full</button>
                         </div>
                     </div>
                     <div class="card-body">
@@ -1053,11 +1022,8 @@
        const promptModeSelect = document.getElementById('prompt_mode_select');
        const categorySelect = document.getElementById('category_select');
        const subcategorySelect = document.getElementById('subcategory_select');
-       const personaSelect = document.getElementById('persona_select');
+       const personaSelect = document.getElementById('persona_select'); // NEW
        const textCategorySelectors = document.getElementById('text-category-selectors');
-
-       const imageAnalysisTypeSelect = document.getElementById('image_analysis_type_select');
-       const imageAnalysisTypeSelectorContainer = document.getElementById('image-analysis-type-selector-container');
 
 
        const CATEGORIES_AND_SUBCATEGORIES = {
@@ -1074,14 +1040,14 @@
            "Marketing & Advertising": ["Ad copy", "Slogans", "Social media posts", "SEO content", "Other"],
            "Multilingual & Translation": ["Translation", "Localization", "Multilingual prompts", "Other"],
            "Entertainment & Media": ["Movie/book/game recommendations", "Trivia", "Storytelling", "Other"],
-           "Career & Resume": ["Job Seeker", "Career Coach", "HR Recruiter", "Hiring Manager", "Resume Writer", "Other"],
-           "Legal & Compliance": ["Lawyer", "Paralegal", "Compliance Officer", "Policy Advisor", "Contract Manager", "Other"],
-           "Healthcare & Wellness": ["Nutritionist", "Fitness Coach", "Therapist", "Health Blogger", "Wellness Consultant", "Other"],
-           "Image Generation & Visual Design": ["Graphic Designer", "Concept Artist", "Art Director", "Photographer", "AI Image Prompt Engineer", "Other"],
+           "Career & Resume": ["Resume writing", "Cover letters", "Interview prep", "Other"],
+           "Legal & Compliance": ["Contracts", "Disclaimers", "Legal summaries (non-advisory)", "Other"],
+           "Healthcare & Wellness": ["Non-diagnostic advice", "Fitness plans", "Mental health prompts", "Other"],
+           "Image Generation & Visual Design": ["Prompts for image tools", "Scene descriptions", "Visual styles", "Other"],
            "Event Planning": ["Agendas", "Checklists", "Invitations", "Budget planning", "Other"],
-           "UX/UI & Product Design": ["UX Designer", "UI Designer", "Product Designer", "Interaction Designer", "Design Researcher", "Other"],
+           "UX/UI & Product Design": ["UX copy", "Persona generation", "Wireframe ideas", "Other"],
            "Spirituality & Self-Reflection": ["Meditation scripts", "Affirmations", "Philosophical prompts", "Other"],
-           "Gaming": ["Game Developer", "Game Designer", "Gamer", "Stream Host", "Lore Writer", "Other"],
+           "Gaming": ["Game plots", "Character bios", "Level design", "Fan theories", "Other"],
            "Voice, Audio & Podcasting": ["Scriptwriting", "Transcription", "Voiceover prompts", "Other"],
            "AI & Prompt Engineering": ["LLM tuning", "Meta-prompts", "Dataset generation", "Evaluations", "Other"],
            "News & Current Affairs": ["Summaries", "Debate simulations", "Editorial writing", "Other"],
@@ -1107,13 +1073,13 @@
            "Legal & Compliance": ["Lawyer", "Paralegal", "Compliance Officer", "Policy Advisor", "Contract Manager", "Other"],
            "Healthcare & Wellness": ["Nutritionist", "Fitness Coach", "Therapist", "Health Blogger", "Wellness Consultant", "Other"],
            "Image Generation & Visual Design": ["Graphic Designer", "Concept Artist", "Art Director", "Photographer", "AI Image Prompt Engineer", "Other"],
-           "Event Planning": ["Event Planner", "Wedding Coordinator", "Conference Organizer", "Marketing Executive, Venue Manager", "Other"],
+           "Event Planning": ["Event Planner", "Wedding Coordinator", "Conference Organizer", "Marketing Executive", "Venue Manager", "Other"],
            "UX/UI & Product Design": ["UX Designer", "UI Designer", "Product Designer", "Interaction Designer", "Design Researcher", "Other"],
            "Spirituality & Self-Reflection": ["Meditation Coach", "Spiritual Guide", "Mindfulness Blogger", "Philosopher", "Self-help Author", "Other"],
            "Gaming": ["Game Developer", "Game Designer", "Gamer", "Stream Host", "Lore Writer", "Other"],
-           "Voice, Audio & Podcasting": ["Scriptwriting", "Transcription", "Voiceover prompts", "Other"],
+           "Voice, Audio & Podcasting": ["Voice Actor", "Podcaster", "Audio Engineer", "Narrator", "Sound Designer", "Other"],
            "AI & Prompt Engineering": ["Prompt Engineer", "ML Engineer", "AI Researcher", "NLP Scientist", "Chatbot Developer", "Other"],
-           "News & Current Affairs": ["Summaries", "Debate simulations", "Editorial writing", "Other"],
+           "News & Current Affairs": ["Journalist", "News Curator", "Political Analyst", "Opinion Writer", "Debater", "Other"],
            "Travel & Culture": ["Itineraries", "Local tips", "Cultural do’s and don’ts", "Other"],
            "Other": ["General", "Custom", "Uncategorized"], // Default personas for the "Other" main category
        };
@@ -1121,7 +1087,7 @@
 
        function populateCategories() {
            categorySelect.innerHTML = '<option value="">Select a category</option>';
-           for (const category in CATEGORIES_AND_SUBCATEGORIES) {
+           for (const category in CATEGORIES_AND_SUBCATEGORIES) { // Use new constant
                const option = document.createElement('option');
                option.value = category;
                option.textContent = category;
@@ -1129,19 +1095,19 @@
            }
            subcategorySelect.innerHTML = '<option value="">Select a subcategory</option>';
            subcategorySelect.disabled = true;
-           personaSelect.innerHTML = '<option value="">Select a persona</option>';
-           personaSelect.disabled = true;
+           personaSelect.innerHTML = '<option value="">Select a persona</option>'; // NEW: Clear persona
+           personaSelect.disabled = true; // NEW: Disable persona
        }
 
        function populateSubcategories() {
            const selectedCategory = categorySelect.value;
            subcategorySelect.innerHTML = '<option value="">Select a subcategory</option>';
            subcategorySelect.disabled = true;
-           personaSelect.innerHTML = '<option value="">Select a persona</option>';
-           personaSelect.disabled = true;
+           personaSelect.innerHTML = '<option value="">Select a persona</option>'; // NEW: Clear persona when category changes
+           personaSelect.disabled = true; // NEW: Disable persona when category changes
 
-           if (selectedCategory && CATEGORIES_AND_SUBCATEGORIES[selectedCategory]) {
-               CATEGORIES_AND_SUBCATEGORIES[selectedCategory].forEach(sub => {
+           if (selectedCategory && CATEGORIES_AND_SUBCATEGORIES[selectedCategory]) { // Use new constant
+               CATEGORIES_AND_SUBCATEGORIES[selectedCategory].forEach(sub => { // Use new constant
                    const option = document.createElement('option');
                    option.value = sub;
                    option.textContent = sub;
@@ -1149,17 +1115,17 @@
                });
                subcategorySelect.disabled = false;
            }
-           populatePersonas();
+           populatePersonas(); // NEW: Populate personas when category changes
        }
 
-       // Function to populate personas
+       // NEW: Function to populate personas
        function populatePersonas() {
            const selectedCategory = categorySelect.value;
            personaSelect.innerHTML = '<option value="">Select a persona</option>';
            personaSelect.disabled = true;
 
-           if (selectedCategory && CATEGORY_PERSONAS[selectedCategory]) {
-               CATEGORY_PERSONAS[selectedCategory].forEach(persona => {
+           if (selectedCategory && CATEGORY_PERSONAS[selectedCategory]) { // Use new constant
+               CATEGORY_PERSONAS[selectedCategory].forEach(persona => { // Use new constant
                    const option = document.createElement('option');
                    option.value = persona;
                    option.textContent = persona;
@@ -1169,61 +1135,39 @@
            }
        }
 
-       // NEW: Function to manage visibility of input method buttons
-       function updateInputMethodVisibility(selectedAnalysisType) {
-           // Hide all input-specific elements initially
-           voiceInputButton.style.display = 'none';
-           triggerImageInputButton.style.display = 'none';
-           processImageButton.style.display = 'none';
-           imageInputSection.style.display = 'none'; // Hide image preview/processing section
-
-           // Based on selected analysis type, show relevant elements
-           if (selectedAnalysisType === 'voice_input') {
-               voiceInputButton.style.display = 'inline-block';
-           } else if (selectedAnalysisType === 'extract_text' || selectedAnalysisType === 'interpret_image') {
-               triggerImageInputButton.style.display = 'inline-block';
-               // processImageButton visibility is now managed by imageInput.addEventListener('change')
-               // imageInputSection visibility is also managed by imageInput.addEventListener('change')
-           }
-       }
-
-       function handleImageAnalysisTypeChange() {
-           const selectedAnalysisType = imageAnalysisTypeSelect.value;
-           updateInputMethodVisibility(selectedAnalysisType);
-           // Re-evaluate button disabled states after changing visibility
-           updateAllButtonStates();
-       }
-
 
        function handlePromptModeChange() {
            const selectedMode = promptModeSelect.value;
            
-           // Manage visibility of text-specific category selectors
+           // Show/hide category selectors based on mode
            if (selectedMode === 'text') {
-               textCategorySelectors.style.display = 'flex';
-               imageAnalysisTypeSelectorContainer.style.display = 'block'; // Always show input method dropdown
+               textCategorySelectors.style.display = 'flex'; // Use flex for layout
                populateCategories(); // Populate the category dropdown
-               
-               // When in text mode, the input method dropdown controls the buttons
-               updateInputMethodVisibility(imageAnalysisTypeSelect.value); 
-
-           } else { // image_gen or video_gen
+           } else {
                textCategorySelectors.style.display = 'none';
-               imageAnalysisTypeSelectorContainer.style.display = 'block'; // Always show input method dropdown
                // Clear and reset category/subcategory/persona dropdowns when not in text mode
                categorySelect.innerHTML = '<option value="">Select a category</option>';
                subcategorySelect.innerHTML = '<option value="">Select a subcategory</option>';
                subcategorySelect.disabled = true;
-               personaSelect.innerHTML = '<option value="">Select a persona</option>';
-               personaSelect.disabled = true;
-               
-               // For image/video modes, the input method dropdown controls the buttons
-               updateInputMethodVisibility(imageAnalysisTypeSelect.value); 
+               personaSelect.innerHTML = '<option value="">Select a persona</option>'; // NEW: Clear persona
+               personaSelect.disabled = true; // NEW: Disable persona
            }
 
-           // If voice recording is active, stop it regardless of mode change
-           if (isRecording) {
-               recognition.stop();
+           // Existing logic for voice/image buttons
+           if (selectedMode === 'text') {
+               voiceInputButton.disabled = false;
+               triggerImageInputButton.disabled = false;
+               processImageButton.disabled = (imageInput.files.length === 0);
+           } else {
+               voiceInputButton.disabled = true;
+               triggerImageInputButton.disabled = true;
+               processImageButton.disabled = true;
+               imageInputSection.style.display = 'none';
+               imagePreview.src = '#';
+               imageInput.value = '';
+               if (isRecording) {
+                   recognition.stop();
+               }
            }
            setLLMWebsiteButtonsDisabled(false, selectedMode);
        }
@@ -1234,14 +1178,6 @@
            fetchAndDisplayRawPrompts();
            updateAllButtonStates(); // Initial check and update of all button states
            handlePromptModeChange(); // Set initial state for buttons based on default mode
-
-           // Toggle button text for settings collapse
-           $('#settingsCollapse').on('show.bs.collapse', function () {
-               $('#settingsToggleBtn').text('Hide');
-           });
-           $('#settingsCollapse').on('hide.bs.collapse', function () {
-               $('#settingsToggleBtn').text('Show');
-           });
        });
 
        // Cooldown timer variables
@@ -1381,23 +1317,20 @@
                // Enable/disable LLM website buttons based ONLY on whether there's output and current mode
                setLLMWebsiteButtonsDisabled(!hasOutput, promptMode);
 
-               // Handle voice and image input buttons based on prompt mode and analysis type
-               // The visibility of these buttons is now controlled by updateInputMethodVisibility,
-               // but their *disabled* state still depends on `canGenerate`
-               const selectedAnalysisType = imageAnalysisTypeSelect.value;
-               if (selectedAnalysisType === 'voice_input') {
-                   voiceInputButton.disabled = !canGenerate && !isRecording;
-                   triggerImageInputButton.disabled = true;
-                   processImageButton.disabled = true;
-               } else if (selectedAnalysisType === 'extract_text' || selectedAnalysisType === 'interpret_image') {
-                   voiceInputButton.disabled = true;
+               // Handle voice and image input buttons based on prompt mode
+               if (promptMode === 'text') {
+                   voiceInputButton.disabled = !canGenerate && !isRecording; // Re-enable if not on cooldown and not recording
                    triggerImageInputButton.disabled = !canGenerate;
-                   processImageButton.disabled = !canGenerate || (imageInput.files.length === 0);
-               } else { // Default or unexpected state
-                   voiceInputButton.disabled = true;
-                   triggerImageInputButton.disabled = true;
-                   processImageButton.disabled = true;
+                   processImageButton.disabled = !canGenerate;
+               } else {
+                   voiceInputButton.disabled = true; // Always disable for image/video generation
+                   triggerImageInputButton.disabled = true; // Always disable for image/video generation
+                   processImageButton.disabled = true; // Always disable for image/video generation
+                   imageInputSection.style.display = 'none'; // Hide image input section
+                   imagePreview.src = '#'; // Clear image preview
+                   imageInput.value = ''; // Clear file input
                }
+
 
            } catch (error) {
                console.error("Error checking cooldown/daily limit:", error);
@@ -1422,7 +1355,7 @@
            const promptMode = document.getElementById('prompt_mode_select').value; // Get current prompt mode
            const selectedCategory = document.getElementById('category_select').value;
            const selectedSubcategory = document.getElementById('subcategory_select').value;
-           const selectedPersona = document.getElementById('persona_select').value;
+           const selectedPersona = document.getElementById('persona_select').value; // NEW
            
            // Clear previous outputs and token counts
            document.getElementById('polished_output').textContent = '';
@@ -1465,7 +1398,7 @@
                formData.append('prompt_mode', promptMode); // Send prompt mode
                formData.append('category', selectedCategory);
                formData.append('subcategory', selectedSubcategory);
-               formData.append('persona', selectedPersona);
+               formData.append('persona', selectedPersona); // NEW
 
 
                const response = await fetch('/generate', {
@@ -1529,7 +1462,7 @@
            } catch (error) {
                let errorMessage = getMessage("generation_failed", selectedLanguage);
                if (error.message.includes("Failed to fetch")) {
-                   errorMessage += `: Network error or server not reachable.`;
+                   errorMessage += `: Network error or server not reachable. Is the Flask app running?`;
                } else {
                    errorMessage += `: ${error.message}`;
                }
@@ -1584,324 +1517,79 @@
                    method: 'POST',
                    headers: {
                        'Content-Type': 'application/json'
-                       },
-                       body: JSON.stringify({
-                           input_text: promptInput,
-                           language_code: selectedLanguage,
-                           is_json_mode: false, // Always send false
-                           prompt_mode: promptMode // Send prompt mode
-                       })
-                   });
+                   },
+                   body: JSON.stringify({
+                       input_text: promptInput,
+                       language_code: selectedLanguage,
+                       is_json_mode: false, // Always send false
+                       prompt_mode: promptMode // Send prompt mode
+                   })
+               });
 
-                   if (!response.ok) {
-                       const errorData = await response.json();
-                       if (errorData.cooldown_active && errorData.remaining_time) {
-                           appOutput.textContent = errorData.error;
-                           appOutput.className = 'mt-4 warning';
-                           startCooldownTimer(errorData.remaining_time);
-                       } else if (errorData.daily_limit_reached) { // Handle daily limit error
-                           // NEW: Open the payment modal
-                           $('#paymentModalMessage').html(errorData.error);
-                           $('#paymentLinkButton').attr('href', errorData.payment_link);
-                           $('#paymentModal').modal('show');
-                           
-                           appOutput.textContent = errorData.error;
-                           appOutput.className = 'mt-4 danger';
-                       }
-                       else if (response.status === 302) {
-                           window.location.href = response.url;
-                           return;
-                       } else {
-                           appOutput.textContent = getMessage("reverse_prompt_failed", selectedLanguage) + `: ${errorData.error || `HTTP error! status: ${response.status}`}`;
-                           appOutput.className = 'mt-4 danger';
-                       }
-                       return;
-                   }
-
-                   const data = await response.json();
-                   if (data.error) {
-                       appOutput.textContent = getMessage("api_error", selectedLanguage, {error: data.error});
-                       appOutput.className = 'mt-4 danger';
-                       console.error("Backend error reported for reverse prompt:", data.error);
-                   } else {
-                       // Display the inferred prompt in the polished output area
-                       document.getElementById('polished_output').textContent = data.inferred_prompt;
-                       document.getElementById('polished_token_count').textContent = `${data.inferred_prompt.length} chars`;
-                       appOutput.textContent = getMessage("reverse_prompt_complete", selectedLanguage);
-                       appOutput.className = 'mt-4 success';
-                       fetchAndDisplayRawPrompts();
-                       // Cooldown and button states will be handled by updateAllButtonStates in finally block
-                   }
-
-               } catch (error) {
-                   let errorMessage = getMessage("reverse_prompt_failed", selectedLanguage);
-                   if (error.message.includes("Failed to fetch")) {
-                       errorMessage += `: Network error or server not reachable.`;
-                   } else {
-                       errorMessage += `: ${error.message}`;
-                   }
-                   appOutput.textContent = errorMessage;
-                   appOutput.className = 'mt-4 danger';
-                   console.error("Fetch error caught in JS for reverse prompt:", error);
-               } finally {
-                   reversePromptButton.textContent = 'Reverse Prompt';
-                   updateAllButtonStates(); // Re-check status to re-enable buttons
-               }
-           });
-
-           // Event listeners for save buttons
-           document.querySelectorAll('.save-button').forEach(button => {
-               button.addEventListener('click', async function() {
-                   const promptType = this.dataset.promptType;
-                   const promptElementId = `${promptType}_output`;
-                   const promptText = document.getElementById(promptElementId).textContent.trim();
-                   const selectedLanguage = document.getElementById('lang_select').value;
-                   const appOutput = document.getElementById('app_output');
-
-                   if (!promptText) {
-                       appOutput.textContent = getMessage("no_prompt_to_save", selectedLanguage, {type: "selected"});
+               if (!response.ok) {
+                   const errorData = await response.json();
+                   if (errorData.cooldown_active && errorData.remaining_time) {
+                       appOutput.textContent = errorData.error;
                        appOutput.className = 'mt-4 warning';
-                       return;
-                   }
-
-                   try {
-                       const response = await fetch('/save_prompt', {
-                           method: 'POST',
-                           headers: {
-                               'Content-Type': 'application/json'
-                           },
-                           body: JSON.stringify({
-                               prompt_text: promptText,
-                               prompt_type: promptType
-                           })
-                       });
-
-                       if (!response.ok) {
-                           if (response.status === 302) {
-                               window.location.href = response.url;
-                               return;
-                           }
-                           const errorData = await response.json();
-                           throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
-                       }
-
-                       const data = await response.json();
-                       if (data.success) {
-                           appOutput.textContent = getMessage("prompt_saved", selectedLanguage);
-                           appOutput.className = 'mt-4 success';
-                           fetchAndDisplaySavedPrompts();
-                       } else {
-                           appOutput.textContent = getMessage("save_failed", selectedLanguage) + ` ${data.message}`;
-                           appOutput.className = 'mt-4 danger';
-                           console.error("Save error:", data.message);
-                       }
-                   } catch (error) {
-                       appOutput.textContent = getMessage("network_error_save", selectedLanguage) + ` ${error.message}`;
+                       startCooldownTimer(errorData.remaining_time);
+                   } else if (errorData.daily_limit_reached) { // Handle daily limit error
+                       // NEW: Open the payment modal
+                       $('#paymentModalMessage').html(errorData.error);
+                       $('#paymentLinkButton').attr('href', errorData.payment_link);
+                       $('#paymentModal').modal('show');
+                       
+                       appOutput.textContent = errorData.error;
                        appOutput.className = 'mt-4 danger';
-                       console.error("Network error saving prompt:", error);
                    }
-               });
-           });
-
-           // --- Web Speech API for Voice Input with Language Selector ---
-           const promptInputTextarea = document.getElementById('prompt_input');
-           const langSelect = document.getElementById('lang_select');
-           const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-
-           let isRecording = false; // Define isRecording globally or ensure it's accessible
-
-           if (!SpeechRecognition) {
-               voiceInputButton.disabled = true;
-               voiceInputButton.textContent = '🎤 Voice Input Not Supported';
-               appOutput.textContent = getMessage("voice_not_supported", "en-US");
-               appOutput.className = 'mt-4 warning';
-               langSelect.disabled = true;
-           } else {
-               const recognition = new SpeechRecognition();
-               recognition.continuous = false;
-               recognition.interimResults = false;
-               recognition.lang = langSelect.value;
-
-               langSelect.addEventListener('change', () => {
-                   const selectedLanguage = langSelect.value;
-                   recognition.lang = selectedLanguage;
-                   const langName = langSelect.options[langSelect.selectedIndex].text;
-                   appOutput.textContent = `Voice input language set to ${langName}. Remember to click "Generate" to get prompts in this language.`;
-                   appOutput.className = 'mt-4 info';
-                   if (isRecording) {
-                       recognition.stop();
-                   }
-               });
-
-               voiceInputButton.addEventListener('click', () => {
-                   const selectedLanguage = langSelect.value;
-                   if (isRecording) {
-                       recognition.stop();
+                   else if (response.status === 302) {
+                       window.location.href = response.url;
                        return;
-                   }
-
-                   if (!recognition.continuous) {
-                       promptInputTextarea.value = '';
-                   }
-
-                   try {
-                       recognition.start();
-                       isRecording = true;
-                       voiceInputButton.textContent = '🔴 Stop Recording';
-                       voiceInputButton.classList.add('btn-danger');
-                       voiceInputButton.classList.remove('btn-outline-secondary');
-                       const langName = langSelect.options[langSelect.selectedIndex].text;
-                       appOutput.textContent = getMessage("listening", selectedLanguage).replace("(English)", `(${langName})`);
-                       appOutput.className = 'mt-4 info';
-                   } catch (error) {
-                       console.error("Error starting speech recognition:", error);
-                       appOutput.textContent = getMessage("voice_start_error", selectedLanguage) + ` ${error.message}`;
+                   } else {
+                       appOutput.textContent = getMessage("reverse_prompt_failed", selectedLanguage) + `: ${errorData.error || `HTTP error! status: ${response.status}`}`;
                        appOutput.className = 'mt-4 danger';
-                       isRecording = false;
-                       voiceInputButton.textContent = '🎤 Start Voice Input';
-                       voiceInputButton.classList.remove('btn-danger');
-                       voiceInputButton.classList.add('btn-outline-secondary');
                    }
-               });
-
-               recognition.onresult = (event) => {
-                   const selectedLanguage = langSelect.value;
-                   const transcript = event.results[0][0].transcript;
-                   promptInputTextarea.value = transcript;
-                   appOutput.textContent = getMessage("voice_captured", selectedLanguage);
-                   appOutput.className = 'mt-4 success';
-               };
-
-               recognition.onerror = (event) => {
-                   const selectedLanguage = langSelect.value;
-                   console.error('Speech recognition error:', event.error);
-                   appOutput.textContent = getMessage("voice_error", selectedLanguage) + ` ${event.error}`;
-                   appOutput.className = 'mt-4 danger';
-                   isRecording = false;
-                   voiceInputButton.textContent = '🎤 Start Voice Input';
-                   voiceInputButton.classList.remove('btn-danger');
-                   voiceInputButton.classList.add('btn-outline-secondary');
-               };
-
-               recognition.onend = () => {
-                   const selectedLanguage = langSelect.value;
-                   isRecording = false;
-                   voiceInputButton.textContent = '🎤 Start Voice Input';
-                   voiceInputButton.classList.remove('btn-danger');
-                   voiceInputButton.classList.add('btn-outline-secondary');
-                   if (!appOutput.textContent.startsWith( '❌' ) && !appOutput.textContent.startsWith( '✅' )) {
-                       appOutput.textContent = getMessage("voice_ended", selectedLanguage);
-                       appOutput.className = 'mt-4 info';
-                   }
-               };
-           }
-
-           // --- Image Input JavaScript Logic ---
-           triggerImageInputButton.addEventListener('click', () => {
-               imageInput.click();
-           });
-
-           imageInput.addEventListener('change', function(event) {
-               const file = event.target.files[0];
-               if (file) {
-                   const reader = new FileReader();
-                   reader.onload = function(e) {
-                       imagePreview.src = e.target.result;
-                       imagePreview.style.display = 'block';
-                       imageInputSection.style.display = 'block';
-                       updateAllButtonStates(); // Re-evaluate button states after image selection
-                   };
-                   reader.readAsDataURL(file);
-               } else {
-                   imagePreview.src = '#';
-                   imageInputSection.style.display = 'none';
-                   updateAllButtonStates(); // Re-evaluate button states if image is cleared
-               }
-           });
-
-           processImageButton.addEventListener('click', async function() {
-               console.log("Process Image Prompt button clicked."); // Debugging line
-               const file = imageInput.files[0];
-               const selectedLanguage = langSelect.value;
-               const selectedImageAnalysisType = imageAnalysisTypeSelect.value;
-
-               if (!file) {
-                   appOutput.textContent = getMessage("no_image_selected", selectedLanguage);
-                   appOutput.className = 'mt-4 warning';
-                   console.log("No file selected, returning."); // Debugging line
                    return;
                }
 
-               // Show loading spinner and disable button
-               imageLoadingSpinner.style.display = 'block';
-               processImageButton.disabled = true;
-               appOutput.textContent = getMessage("image_processing", selectedLanguage);
-               appOutput.className = 'mt-4 info';
-               console.log(`Processing image with type: ${selectedImageAnalysisType}`); // Debugging line
+               const data = await response.json();
+               if (data.error) {
+                   appOutput.textContent = getMessage("api_error", selectedLanguage, {error: data.error});
+                   appOutput.className = 'mt-4 danger';
+                   console.error("Backend error reported for reverse prompt:", data.error);
+               } else {
+                   // Display the inferred prompt in the polished output area
+                   document.getElementById('polished_output').textContent = data.inferred_prompt;
+                   document.getElementById('polished_token_count').textContent = `${data.inferred_prompt.length} chars`;
+                   appOutput.textContent = getMessage("reverse_prompt_complete", selectedLanguage);
+                   appOutput.className = 'mt-4 success';
+                   fetchAndDisplayRawPrompts();
+                   // Cooldown and button states will be handled by updateAllButtonStates in finally block
+               }
 
+           } catch (error) {
+               let errorMessage = getMessage("reverse_prompt_failed", selectedLanguage);
+               if (error.message.includes("Failed to fetch")) {
+                   errorMessage += `: Network error or server not reachable.`;
+               } else {
+                   errorMessage += `: ${error.message}`;
+               }
+               appOutput.textContent = errorMessage;
+               appOutput.className = 'mt-4 danger';
+               console.error("Fetch error caught in JS for reverse prompt:", error);
+           } finally {
+               reversePromptButton.textContent = 'Reverse Prompt';
+               updateAllButtonStates(); // Re-check status to re-enable buttons
+           }
+       });
 
-               const reader = new FileReader();
-               reader.onloadend = async function() {
-                   const base64data = reader.result.split(',')[1];
-                   console.log("FileReader finished, sending to backend."); // Debugging line
-
-                   try {
-                       const response = await fetch('/process_image_prompt', {
-                           method: 'POST',
-                           headers: {
-                               'Content-Type': 'application/json'
-                           },
-                           body: JSON.stringify({
-                               image_data: base64data,
-                               language_code: selectedLanguage,
-                               image_analysis_type: selectedImageAnalysisType
-                           })
-                       });
-
-                       console.log("Backend response received:", response.status); // Debugging line
-
-                       if (!response.ok) {
-                           if (response.status === 302) {
-                               window.location.href = response.url;
-                               return;
-                           }
-                           const errorData = await response.json();
-                           throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
-                       }
-
-                       const data = await response.json();
-                       console.log("Backend data parsed:", data); // Debugging line
-                       if (data.recognized_text) {
-                           promptInputTextarea.value = data.recognized_text;
-                           appOutput.textContent = getMessage("image_success", selectedLanguage);
-                           appOutput.className = 'mt-4 success';
-                           // Optionally, trigger generate prompts automatically
-                           // document.getElementById('promptForm').requestSubmit();
-                       } else {
-                           appOutput.textContent = getMessage("image_error", selectedLanguage) + ` No text or description recognized.`;
-                           appOutput.className = 'mt-4 danger';
-                       }
-
-                   } catch (error) {
-                       appOutput.textContent = getMessage("image_error", selectedLanguage) + ` ${error.message}`;
-                       appOutput.className = 'mt-4 danger';
-                       console.error("Image processing fetch error:", error); // Debugging line
-                   } finally {
-                       imageLoadingSpinner.style.display = 'none';
-                       processImageButton.disabled = false;
-                       imageInputSection.style.display = 'none';
-                       imagePreview.src = '#';
-                       imageInput.value = '';
-                       updateAllButtonStates(); // Re-check status to re-enable generate/reverse buttons
-                   }
-               };
-               reader.readAsDataURL(file);
-           });
-
-           // --- Copy Prompt Text Function ---
-           async function copyPromptText(elementId) {
-               const promptText = document.getElementById(elementId).textContent.trim();
+       // Event listeners for save buttons
+       document.querySelectorAll('.save-button').forEach(button => {
+           button.addEventListener('click', async function() {
+               const promptType = this.dataset.promptType;
+               const promptElementId = `${promptType}_output`;
+               const promptText = document.getElementById(promptElementId).textContent.trim();
                const selectedLanguage = document.getElementById('lang_select').value;
+               const appOutput = document.getElementById('app_output');
 
                if (!promptText) {
                    appOutput.textContent = getMessage("no_prompt_to_save", selectedLanguage, {type: "selected"});
@@ -1910,90 +1598,311 @@
                }
 
                try {
-                   const textarea = document.createElement('textarea');
-                   textarea.value = promptText;
-                   document.body.appendChild(textarea);
-                   textarea.select();
-                   document.execCommand('copy');
-                  
-                   appOutput.textContent = getMessage("copy_success", selectedLanguage);
-                   appOutput.className = 'mt-4 success';
-               } catch (err) {
-                   appOutput.textContent = getMessage("copy_fail", selectedLanguage);
-                   appOutput.className = 'mt-4 danger';
-                   console.error('Failed to copy text:', err);
-               }
-           }
+                   const response = await fetch('/save_prompt', {
+                       method: 'POST',
+                       headers: {
+                           'Content-Type': 'application/json'
+                       },
+                       body: JSON.stringify({
+                           prompt_text: promptText,
+                           prompt_type: promptType
+                       })
+                   });
 
-           // --- Open LLM Function ---
-           const LLM_URLS = {
-               chatgpt: "https://chat.openai.com/",
-               claude: "https://claude.ai/chats",
-               mistral: "https://chat.mistral.ai/",
-               gemini: "https://gemini.google.com/app",
-               grok: "https://grok.x.ai/",
-               perplexity: "https://www.perplexity.ai/",
-               deepseek: "https://www.deepseek.com/chat",
-               // NEW: Image/Video Generation LLM URLs
-               midjourney: "https://www.midjourney.com/",
-               dalle3: "https://openai.com/dall-e-3", // DALL-E 3 is part of ChatGPT Plus/Enterprise
-               sdxl: "https://stability.ai/stable-diffusion", // Stable Diffusion XL homepage
-               sora: "https://openai.com/sora", // Sora homepage
-               veo3: "https://deepmind.google/technologies/veo/" // Veo 3 homepage
+                   if (!response.ok) {
+                       if (response.status === 302) {
+                           window.location.href = response.url;
+                           return;
+                       }
+                       const errorData = await response.json();
+                       throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
+                   }
+
+                   const data = await response.json();
+                   if (data.success) {
+                       appOutput.textContent = getMessage("prompt_saved", selectedLanguage);
+                       appOutput.className = 'mt-4 success';
+                       fetchAndDisplaySavedPrompts();
+                   } else {
+                       appOutput.textContent = getMessage("save_failed", selectedLanguage) + ` ${data.message}`;
+                       appOutput.className = 'mt-4 danger';
+                       console.error("Save error:", data.message);
+                   }
+               } catch (error) {
+                   appOutput.textContent = getMessage("network_error_save", selectedLanguage) + ` ${error.message}`;
+                   appOutput.className = 'mt-4 danger';
+                   console.error("Network error saving prompt:", error);
+               }
+           });
+       });
+
+       // --- Web Speech API for Voice Input with Language Selector ---
+       const promptInputTextarea = document.getElementById('prompt_input');
+       const langSelect = document.getElementById('lang_select');
+       const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+
+       let isRecording = false; // Define isRecording globally or ensure it's accessible
+
+       if (!SpeechRecognition) {
+           voiceInputButton.disabled = true;
+           voiceInputButton.textContent = '🎤 Voice Input Not Supported';
+           appOutput.textContent = getMessage("voice_not_supported", "en-US");
+           appOutput.className = 'mt-4 warning';
+           langSelect.disabled = true;
+       } else {
+           const recognition = new SpeechRecognition();
+           recognition.continuous = false;
+           recognition.interimResults = false;
+           recognition.lang = langSelect.value;
+
+           langSelect.addEventListener('change', () => {
+               const selectedLanguage = langSelect.value;
+               recognition.lang = selectedLanguage;
+               const langName = langSelect.options[langSelect.selectedIndex].text;
+               appOutput.textContent = `Voice input language set to ${langName}. Remember to click "Generate" to get prompts in this language.`;
+               appOutput.className = 'mt-4 info';
+               if (isRecording) {
+                   recognition.stop();
+               }
+           });
+
+           voiceInputButton.addEventListener('click', () => {
+               const selectedLanguage = langSelect.value;
+               if (isRecording) {
+                   recognition.stop();
+                   return;
+               }
+
+               if (!recognition.continuous) {
+                   promptInputTextarea.value = '';
+               }
+
+               try {
+                   recognition.start();
+                   isRecording = true;
+                   voiceInputButton.textContent = '🔴 Stop Recording';
+                   voiceInputButton.classList.add('btn-danger');
+                   voiceInputButton.classList.remove('btn-outline-secondary');
+                   const langName = langSelect.options[langSelect.selectedIndex].text;
+                   appOutput.textContent = getMessage("listening", selectedLanguage).replace("(English)", `(${langName})`);
+                   appOutput.className = 'mt-4 info';
+               } catch (error) {
+                   console.error("Error starting speech recognition:", error);
+                   appOutput.textContent = getMessage("voice_start_error", selectedLanguage) + ` ${error.message}`;
+                   appOutput.className = 'mt-4 danger';
+                   isRecording = false;
+                   voiceInputButton.textContent = '🎤 Start Voice Input';
+                   voiceInputButton.classList.remove('btn-danger');
+                   voiceInputButton.classList.add('btn-outline-secondary');
+               }
+           });
+
+           recognition.onresult = (event) => {
+               const selectedLanguage = langSelect.value;
+               const transcript = event.results[0][0].transcript;
+               promptInputTextarea.value = transcript;
+               appOutput.textContent = getMessage("voice_captured", selectedLanguage);
+               appOutput.className = 'mt-4 success';
            };
 
-           function openLLM(llmKey) {
-               const selectedLanguage = document.getElementById('lang_select').value;
+           recognition.onerror = (event) => {
+               const selectedLanguage = langSelect.value;
+               console.error('Speech recognition error:', event.error);
+               appOutput.textContent = getMessage("voice_error", selectedLanguage) + ` ${event.error}`;
+               appOutput.className = 'mt-4 danger';
+               isRecording = false;
+               voiceInputButton.textContent = '🎤 Start Voice Input';
+               voiceInputButton.classList.remove('btn-danger');
+               voiceInputButton.classList.add('btn-outline-secondary');
+           };
 
-               if (LLM_URLS[llmKey]) {
-                   window.open(LLM_URLS[llmKey], '_blank');
-               } else {
-                   appOutput.textContent = `Error: Unknown LLM key: ${llmKey}`;
-                   appOutput.className = 'mt-4 danger';
-                   console.error(`Unknown LLM key: ${ll-key}`);
+           recognition.onend = () => {
+               const selectedLanguage = langSelect.value;
+               isRecording = false;
+               voiceInputButton.textContent = '🎤 Start Voice Input';
+               voiceInputButton.classList.remove('btn-danger');
+               voiceInputButton.classList.add('btn-outline-secondary');
+               if (!appOutput.textContent.startsWith( '❌' ) && !appOutput.textContent.startsWith( '✅' )) {
+                   appOutput.textContent = getMessage("voice_ended", selectedLanguage);
+                   appOutput.className = 'mt-4 info';
                }
+           };
+       }
+
+       // --- Image Input JavaScript Logic ---
+       triggerImageInputButton.addEventListener('click', () => {
+           imageInput.click();
+       });
+
+       imageInput.addEventListener('change', function(event) {
+           const file = event.target.files[0];
+           if (file) {
+               const reader = new FileReader();
+               reader.onload = function(e) {
+                   imagePreview.src = e.target.result;
+                   imagePreview.style.display = 'block';
+                   imageInputSection.style.display = 'block';
+               };
+               reader.readAsDataURL(file);
+           } else {
+               imagePreview.src = '#';
+               imagePreview.style.display = 'none';
+               imageInputSection.style.display = 'none';
+           }
+       });
+
+       processImageButton.addEventListener('click', async function() {
+           const file = imageInput.files[0];
+           const selectedLanguage = langSelect.value;
+
+           if (!file) {
+               appOutput.textContent = getMessage("no_image_selected", selectedLanguage);
+               appOutput.className = 'mt-4 warning';
+               return;
            }
 
-           // --- Full Context View Modal Functions ---
-           function openFullContextView(title, elementId) {
-               const modalOverlay = document.getElementById('fullContextModalOverlay');
-               const modalTitle = document.getElementById('fullContextModalTitle');
-               const modalText = document.getElementById('fullContextModalText');
-               const promptText = document.getElementById(elementId).textContent.trim();
+           // Show loading spinner and disable button
+           imageLoadingSpinner.style.display = 'block';
+           processImageButton.disabled = true;
+           appOutput.textContent = getMessage("image_processing", selectedLanguage);
+           appOutput.className = 'mt-4 info';
 
-               modalTitle.textContent = title;
-               modalText.textContent = promptText;
-               modalOverlay.classList.add('show');
+           const reader = new FileReader();
+           reader.onloadend = async function() {
+               const base64data = reader.result.split(',')[1];
+
+               try {
+                   const response = await fetch('/process_image_prompt', {
+                       method: 'POST',
+                       headers: {
+                           'Content-Type': 'application/json'
+                       },
+                       body: JSON.stringify({
+                           image_data: base64data,
+                           language_code: selectedLanguage
+                       })
+                   });
+
+                   if (!response.ok) {
+                       if (response.status === 302) {
+                           window.location.href = response.url;
+                           return;
+                       }
+                       const errorData = await response.json();
+                       throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
+                   }
+
+                   const data = await response.json();
+                   if (data.recognized_text) {
+                       promptInputTextarea.value = data.recognized_text;
+                       appOutput.textContent = getMessage("image_success", selectedLanguage);
+                       appOutput.className = 'mt-4 success';
+                       // Optionally, trigger generate prompts automatically
+                       // document.getElementById('promptForm').requestSubmit();
+                   } else {
+                       appOutput.textContent = getMessage("image_error", selectedLanguage) + ` No text recognized.`;
+                       appOutput.className = 'mt-4 danger';
+                   }
+
+               } catch (error) {
+                   appOutput.textContent = getMessage("image_error", selectedLanguage) + ` ${error.message}`;
+                   appOutput.className = 'mt-4 danger';
+                   console.error("Image processing fetch error:", error);
+               } finally {
+                   imageLoadingSpinner.style.display = 'none';
+                   processImageButton.disabled = false;
+                   imageInputSection.style.display = 'none';
+                   imagePreview.src = '#';
+                   imageInput.value = '';
+                   updateAllButtonStates(); // Re-check status to re-enable generate/reverse buttons
+               }
+           };
+           reader.readAsDataURL(file);
+       });
+
+       // --- Copy Prompt Text Function ---
+       async function copyPromptText(elementId) {
+           const promptText = document.getElementById(elementId).textContent.trim();
+           const selectedLanguage = document.getElementById('lang_select').value;
+
+           if (!promptText) {
+               appOutput.textContent = getMessage("no_prompt_to_save", selectedLanguage, {type: "selected"});
+               appOutput.className = 'mt-4 warning';
+               return;
            }
 
-           function closeFullContextView() {
-               const modalOverlay = document.getElementById('fullContextModalOverlay');
-               modalOverlay.classList.remove('show');
+           try {
+               const textarea = document.createElement('textarea');
+               textarea.value = promptText;
+               document.body.appendChild(textarea);
+               textarea.select();
+               document.execCommand('copy');
+              
+               appOutput.textContent = getMessage("copy_success", selectedLanguage);
+               appOutput.className = 'mt-4 success';
+           } catch (err) {
+               appOutput.textContent = getMessage("copy_fail", selectedLanguage);
+               appOutput.className = 'mt-4 danger';
+               console.error('Failed to copy text:', err);
            }
-           // --- END Full Context View Modal Functions ---
+       }
 
-           // NEW: Prompt Mode Selector Logic
-           promptModeSelect.addEventListener('change', handlePromptModeChange);
-           categorySelect.addEventListener('change', populateSubcategories);
-           categorySelect.addEventListener('change', populatePersonas);
-           imageAnalysisTypeSelect.addEventListener('change', handleImageAnalysisTypeChange); // NEW
+       // --- Open LLM Function ---
+       const LLM_URLS = {
+           chatgpt: "https://chat.openai.com/",
+           claude: "https://claude.ai/chats",
+           mistral: "https://chat.mistral.ai/",
+           gemini: "https://gemini.google.com/app",
+           grok: "https://grok.x.ai/",
+           perplexity: "https://www.perplexity.ai/",
+           deepseek: "https://www.deepseek.com/chat",
+           // NEW: Image/Video Generation LLM URLs
+           midjourney: "https://www.midjourney.com/",
+           dalle3: "https://openai.com/dall-e-3", // DALL-E 3 is part of ChatGPT Plus/Enterprise
+           sdxl: "https://stability.ai/stable-diffusion", // Stable Diffusion XL homepage
+           sora: "https://openai.com/sora", // Sora homepage
+           veo3: "https://deepmind.google/technologies/veo/" // Veo 3 homepage
+       };
 
-           // Initial call to set button states correctly on page load
-           document.addEventListener('DOMContentLoaded', () => {
-               fetchAndDisplaySavedPrompts();
-               fetchAndDisplayRawPrompts();
-               updateAllButtonStates();
-               // Settings collapse should be hidden by default, so we don't call handlePromptModeChange here
-               // Instead, we ensure its initial state is hidden via the 'collapse' class and 'aria-expanded="false"'
-               // and then manually trigger the visibility of input elements based on the default prompt mode.
-               
-               // Manually trigger visibility for default 'text' mode:
-               updateInputMethodVisibility(imageAnalysisTypeSelect.value); 
-               // Also, ensure category selectors are visible for default 'text' mode
-               textCategorySelectors.style.display = 'flex';
-               imageAnalysisTypeSelectorContainer.style.display = 'block'; // Ensure it's visible
-               populateCategories(); // Populate categories for default text mode
-           });
-       </script>
+       function openLLM(llmKey) {
+           const selectedLanguage = document.getElementById('lang_select').value;
+
+           if (LLM_URLS[llmKey]) {
+               window.open(LLM_URLS[llmKey], '_blank');
+           } else {
+               appOutput.textContent = `Error: Unknown LLM key: ${llmKey}`;
+               appOutput.className = 'mt-4 danger';
+               console.error(`Unknown LLM key: ${ll-key}`);
+           }
+       }
+
+       // --- Full Context View Modal Functions ---
+       function openFullContextView(title, elementId) {
+           const modalOverlay = document.getElementById('fullContextModalOverlay');
+           const modalTitle = document.getElementById('fullContextModalTitle');
+           const modalText = document.getElementById('fullContextModalText');
+           const promptText = document.getElementById(elementId).textContent.trim();
+
+           modalTitle.textContent = title;
+           modalText.textContent = promptText;
+           modalOverlay.classList.add('show');
+       }
+
+       function closeFullContextView() {
+           const modalOverlay = document.getElementById('fullContextModalOverlay');
+           modalOverlay.classList.remove('show');
+       }
+       // --- END Full Context View Modal Functions ---
+
+       // NEW: Prompt Mode Selector Logic
+       promptModeSelect.addEventListener('change', handlePromptModeChange);
+       categorySelect.addEventListener('change', populateSubcategories);
+       categorySelect.addEventListener('change', populatePersonas); // NEW: Also populate personas when category changes
+
+       // Initial call to set button states correctly on page load
+       document.addEventListener('DOMContentLoaded', handlePromptModeChange);
+   </script>
 </body>
 </html>
+
+
