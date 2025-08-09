@@ -694,7 +694,7 @@
 
                 <!-- Image Preview and Processing -->
                 <div class="image-input-section mt-4" style="display: none;">
-                    <h5>Image Input (Handwritten Text)</h5>
+                    <h5>Image Input</h5> <!-- Changed heading -->
                     <img id="image_preview" class="image-preview" src="#" alt="Image Preview" style="display: none;">
                     <div id="image_loading_spinner" class="loading-spinner"></div>
                     <button type="button" id="process_image_button" class="btn btn-info mt-3">📸 Process Image Prompt</button>
@@ -1182,8 +1182,7 @@
                voiceInputButton.style.display = 'inline-block';
            } else if (selectedAnalysisType === 'extract_text' || selectedAnalysisType === 'interpret_image') {
                triggerImageInputButton.style.display = 'inline-block';
-               // The processImageButton and imageInputSection are controlled by imageInput.files.length and imageInput.addEventListener('change')
-               // So we only need to ensure triggerImageInputButton is visible.
+               processImageButton.style.display = 'inline-block'; // Ensure process button is visible when image upload is chosen
                // The imageInputSection itself will become visible when a file is selected.
            }
        }
@@ -1530,7 +1529,7 @@
            } catch (error) {
                let errorMessage = getMessage("generation_failed", selectedLanguage);
                if (error.message.includes("Failed to fetch")) {
-                   errorMessage += `: Network error or server not reachable. Is the Flask app running?`;
+                   errorMessage += `: Network error or server not reachable.`;
                } else {
                    errorMessage += `: ${error.message}`;
                }
@@ -1974,7 +1973,16 @@
            fetchAndDisplaySavedPrompts();
            fetchAndDisplayRawPrompts();
            updateAllButtonStates();
-           handlePromptModeChange(); // Call this here to set the initial state
+           // Settings collapse should be hidden by default, so we don't call handlePromptModeChange here
+           // Instead, we ensure its initial state is hidden via the 'collapse' class and 'aria-expanded="false"'
+           // and then manually trigger the visibility of input elements based on the default prompt mode.
+           
+           // Manually trigger visibility for default 'text' mode:
+           updateInputMethodVisibility(imageAnalysisTypeSelect.value); 
+           // Also, ensure category selectors are visible for default 'text' mode
+           textCategorySelectors.style.display = 'flex';
+           imageAnalysisTypeSelectorContainer.style.display = 'block'; // Ensure it's visible
+           populateCategories(); // Populate categories for default text mode
        });
    </script>
 </body>
