@@ -592,11 +592,11 @@
                     <i class="fas fa-cog mr-2"></i> <!-- Settings icon -->
                     <h5 class="mb-0">Settings</h5>
                 </div>
-                <button class="btn btn-sm btn-outline-secondary" type="button" data-toggle="collapse" data-target="#settingsCollapse" aria-expanded="true" aria-controls="settingsCollapse" id="settingsToggleBtn">
-                    Hide
+                <button class="btn btn-sm btn-outline-secondary" type="button" data-toggle="collapse" data-target="#settingsCollapse" aria-expanded="false" aria-controls="settingsCollapse" id="settingsToggleBtn">
+                    Show
                 </button>
             </div>
-            <div class="collapse show" id="settingsCollapse"> <!-- Added 'show' class to be initially open -->
+            <div class="collapse" id="settingsCollapse"> <!-- Removed 'show' class to be initially hidden -->
                 <div class="card-body">
                     <div class="row">
                         <div class="col-md-6 mb-3">
@@ -652,10 +652,10 @@
                         </div>
                     </div>
 
-                    <!-- Image Analysis Type Selector (initially hidden for text mode) -->
-                    <div id="image-analysis-type-selector-container" class="row mt-3" style="display: none;">
+                    <!-- Image Analysis Type Selector (always visible, but controls buttons below) -->
+                    <div id="image-analysis-type-selector-container" class="row mt-3">
                         <div class="col-md-12 mb-3">
-                            <label for="image_analysis_type_select" class="form-label">Input Method for Image/Video Prompts:</label>
+                            <label for="image_analysis_type_select" class="form-label">Input Method:</label>
                             <select id="image_analysis_type_select" class="form-control">
                                 <option value="voice_input">🎤 Voice Input</option>
                                 <option value="extract_text">📝 Upload Image (Extract Text)</option>
@@ -911,7 +911,7 @@
                "image_processing": "🖼️ Procesando imagen y extrayendo texto...",
                "image_success":  "✅ Texto extraído de la imagen. Haga clic en \"Générer les invites\" para afiner." ,
                "image_error":  "❌ Error de procesamiento de imagen :" ,
-               "no_image_selected":  "❗ Veuillez seleccionar un archivo de imagen en primer lugar." ,
+               "no_image_selected":  "❗ Por favor, seleccione un archivo de imagen primero." ,
                "copy_success":  "✅ Indicación copiada al portapapeles." ,
                "copy_fail":  "❌ Échec de la copia de la invite en el portapapeles."
            },
@@ -1202,13 +1202,15 @@
            // Manage visibility of text-specific category selectors
            if (selectedMode === 'text') {
                textCategorySelectors.style.display = 'flex';
-               imageAnalysisTypeSelectorContainer.style.display = 'none'; // Hide image analysis type dropdown
+               imageAnalysisTypeSelectorContainer.style.display = 'block'; // Always show input method dropdown
                populateCategories(); // Populate the category dropdown
-               // For text mode, default to voice input visibility
-               updateInputMethodVisibility('voice_input'); // Show voice input button by default
+               
+               // When in text mode, the input method dropdown controls the buttons
+               updateInputMethodVisibility(imageAnalysisTypeSelect.value); 
+
            } else { // image_gen or video_gen
                textCategorySelectors.style.display = 'none';
-               imageAnalysisTypeSelectorContainer.style.display = 'inline-block'; // Show image analysis type dropdown
+               imageAnalysisTypeSelectorContainer.style.display = 'block'; // Always show input method dropdown
                // Clear and reset category/subcategory/persona dropdowns when not in text mode
                categorySelect.innerHTML = '<option value="">Select a category</option>';
                subcategorySelect.innerHTML = '<option value="">Select a subcategory</option>';
@@ -1216,8 +1218,8 @@
                personaSelect.innerHTML = '<option value="">Select a persona</option>';
                personaSelect.disabled = true;
                
-               // Call to set initial state for image analysis buttons based on its default selection
-               handleImageAnalysisTypeChange(); 
+               // For image/video modes, the input method dropdown controls the buttons
+               updateInputMethodVisibility(imageAnalysisTypeSelect.value); 
            }
 
            // If voice recording is active, stop it regardless of mode change
@@ -1381,19 +1383,22 @@
                setLLMWebsiteButtonsDisabled(!hasOutput, promptMode);
 
                // Handle voice and image input buttons based on prompt mode and analysis type
-               if (promptMode === 'text') {
+               // The visibility of these buttons is now controlled by updateInputMethodVisibility,
+               // but their *disabled* state still depends on `canGenerate`
+               const selectedAnalysisType = imageAnalysisTypeSelect.value;
+               if (selectedAnalysisType === 'voice_input') {
                    voiceInputButton.disabled = !canGenerate && !isRecording;
+                   triggerImageInputButton.disabled = true;
+                   processImageButton.disabled = true;
+               } else if (selectedAnalysisType === 'extract_text' || selectedAnalysisType === 'interpret_image') {
+                   voiceInputButton.disabled = true;
                    triggerImageInputButton.disabled = !canGenerate;
-                   processImageButton.disabled = !canGenerate;
-                   imageAnalysisTypeSelectorContainer.style.display = 'none'; // Hide image analysis type dropdown
-               } else { // image_gen or video_gen
+                   processImageButton.disabled = !canGenerate || (imageInput.files.length === 0);
+               } else { // Default or unexpected state
                    voiceInputButton.disabled = true;
                    triggerImageInputButton.disabled = true;
                    processImageButton.disabled = true;
-                   imageAnalysisTypeSelectorContainer.style.display = 'inline-block'; // Show image analysis type dropdown
-                   handleImageAnalysisTypeChange(); // Re-evaluate image analysis buttons based on its selection
                }
-
 
            } catch (error) {
                console.error("Error checking cooldown/daily limit:", error);
@@ -1809,7 +1814,6 @@
                reader.readAsDataURL(file);
            } else {
                imagePreview.src = '#';
-               imagePreview.style.display = 'none';
                imageInputSection.style.display = 'none';
            }
        });
