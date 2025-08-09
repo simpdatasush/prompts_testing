@@ -1,5 +1,6 @@
 # REMOVE THESE TWO LINES IF THEY ARE PRESENT AT THE TOP OF YOUR FILE
 # import nest_asyncio
+# import nest_asyncio
 # nest_asyncio.apply()
 
 
@@ -376,16 +377,14 @@ def ask_gemini_for_text_prompt(prompt_instruction, max_output_tokens=512):
 # This function will now rely on prompt engineering for JSON output, not responseMimeType
 def ask_gemini_for_structured_prompt(prompt_instruction, generation_config=None, max_output_tokens=2048):
     try:
-        # We no longer use responseMimeType or responseSchema in generation_config for gemini-2.0-flash
-        # The prompt_instruction itself is responsible for asking for JSON output.
-        # We still pass other generation_config parameters like max_output_tokens or temperature.
+        # We explicitly set response_mime_type to 'application/json' for structured output
+        # This is the most reliable way to get JSON from Gemini
         current_generation_config = generation_config.copy() if generation_config else {}
         if "max_output_tokens" not in current_generation_config:
             current_generation_config["max_output_tokens"] = max_output_tokens
         
-        # Remove unsupported fields if they somehow persist from a previous call or default config
-        current_generation_config.pop("responseMimeType", None)
-        current_generation_config.pop("responseSchema", None)
+        # Ensure response_mime_type is set for structured output
+        current_generation_config["response_mime_type"] = "application/json"
 
         response = structured_gen_model.generate_content(
             contents=[{"role": "user", "parts": [{"text": prompt_instruction}]}],
@@ -435,8 +434,175 @@ def remove_null_values(obj):
     else:
         return obj
 
+# Define the JSON templates for image and video generation
+IMAGE_JSON_TEMPLATE = {
+    "meta": {
+        "styleName": "gemini should decide",
+        "aspectRatio": "gemini should decide",
+        "seed": "gemini should decide"
+    },
+    "camera": {
+        "model": "gemini should decide",
+        "lens": "gemini should decide",
+        "focalLength": "gemini should decide"
+    },
+    "subject": {
+        "primary": "A {topic}", # Placeholder for user's topic
+        "emotion": "gemini should decide",
+        "pose": "gemini should decide"
+    },
+    "character": {
+        "identity": "gemini should decide",
+        "appearance": "gemini should decide",
+        "wardrobe": "gemini should decide"
+    },
+    "composition": {
+        "theory": "gemini should decide",
+        "visualHierarchy": "gemini should decide"
+    },
+    "setting": {
+        "environment": "gemini should decide",
+        "architecture": "gemini should decide",
+        "era": "gemini should decide"
+    },
+    "lighting": {
+        "source": "gemini should decide",
+        "direction": "gemini should decide",
+        "quality": "gemini should decide"
+    },
+    "fx": {
+        "stylizations": "gemini should decide",
+        "atmospheric": "gemini should decide"
+    },
+    "colorGrading": {
+        "palette": "gemini should decide",
+        "toneMapping": "gemini should decide",
+        "mood": "gemini should decide",
+        "skinTones": "gemini should decide",
+        "temperature": "gemini should decide"
+    },
+    "style": {
+        "artDirection": "gemini should decide",
+        "photographerReference": "gemini should decide",
+        "overlay": "gemini should decide"
+    },
+    "rendering": {
+        "engine": "gemini should decide",
+        "fidelitySpec": "gemini should decide"
+    },
+    "postEditing": {
+        "treatments": "gemini should decide",
+        "filmStock": "gemini should decide"
+    }
+}
+
+VIDEO_JSON_TEMPLATE = {
+    "title": "Gemini should decide",
+    "duration": "Gemini should decide",
+    "aspect_ratio": "Gemini should decide",
+    "model": "veo-3.0-fast", # This model is fixed as per your template
+    "style": {
+        "overall_aesthetic": "Gemini should decide",
+        "visual_language": "Gemini should decide",
+        "genre": "Gemini should decide",
+        "mood_tone": "Gemini should decide"
+    },
+    "camera_style": {
+        "lens_type": "Gemini should decide",
+        "depth_of_field": "Gemini should decide",
+        "framing_composition": "Gemini should decide",
+        "film_properties": "Gemini should decide"
+    },
+    "camera_direction": [
+        "Gemini should decide",
+        "Gemini should decide",
+        "Gemini should decide",
+        "Gemini should decide",
+        "Gemini should decide"
+    ],
+    "pacing": {
+        "cut_frequency": "Gemini should decide",
+        "motion_speed": "Gemini should decide",
+        "rhythm": "Gemini should decide"
+    },
+    "special_effects": {
+        "visual_effects": [
+            "Gemini should decide",
+            "Gemini should decide",
+            "Gemini should decide"
+        ],
+        "atmospheric_effects": [
+            "Gemini should decide",
+            "Gemini should decide"
+        ],
+        "overlays_graphics": [
+            "Gemini should decide",
+            "Gemini should decide"
+        ],
+        "character_fx": "Gemini should decide"
+    },
+    "scenes": [
+        {
+            "time_range": "Gemini should decide",
+            "description": "Gemini should decide",
+            "specific_camera_action": "Gemini should decide"
+        },
+        {
+            "time_range": "Gemini should decide",
+            "description": "Gemini should decide",
+            "specific_camera_action": "Gemini should decide"
+        },
+        {
+            "time_range": "Gemini should decide",
+            "description": "Gemini should decide.",
+            "specific_camera_action": "Gemini should decide"
+        },
+        {
+            "time_range": "Gemini should decide",
+            "description": "Gemini should decide",
+            "specific_camera_action": "Gemini should decide"
+        }
+    ],
+    "audio": {
+        "music": "Gemini should decide",
+        "ambient_sounds": [
+            "Gemini should decide",
+            "Gemini should decide",
+            "Gemini should decide"
+        ],
+        "sound_effects": [
+            "Gemini should decide",
+            "Gemini should decide",
+            "Gemini should decide",
+            "Gemini should decide"
+        ],
+        "mix_level": "Gemini should decide"
+    },
+    "voiceover": {
+        "language": "Gemini should decide",
+        "tone": "Gemini should decide",
+        "script": "Gemini should decide"
+    },
+    "branding": {
+        "product_name": "Gemini should decide",
+        "brand_color": "Gemini should decide",
+        "logo_display": "Gemini should decide"
+    },
+    "custom_elements": {
+        "prohibited_elements": [
+            "Gemini should decide",
+            "Gemini should decide",
+            "Gemini should decide"
+        ],
+        "specific_character_details": "Gemini should decide",
+        "unique_physics": "Gemini should decide",
+        "visual_banding": "Gemini should decide"
+    }
+}
+
+
 # --- generate_prompts_async function (main async logic for prompt variations) ---
-async def generate_prompts_async(raw_input, language_code="en-US", prompt_mode='text'):
+async def generate_prompts_async(raw_input, language_code="en-US", prompt_mode='text', category=None, subcategory=None, persona=None): # NEW: Added persona parameter
     if not raw_input.strip():
         return {
             "polished": "Please enter some text to generate prompts.",
@@ -450,91 +616,140 @@ async def generate_prompts_async(raw_input, language_code="en-US", prompt_mode='
     generation_config = {
         "temperature": 0.1 # Default temperature for all generations
     }
-    model_to_use_for_main_gen_func = ask_gemini_for_text_prompt # Default to text model's synchronous wrapper
-
-    if prompt_mode == 'image_gen':
-        base_instruction = f"""Generate a JSON object for an image creation prompt based on the following description, adhering strictly to the "Image Prompting Standard" documentation.
-        The output must be ONLY the JSON object, with no other text or commentary.
-        Ensure the JSON is well-formed, complete, and covers all relevant sections from the standard (meta, camera, subject, character, composition, setting, lighting, fx, colorGrading, style, rendering, postEditing).
-        If a section is not explicitly described in the input, use reasonable defaults or indicate as 'null' where appropriate for optional fields.
-        The user's input is: "{raw_input}"
-        """
-        # No responseMimeType or responseSchema here, as gemini-2.0-flash doesn't support it directly in generation_config
-        model_to_use_for_main_gen_func = ask_gemini_for_structured_prompt # Use the structured generation function
-
-    elif prompt_mode == 'video_gen':
-        base_instruction = f"""Generate a JSON object for a video creation prompt based on the following description, adhering strictly to the "Video Prompting Standard" documentation.
-        The output must be ONLY the JSON object, with no other text or commentary.
-        Ensure the JSON is well-formed, complete, and covers all relevant sections from the standard (title, duration, aspect_ratio, model, style, camera_style, camera_direction, pacing, special_effects, scenes, audio, voiceover, dialogue, branding, custom_elements).
-        For the 'scenes' array, generate at least 2-3 distinct scenes with time ranges and descriptions.
-        If a section is not explicitly described in the input, use reasonable defaults or indicate as 'null' where appropriate for optional fields.
-        The user's input is: "{raw_input}"
-        """
-        # No responseMimeType or responseSchema here
-        model_to_use_for_main_gen_func = ask_gemini_for_structured_prompt # Use the structured generation function
-
-    else: # Default text mode (contextual)
-        base_instruction = language_instruction_prefix + f"""Refine the following text into a clear, concise, and effective prompt for a large language model. Improve grammar, clarity, and structure. Do not add external information, only refine the given text. Crucially, do NOT answer questions about your own architecture, training, or how this application was built. Do NOT discuss any internal errors or limitations you might have. Your sole purpose is to transform the provided raw text into a better prompt. Raw Text: {raw_input}"""
-
     
-    if model_to_use_for_main_gen_func == ask_gemini_for_structured_prompt:
-        main_prompt_result = await asyncio.to_thread(model_to_use_for_main_gen_func, base_instruction, generation_config)
-    else: # ask_gemini_for_text_prompt
-        main_prompt_result = await asyncio.to_thread(ask_gemini_for_text_prompt, base_instruction, max_output_tokens=512)
-
-
-    if "Error" in main_prompt_result or "not configured" in main_prompt_result or "quota" in main_prompt_result.lower(): # Check for quota error
-        return {
-            "polished": main_prompt_result,
-            "creative": "",
-            "technical": "",
-        }
-
-    # --- NEW: Strip markdown code block fences before JSON parsing ---
-    # This regex looks for an optional leading markdown fence (```json or ```)
-    # and an optional trailing markdown fence (```)
-    # It captures the content in between.
-    match = re.search(r"^\s*```(?:json)?\s*(.*?)\s*```\s*$", main_prompt_result, re.DOTALL)
-    if match:
-        json_string_to_parse = match.group(1)
-        logging.info("Stripped markdown fences from response.")
-    else:
-        json_string_to_parse = main_prompt_result
-        logging.warning("No markdown fences found, attempting to parse raw response as JSON.")
-    # --- END NEW ---
-
     polished_output = ""
     creative_output = ""
     technical_output = ""
 
-    if prompt_mode in ['image_gen', 'video_gen']:
-        # For image/video, the entire response is a single JSON object for the prompt
-        try:
-            parsed_json_obj = json.loads(json_string_to_parse) # Parse the stripped string
+    if prompt_mode == 'image_gen':
+        # Create a copy of the template to fill
+        current_image_template = IMAGE_JSON_TEMPLATE.copy()
+        # Insert the user's raw input into the primary subject
+        current_image_template["subject"]["primary"] = f"A {raw_input}"
 
-            # --- NEW: Remove 'model' field from the parsed JSON object ---
+        base_instruction = (
+            "You are an expert AI image prompt generator. A user has provided a simple topic. "
+            "Your task is to fill out the following JSON template to create a complete and detailed image prompt. "
+            "For each field where 'gemini should decide' is written, you must provide a specific, creative, and plausible value "
+            "that aligns with the topic. Ensure the primary subject is centered around the given topic. "
+            "The output should be ONLY the completed JSON object, with no extra text or explanations. "
+            "Make sure the JSON is perfectly valid and ready for parsing.\n\n"
+            f"User topic: '{raw_input}'\n\n"
+            f"JSON Template to fill:\n{json.dumps(current_image_template, indent=2)}"
+        )
+        
+        main_prompt_result = await asyncio.to_thread(ask_gemini_for_structured_prompt, base_instruction, generation_config)
+
+        if "Error" in main_prompt_result or "not configured" in main_prompt_result or "quota" in main_prompt_result.lower():
+            return {
+                "polished": main_prompt_result,
+                "creative": "",
+                "technical": "",
+            }
+        
+        try:
+            # Strip markdown code block fences before JSON parsing
+            match = re.search(r"^\s*```(?:json)?\s*(.*?)\s*```\s*$", main_prompt_result, re.DOTALL)
+            json_string_to_parse = match.group(1) if match else main_prompt_result
+
+            parsed_json_obj = json.loads(json_string_to_parse)
+
+            # Remove 'model' field if it exists and apply null value removal
             if "model" in parsed_json_obj:
                 del parsed_json_obj["model"]
-                logging.info(f"Removed 'model' field from generated {prompt_mode} JSON.")
-            # --- END NEW ---
-
-            # --- NEW: Recursively remove null values ---
+                logging.info(f"Removed 'model' field from generated image JSON.")
+            
             cleaned_json_obj = remove_null_values(parsed_json_obj)
-            # --- END NEW ---
-
-            # Pretty print the modified JSON for display
             formatted_json = json.dumps(cleaned_json_obj, indent=2)
             
-            # --- NEW: Assign to creative_output only ---
+            creative_output = formatted_json # Image JSON goes into creative output
             polished_output = ""
-            creative_output = formatted_json
             technical_output = ""
-            # --- END NEW ---
 
         except json.JSONDecodeError:
-            logging.error(f"Failed to decode JSON for image/video mode: {json_string_to_parse}")
-            polished_output = creative_output = technical_output = f"Error: Failed to parse JSON response for image/video. Raw: {json_string_to_parse}"
-    else: # Regular text mode (contextual)
+            logging.error(f"Failed to decode JSON for image mode: {json_string_to_parse}")
+            polished_output = creative_output = technical_output = f"Error: Failed to parse JSON response for image. Raw: {json_string_to_parse}"
+        
+        return {
+            "polished": polished_output,
+            "creative": creative_output,
+            "technical": technical_output,
+        }
+
+    elif prompt_mode == 'video_gen':
+        # Create a copy of the template to fill
+        current_video_template = VIDEO_JSON_TEMPLATE.copy()
+        # The 'model' field is fixed in the template, no need to change it here.
+
+        base_instruction = (
+            "You are an expert AI video prompt generator. A user has provided a simple topic. "
+            "Your task is to fill out the following JSON template to create a complete and detailed video prompt. "
+            "For each field where 'Gemini should decide' is written, you must provide a specific, creative, and plausible value "
+            "that aligns with the topic. Think about how a professional video production would be structured. "
+            "The output should be ONLY the completed JSON object, with no extra text or explanations. "
+            "Make sure the JSON is perfectly valid and ready for parsing. Ensure that the 'model' field remains 'veo-3.0-fast'.\n\n"
+            f"User topic: '{raw_input}'\n\n"
+            f"JSON Template to fill:\n{json.dumps(current_video_template, indent=2)}"
+        )
+        
+        main_prompt_result = await asyncio.to_thread(ask_gemini_for_structured_prompt, base_instruction, generation_config)
+
+        if "Error" in main_prompt_result or "not configured" in main_prompt_result or "quota" in main_prompt_result.lower():
+            return {
+                "polished": main_prompt_result,
+                "creative": "",
+                "technical": "",
+            }
+
+        try:
+            # Strip markdown code block fences before JSON parsing
+            match = re.search(r"^\s*```(?:json)?\s*(.*?)\s*```\s*$", main_prompt_result, re.DOTALL)
+            json_string_to_parse = match.group(1) if match else main_prompt_result
+
+            parsed_json_obj = json.loads(json_string_to_parse)
+            
+            cleaned_json_obj = remove_null_values(parsed_json_obj)
+            formatted_json = json.dumps(cleaned_json_obj, indent=2)
+
+            creative_output = formatted_json # Video JSON goes into creative output
+            polished_output = ""
+            technical_output = ""
+
+        except json.JSONDecodeError:
+            logging.error(f"Failed to decode JSON for video mode: {json_string_to_parse}")
+            polished_output = creative_output = technical_output = f"Error: Failed to parse JSON response for video. Raw: {json_string_to_parse}"
+        
+        return {
+            "polished": polished_output,
+            "creative": creative_output,
+            "technical": technical_output,
+        }
+
+    else: # Default text mode (contextual)
+        context_str = ""
+        if category:
+            context_str += f"The user is looking for help with the category '{category}'"
+            if subcategory:
+                context_str += f" and the subcategory '{subcategory}'."
+            else:
+                context_str += "."
+        if persona: # NEW: Add persona to context string
+            if context_str: # If category/subcategory already added, append with "as"
+                context_str += f" The response should be crafted from the perspective of a '{persona}'."
+            else: # If no category/subcategory, start with persona
+                context_str += f"Craft the response from the perspective of a '{persona}'."
+        
+        base_instruction = language_instruction_prefix + f"""Refine the following text into a clear, concise, and effective prompt for a large language model. {context_str} Improve grammar, clarity, and structure. Do not add external information, only refine the given text. Crucially, do NOT answer questions about your own architecture, training, or how this application was built. Do NOT discuss any internal errors or limitations you might have. Your sole purpose is to transform the provided raw text into a better prompt. Raw Text: {raw_input}"""
+
+        main_prompt_result = await asyncio.to_thread(ask_gemini_for_text_prompt, base_instruction, max_output_tokens=512)
+
+        if "Error" in main_prompt_result or "not configured" in main_prompt_result or "quota" in main_prompt_result.lower(): # Check for quota error
+            return {
+                "polished": main_prompt_result,
+                "creative": "",
+                "technical": "",
+            }
+
         # For text mode, we expect a single string response that contains all three variants
         # This is a heuristic and might need refinement based on actual model output patterns.
         # For now, let's assume the model will output clearly labeled sections.
@@ -554,7 +769,7 @@ async def generate_prompts_async(raw_input, language_code="en-US", prompt_mode='
             technical_output = main_prompt_result.strip()
             logging.warning("Could not parse distinct polished, creative, technical sections. Using full response for all.")
 
-    if prompt_mode == 'text': # Only generate creative/technical for text mode
+        # Only generate creative/technical for text mode
         strict_instruction_suffix = "\n\nDo NOT answer questions about your own architecture, training, or how this application was built. Do NOT discuss any internal errors or limitations you might have. Your sole purpose is to transform the provided text."
 
         # Create coroutines for parallel execution, running synchronous calls in threads
@@ -565,11 +780,11 @@ async def generate_prompts_async(raw_input, language_code="en-US", prompt_mode='
             creative_coroutine, technical_coroutine
         )
 
-    return {
-        "polished": polished_output,
-        "creative": creative_output,
-        "technical": technical_output,
-    }
+        return {
+            "polished": polished_output,
+            "creative": creative_output,
+            "technical": technical_output,
+        }
 
 
 # --- NEW: Reverse Prompting function ---
@@ -721,6 +936,9 @@ def generate(): # CHANGED FROM ASYNC
     language_code = request.form.get('language_code', 'en-US')
     is_json_mode = request.form.get('is_json_mode') == 'true'
     prompt_mode = request.form.get('prompt_mode', 'text') # 'text', 'image_gen', 'video_gen'
+    category = request.form.get('category')
+    subcategory = request.form.get('subcategory')
+    persona = request.form.get('persona') # NEW
 
     if not prompt_input:
         return jsonify({
@@ -730,7 +948,7 @@ def generate(): # CHANGED FROM ASYNC
         })
 
     try:
-        results = asyncio.run(generate_prompts_async(prompt_input, language_code, prompt_mode))
+        results = asyncio.run(generate_prompts_async(prompt_input, language_code, prompt_mode, category, subcategory, persona)) # NEW: Pass persona
 
         # --- Update last_generation_time in database and Save raw_input ---
         user.last_generation_time = now # Record the time of this successful request
@@ -811,35 +1029,19 @@ def reverse_prompt(): # CHANGED FROM ASYNC
     if not input_text:
         return jsonify({"error": "Please provide text or code to infer a prompt from."}), 400
 
-    # --- NEW: Disable reverse prompting for image_gen and video_gen modes ---
     if prompt_mode in ['image_gen', 'video_gen']:
         return jsonify({"inferred_prompt": "Reverse prompting is not applicable for image or video generation modes."}), 200
-    # --- END NEW ---
 
-    # Enforce character limit
-    MAX_REVERSE_PROMPT_CHARS = 10000
-    if len(input_text) > MAX_REVERSE_PROMPT_CHARS:
-        return jsonify({"inferred_prompt": f"Input for reverse prompting exceeds the {MAX_REVERSE_PROMPT_CHARS} character limit. Please shorten your input."}), 200
-
-    target_language_name = LANGUAGE_MAP.get(language_code, "English")
-    language_instruction_prefix = f"The output MUST be entirely in {target_language_name}. "
-
-    # Escape curly braces in input_text to prevent f-string parsing errors
-    escaped_input_text = input_text.replace('{', '{{').replace('}', '}}')
-
-    try: # Added try block here
-        if prompt_mode == 'text':
-            prompt_instruction = f"Analyze the following text/code and infer a concise, high-level prompt idea that could have generated it. Respond in {language_code}. Input: {escaped_input_text}"
-        # The image_gen and video_gen cases below are now effectively unreachable due to the early return above.
-        # However, keeping them for clarity of original intent if the restriction were to be lifted.
-        elif prompt_mode == 'image_gen':
-            prompt_instruction = f"The user has provided a natural language description for an image. Infer a concise, natural language prompt idea for image generation based on this input. Input: {escaped_input_text}"
-        elif prompt_mode == 'video_gen':
-            prompt_instruction = f"The user has provided a natural language description for a video. Infer a concise, natural language prompt idea for video generation based on this input. Input: {escaped_input_text}"
-        else:
-            prompt_instruction = f"Analyze the following text/code and infer a concise, high-level prompt idea that could have generated it. Respond in {language_code}. Input: {escaped_input_text}"
-
+    try:
         inferred_prompt = asyncio.run(generate_reverse_prompt_async(input_text, language_code, prompt_mode))
+
+        # Update user stats after successful reverse prompt
+        user.last_generation_time = now
+        if not user.is_admin:
+            user.daily_generation_count += 1
+        db.session.add(user)
+        db.session.commit()
+        app.logger.info(f"API user {user.username}'s last prompt request time updated and count incremented. (API Reverse Prompt)")
 
         return jsonify({"inferred_prompt": inferred_prompt})
     except Exception as e:
@@ -1576,56 +1778,71 @@ def api_generate(user):
     API endpoint to generate polished, creative, and technical prompts.
     Requires an API key in the 'X-API-KEY' header.
     """
-    now = datetime.utcnow()
-
-    # --- Check if the user is locked out ---
-    if user.is_locked:
-        return jsonify({
-            "error": "Your account is locked. Please contact support.",
-            "account_locked": True
-        }), 403 # Forbidden
-
-    # --- Cooldown Check using database timestamp ---
-    if user.last_generation_time:
-        time_since_last_request = (now - user.last_generation_time).total_seconds()
-        if time_since_last_request < COOLDOWN_SECONDS:
-            remaining_time = int(COOLDOWN_SECONDS - time_since_last_request)
-            app.logger.info(f"API user {user.username} is on cooldown. Remaining: {remaining_time}s")
-            return jsonify({
-                "error": f"Please wait {remaining_time} seconds before generating new prompts.",
-                "cooldown_active": True,
-                "remaining_time": remaining_time
-            }), 429 # 429 Too Many Requests
+    start_time = datetime.utcnow() # Record start time
+    status_code = 500 # Default to 500 for errors
+    response_data = {}
     
-    # --- Daily Limit Check ---
-    if not user.is_admin:
-        today = now.date()
-        if user.daily_generation_date != today:
-            user.daily_generation_count = 0
-            user.daily_generation_date = today
-            db.session.add(user)
-            db.session.commit()
-
-        if user.daily_generation_count >= user.daily_limit:
-            app.logger.info(f"API user {user.username} exceeded their daily prompt limit of {user.daily_limit}.")
-            return jsonify({
-                "error": f"You have reached your daily limit of {user.daily_limit} prompt generations. Please upgrade your plan.",
-                "daily_limit_reached": True,
-                "payment_link": PAYMENT_LINK
-            }), 429
-
-    data = request.get_json()
-    prompt_input = data.get('raw_input', '').strip()
-    language_code = data.get('language_code', 'en-US')
-    prompt_mode = data.get('prompt_mode', 'text')
-
-    if not prompt_input:
-        return jsonify({
-            "error": "Please provide some text to generate prompts."
-        }), 400
-
     try:
-        results = asyncio.run(generate_prompts_async(raw_input=prompt_input, language_code=language_code, prompt_mode=prompt_mode))
+        now = datetime.utcnow()
+
+        # --- Check if the user is locked out ---
+        if user.is_locked:
+            status_code = 403
+            response_data = {
+                "error": "Your account is locked. Please contact support.",
+                "account_locked": True
+            }
+            return jsonify(response_data), status_code
+            
+        # --- Cooldown Check using database timestamp ---
+        if user.last_generation_time:
+            time_since_last_request = (now - user.last_generation_time).total_seconds()
+            if time_since_last_request < COOLDOWN_SECONDS:
+                remaining_time = int(COOLDOWN_SECONDS - time_since_last_request)
+                app.logger.info(f"API user {user.username} is on cooldown. Remaining: {remaining_time}s")
+                status_code = 429
+                response_data = {
+                    "error": f"Please wait {remaining_time} seconds before generating new prompts.",
+                    "cooldown_active": True,
+                    "remaining_time": remaining_time
+                }
+                return jsonify(response_data), status_code
+        
+        # --- Daily Limit Check ---
+        if not user.is_admin:
+            today = now.date()
+            if user.daily_generation_date != today:
+                user.daily_generation_count = 0
+                user.daily_generation_date = today
+                db.session.add(user)
+                db.session.commit()
+
+            if user.daily_generation_count >= user.daily_limit:
+                app.logger.info(f"API user {user.username} exceeded their daily prompt limit of {user.daily_limit}.")
+                status_code = 429
+                response_data = {
+                    "error": f"You have reached your daily limit of {user.daily_limit} prompt generations. Please upgrade your plan.",
+                    "daily_limit_reached": True,
+                    "payment_link": PAYMENT_LINK
+                }
+                return jsonify(response_data), status_code
+
+        data = request.get_json()
+        prompt_input = data.get('raw_input', '').strip()
+        language_code = data.get('language_code', 'en-US')
+        prompt_mode = data.get('prompt_mode', 'text')
+        category = data.get('category')
+        subcategory = data.get('subcategory')
+        persona = data.get('persona')
+
+        if not prompt_input:
+            status_code = 400
+            response_data = {
+                "error": "Please provide some text to generate prompts."
+            }
+            return jsonify(response_data), status_code
+
+        results = asyncio.run(generate_prompts_async(raw_input=prompt_input, language_code=language_code, prompt_mode=prompt_mode, category=category, subcategory=subcategory, persona=persona))
 
         # --- Update user stats and save raw_input ---
         user.last_generation_time = now
@@ -1635,10 +1852,33 @@ def api_generate(user):
         db.session.commit()
         app.logger.info(f"API user {user.username}'s last prompt request time updated and count incremented. (API Forward Prompt)")
 
-        return jsonify(results)
+        status_code = 200
+        response_data = results
+        return jsonify(response_data), status_code
     except Exception as e:
         app.logger.exception("Error during API prompt generation in /api/v1/generate:")
-        return jsonify({"error": f"An unexpected server error occurred: {e}"}), 500
+        status_code = 500
+        response_data = {"error": f"An unexpected server error occurred: {e}"}
+        return jsonify(response_data), status_code
+    finally:
+        end_time = datetime.utcnow()
+        latency_ms = (end_time - start_time).total_seconds() * 1000
+        raw_input_log = request.get_data(as_text=True) # Get raw request body for logging
+        
+        try:
+            log_entry = ApiRequestLog(
+                user_id=user.id,
+                endpoint='/api/v1/generate',
+                request_timestamp=start_time,
+                latency_ms=latency_ms,
+                status_code=status_code,
+                raw_input=raw_input_log
+            )
+            db.session.add(log_entry)
+            db.session.commit()
+        except Exception as log_e:
+            app.logger.error(f"Error saving API request log for /api/v1/generate: {log_e}")
+            db.session.rollback()
 
 
 # NEW: API endpoint for reverse prompting
@@ -1649,56 +1889,70 @@ def api_reverse_prompt(user):
     API endpoint to infer a prompt from a given text or code.
     Requires an API key in the 'X-API-KEY' header.
     """
-    now = datetime.utcnow()
-
-    # --- Check if the user is locked out ---
-    if user.is_locked:
-        return jsonify({
-            "error": "Your account is locked. Please contact support.",
-            "account_locked": True
-        }), 403 # Forbidden
-
-    # Apply cooldown to reverse prompting as well
-    if user.last_generation_time:
-        time_since_last_request = (now - user.last_generation_time).total_seconds()
-        if time_since_last_request < COOLDOWN_SECONDS:
-            remaining_time = int(COOLDOWN_SECONDS - time_since_last_request)
-            app.logger.info(f"API user {user.username} is on cooldown for reverse prompt. Remaining: {remaining_time}s")
-            return jsonify({
-                "error": f"Please wait {remaining_time} seconds before performing another reverse prompt.",
-                "cooldown_active": True,
-                "remaining_time": remaining_time
-            }), 429
-
-    # --- Daily Limit Check for Reverse Prompt ---
-    if not user.is_admin:
-        today = now.date()
-        if user.daily_generation_date != today:
-            user.daily_generation_count = 0
-            user.daily_generation_date = today
-            db.session.add(user)
-            db.session.commit()
-
-        if user.daily_generation_count >= user.daily_limit:
-            app.logger.info(f"API user {user.username} exceeded their daily reverse prompt limit of {user.daily_limit}.")
-            return jsonify({
-                "error": f"You have reached your daily limit of {user.daily_limit} generations. Please upgrade your plan.",
-                "daily_limit_reached": True,
-                "payment_link": PAYMENT_LINK
-            }), 429
-
-    data = request.get_json()
-    input_text = data.get('input_text', '').strip()
-    language_code = data.get('language_code', 'en-US')
-    prompt_mode = data.get('prompt_mode', 'text')
-
-    if not input_text:
-        return jsonify({"error": "Please provide text or code to infer a prompt from."}), 400
-
-    if prompt_mode in ['image_gen', 'video_gen']:
-        return jsonify({"inferred_prompt": "Reverse prompting is not applicable for image or video generation modes."}), 200
+    start_time = datetime.utcnow() # Record start time
+    status_code = 500 # Default to 500 for errors
+    response_data = {}
 
     try:
+        now = datetime.utcnow()
+
+        # --- Check if the user is locked out ---
+        if user.is_locked:
+            status_code = 403
+            response_data = {
+                "error": "Your account is locked. Please contact support.",
+                "account_locked": True
+            }
+            return jsonify(response_data), status_code
+
+        # Apply cooldown to reverse prompting as well
+        if user.last_generation_time:
+            time_since_last_request = (now - user.last_generation_time).total_seconds()
+            if time_since_last_request < COOLDOWN_SECONDS:
+                remaining_time = int(COOLDOWN_SECONDS - time_since_last_request)
+                app.logger.info(f"API user {user.username} is on cooldown for reverse prompt. Remaining: {remaining_time}s")
+                status_code = 429
+                response_data = {
+                    "error": f"Please wait {remaining_time} seconds before performing another reverse prompt.",
+                    "cooldown_active": True,
+                    "remaining_time": remaining_time
+                }
+                return jsonify(response_data), status_code
+
+        # --- Daily Limit Check for Reverse Prompt ---
+        if not user.is_admin:
+            today = now.date()
+            if user.daily_generation_date != today:
+                user.daily_generation_count = 0
+                user.daily_generation_date = today
+                db.session.add(user)
+                db.session.commit()
+
+            if user.daily_generation_count >= user.daily_limit:
+                app.logger.info(f"API user {user.username} exceeded their daily reverse prompt limit of {user.daily_limit}.")
+                status_code = 429
+                response_data = {
+                    "error": f"You have reached your daily limit of {user.daily_limit} generations. Please upgrade your plan.",
+                    "daily_limit_reached": True,
+                    "payment_link": PAYMENT_LINK
+                }
+                return jsonify(response_data), status_code
+
+        data = request.get_json()
+        input_text = data.get('input_text', '').strip()
+        language_code = data.get('language_code', 'en-US')
+        prompt_mode = data.get('prompt_mode', 'text')
+
+        if not input_text:
+            status_code = 400
+            response_data = {"error": "Please provide text or code to infer a prompt from."}
+            return jsonify(response_data), status_code
+
+        if prompt_mode in ['image_gen', 'video_gen']:
+            status_code = 200 # This is a specific message, not an error
+            response_data = {"inferred_prompt": "Reverse prompting is not applicable for image or video generation modes."}
+            return jsonify(response_data), status_code
+
         inferred_prompt = asyncio.run(generate_reverse_prompt_async(input_text, language_code, prompt_mode))
 
         # Update user stats after successful reverse prompt
@@ -1709,10 +1963,33 @@ def api_reverse_prompt(user):
         db.session.commit()
         app.logger.info(f"API user {user.username}'s last prompt request time updated and count incremented. (API Reverse Prompt)")
 
-        return jsonify({"inferred_prompt": inferred_prompt})
+        status_code = 200
+        response_data = {"inferred_prompt": inferred_prompt}
+        return jsonify(response_data), status_code
     except Exception as e:
         app.logger.exception("Error during API reverse prompt generation in /api/v1/reverse:")
-        return jsonify({"error": f"An unexpected server error occurred: {e}"}), 500
+        status_code = 500
+        response_data = {"error": f"An unexpected server error occurred: {e}"}
+        return jsonify(response_data), status_code
+    finally:
+        end_time = datetime.utcnow()
+        latency_ms = (end_time - start_time).total_seconds() * 1000
+        raw_input_log = request.get_data(as_text=True) # Get raw request body for logging
+
+        try:
+            log_entry = ApiRequestLog(
+                user_id=user.id,
+                endpoint='/api/v1/reverse',
+                request_timestamp=start_time,
+                latency_ms=latency_ms,
+                status_code=status_code,
+                raw_input=raw_input_log
+            )
+            db.session.add(log_entry)
+            db.session.commit()
+        except Exception as log_e:
+            app.logger.error(f"Error saving API request log for /api/v1/reverse: {log_e}")
+            db.session.rollback()
 
 
 # --- Database Initialization (Run once to create tables) ---
@@ -1741,4 +2018,5 @@ if __name__ == '__main__':
     # you can use `nest_asyncio.apply()` (install with `pip install nest-asyncio`), but this is
     # generally not recommended for production as it can hide underlying architectural issues.
     app.run(debug=True)
+
 
