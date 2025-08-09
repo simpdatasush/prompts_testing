@@ -91,66 +91,6 @@ LANGUAGE_MAP = {
  "hi-IN": "Hindi"
 }
 
-# --- CATEGORY AND PERSONA DEFINITIONS (MOVED FROM FRONTEND) ---
-CATEGORIES_AND_SUBCATEGORIES = {
-    "General Writing & Editing": ["Grammar correction", "Rephrasing", "Summarization", "Paraphrasing", "Other"],
-    "Programming & Code": ["Code generation", "Debugging", "Explanation", "Optimization", "Other"],
-    "Business & Finance": ["Business plans", "Financial analysis", "Emails", "Market research", "Other"],
-    "Education & Learning": ["Concept explanations", "Lesson plans", "Study aids", "Quiz generation", "Other"],
-    "Technical Writing & Explanation": ["API docs", "System descriptions", "Technical proposals", "Other"],
-    "Customer Support": ["Auto-replies", "Ticket handling", "FAQ generation", "User guides", "Other"],
-    "Research & Information Retrieval": ["Literature review", "Data extraction", "Comparisons", "Citations", "Other"],
-    "Data Analysis & Interpretation": ["Analyzing datasets", "Summarizing insights", "Chart explanations", "Other"],
-    "Productivity & Planning": ["Task lists", "Planners", "Time management strategies", "Workflows", "Other"],
-    "Creative Writing": ["Stories", "Poems", "Lyrics", "Fictional characters", "Worldbuilding", "Other"],
-    "Marketing & Advertising": ["Ad copy", "Slogans", "Social media posts", "SEO content", "Other"],
-    "Multilingual & Translation": ["Translation", "Localization", "Multilingual prompts", "Other"],
-    "Entertainment & Media": ["Movie/book/game recommendations", "Trivia", "Storytelling", "Other"],
-    "Career & Resume": ["Resume writing", "Cover letters", "Interview prep", "Other"],
-    "Legal & Compliance": ["Contracts", "Disclaimers", "Legal summaries (non-advisory)", "Other"],
-    "Healthcare & Wellness": ["Non-diagnostic advice", "Fitness plans", "Mental health prompts", "Other"],
-    "Image Generation & Visual Design": ["Prompts for image tools", "Scene descriptions", "Visual styles", "Other"],
-    "Event Planning": ["Agendas", "Checklists", "Invitations", "Budget planning", "Other"],
-    "UX/UI & Product Design": ["UX copy", "Persona generation", "Wireframe ideas", "Other"],
-    "Spirituality & Self-Reflection": ["Meditation scripts", "Affirmations", "Philosophical prompts", "Other"],
-    "Gaming": ["Game Developer", "Game Designer", "Gamer", "Stream Host", "Lore Writer", "Other"],
-    "Voice, Audio & Podcasting": ["Scriptwriting", "Transcription", "Voiceover prompts", "Other"],
-    "AI & Prompt Engineering": ["LLM tuning", "Meta-prompts", "Dataset generation", "Evaluations", "Other"],
-    "News & Current Affairs": ["Summaries", "Debate simulations", "Editorial writing", "Other"],
-    "Travel & Culture": ["Itineraries", "Local tips", "Cultural do’s and don’ts", "Other"],
-    "Other": ["General", "Custom", "Uncategorized"],
-}
-
-CATEGORY_PERSONAS = {
-    "General Writing & Editing": ["Author", "Editor", "Copywriter", "Content Creator", "Blogger", "Other"],
-    "Programming & Code": ["Software Developer", "Frontend Engineer", "Backend Engineer", "Data Scientist", "DevOps Engineer", "Other"],
-    "Business & Finance": ["Entrepreneur", "Business Analyst", "Financial Advisor", "Investor", "Startup Founder", "Other"],
-    "Education & Learning": ["Student", "Teacher", "Tutor", "Curriculum Designer", "Lifelong Learner", "Other"],
-    "Technical Writing & Explanation": ["Technical Writer", "System Architect", "Engineer", "Product Manager", "Compliance Officer", "Other"],
-    "Customer Support": ["Support Agent", "Customer Success Manager", "Helpdesk Analyst", "Call Center Manager", "Chatbot Designer", "Other"],
-    "Research & Information Retrieval": ["Researcher", "Scientist", "Academic", "Policy Analyst", "Librarian", "Other"],
-    "Data Analysis & Interpretation": ["Data Analyst", "BI Analyst", "Statistician", "Data Engineer", "Operations Manager", "Other"],
-    "Productivity & Planning": ["Project Manager", "Life Coach", "Executive Assistant", "Scrum Master", "Productivity Hacker", "Other"],
-    "Creative Writing": ["Novelist", "Poet", "Screenwriter", "Songwriter", "Creative Director", "Other"],
-    "Marketing & Advertising": ["Marketing Manager", "Brand Strategist", "SEO Specialist", "Content Marketer", "Media Planner", "Other"],
-    "Multilingual & Translation": ["Translator", "Interpreter", "Language Teacher", "Localization Specialist", "Multilingual Blogger", "Other"],
-    "Entertainment & Media": ["YouTuber", "Streamer", "Podcaster", "Critic", "Fan Fiction Author", "Other"],
-    "Career & Resume": ["Job Seeker", "Career Coach", "HR Recruiter", "Hiring Manager", "Resume Writer", "Other"],
-    "Legal & Compliance": ["Lawyer", "Paralegal", "Compliance Officer", "Policy Advisor", "Contract Manager", "Other"],
-    "Healthcare & Wellness": ["Nutritionist", "Fitness Coach", "Therapist", "Health Blogger", "Wellness Consultant", "Other"],
-    "Image Generation & Visual Design": ["Graphic Designer", "Concept Artist", "Art Director", "Photographer", "AI Image Prompt Engineer", "Other"],
-    "Event Planning": ["Event Planner", "Wedding Coordinator", "Conference Organizer", "Marketing Executive", "Venue Manager", "Other"],
-    "UX/UI & Product Design": ["UX Designer", "UI Designer", "Product Designer", "Interaction Designer", "Design Researcher", "Other"],
-    "Spirituality & Self-Reflection": ["Meditation Coach", "Spiritual Guide", "Mindfulness Blogger", "Philosopher", "Self-help Author", "Other"],
-    "Gaming": ["Game Developer", "Game Designer", "Gamer", "Stream Host", "Lore Writer", "Other"],
-    "Voice, Audio & Podcasting": ["Voice Actor", "Podcaster", "Audio Engineer", "Narrator", "Sound Designer", "Other"],
-    "AI & Prompt Engineering": ["Prompt Engineer", "ML Engineer", "AI Researcher", "NLP Scientist", "Chatbot Developer", "Other"],
-    "News & Current Affairs": ["Journalist", "News Curator", "Political Analyst", "Opinion Writer", "Debater", "Other"],
-    "Travel & Culture": ["Itineraries", "Local tips", "Cultural do’s and don’ts", "Other"],
-    "Other": ["General", "Custom", "Uncategorized"], # Default personas for the "Other" main category
-}
-# --- END CATEGORY AND PERSONA DEFINITIONS ---
-
 
 # --- Configure Google Gemini API ---
 # Ensure your GOOGLE_API_KEY is set in your environment variables
@@ -182,10 +122,6 @@ class User(db.Model, UserMixin):
     payment_date = db.Column(db.DateTime, nullable=True)
     daily_limit = db.Column(db.Integer, default=FREE_DAILY_LIMIT) # NEW: Per-user daily limit
     api_key = db.Column(db.String(100), unique=True, nullable=True) # NEW: API Key for each user
-    
-    # NEW: Columns for category and persona access control
-    allowed_categories = db.Column(db.Text, nullable=False, default='[]') # Stores JSON array of allowed categories
-    allowed_personas = db.Column(db.Text, nullable=False, default='[]') # Stores JSON array of allowed personas
 
     # Relationship for saved prompts (using SavedPrompt model)
     saved_prompts = db.relationship('SavedPrompt', backref='author', lazy=True)
@@ -674,24 +610,6 @@ async def generate_prompts_async(raw_input, language_code="en-US", prompt_mode='
             "technical": "",
         }
 
-    # --- NEW: Category and Persona Validation ---
-    user_allowed_categories = json.loads(current_user.allowed_categories) if current_user.is_authenticated else []
-    user_allowed_personas = json.loads(current_user.allowed_personas) if current_user.is_authenticated else []
-
-    if not current_user.is_admin and category and category not in user_allowed_categories:
-        return {
-            "polished": f"Error: You do not have permission to use the category '{category}'.",
-            "creative": "",
-            "technical": "",
-        }
-    if not current_user.is_admin and persona and persona not in user_allowed_personas:
-        return {
-            "polished": f"Error: You do not have permission to use the persona '{persona}'.",
-            "creative": "",
-            "technical": "",
-        }
-    # --- END NEW ---
-
     target_language_name = LANGUAGE_MAP.get(language_code, "English")
     language_instruction_prefix = f"The output MUST be entirely in {target_language_name}. "
     
@@ -869,6 +787,194 @@ async def generate_prompts_async(raw_input, language_code="en-US", prompt_mode='
         }
 
 
+# --- NEW: Reverse Prompting function ---
+async def generate_reverse_prompt_async(input_text, language_code="en-US", prompt_mode='text'):
+    if not input_text.strip():
+        return "Please provide text or code to infer a prompt from."
+
+    # --- NEW: Disable reverse prompting for image_gen and video_gen modes ---
+    if prompt_mode in ['image_gen', 'video_gen']:
+        return "Reverse prompting is not applicable for image or video generation modes."
+    # --- END NEW ---
+
+    # Enforce character limit
+    MAX_REVERSE_PROMPT_CHARS = 10000
+    if len(input_text) > MAX_REVERSE_PROMPT_CHARS:
+        return f"Input for reverse prompting exceeds the {MAX_REVERSE_PROMPT_CHARS} character limit. Please shorten your input."
+
+    target_language_name = LANGUAGE_MAP.get(language_code, "English")
+    language_instruction_prefix = f"The output MUST be entirely in {target_language_name}. "
+
+    # Escape curly braces in input_text to prevent f-string parsing errors
+    escaped_input_text = input_text.replace('{', '{{').replace('}', '}}')
+
+    if prompt_mode == 'text':
+        prompt_instruction = f"Analyze the following text/code and infer a concise, high-level prompt idea that could have generated it. Respond in {language_code}. Input: {escaped_input_text}"
+        # The image_gen and video_gen cases below are now effectively unreachable due to the early return above.
+        # However, keeping them for clarity of original intent if the restriction were to be lifted.
+    elif prompt_mode == 'image_gen':
+        prompt_instruction = f"The user has provided a natural language description for an image. Infer a concise, natural language prompt idea for image generation based on this input. Input: {escaped_input_text}"
+    elif prompt_mode == 'video_gen':
+        prompt_instruction = f"The user has provided a natural language description for a video. Infer a concise, natural language prompt idea for video generation based on this input. Input: {escaped_input_text}"
+    else:
+        prompt_instruction = f"Analyze the following text/code and infer a concise, high-level prompt idea that could have generated it. Respond in {language_code}. Input: {escaped_input_text}"
+
+    app.logger.info(f"Sending reverse prompt instruction to Gemini (length: {len(prompt_instruction)} chars))")
+
+    reverse_prompt_result = await asyncio.to_thread(ask_gemini_for_text_prompt, prompt_instruction, max_output_tokens=512)
+
+    return reverse_prompt_result
+
+
+# --- Flask Routes ---
+
+# UPDATED: Landing page route to fetch more news AND jobs
+@app.route('/')
+def landing():
+    # Fetch latest 6 news items for the landing page
+    news_items = NewsItem.query.order_by(NewsItem.timestamp.desc()).limit(6).all()
+    # Fetch latest 6 job listings for the landing page
+    job_listings = JobListing.query.order_by(JobListing.timestamp.desc()).limit(6).all()
+    # NEW: Fetch latest 3 SamplePrompts for the landing page
+    sample_prompts = SamplePrompt.query.order_by(SamplePrompt.timestamp.desc()).limit(3).all()
+
+    # Process sample_prompts to include the selected display_type's content
+    display_prompts = []
+    for prompt in sample_prompts:
+        display_prompt_text = getattr(prompt, prompt.display_type + '_prompt', prompt.polished_prompt)
+        display_prompts.append({
+            'id': prompt.id,
+            'raw_prompt': prompt.raw_prompt,
+            'display_prompt_text': display_prompt_text,
+            'display_type': prompt.display_type,
+            'timestamp': prompt.timestamp
+        })
+
+    return render_template('landing.html', news_items=news_items, job_listings=job_listings, sample_prompts=display_prompts, current_user=current_user)
+
+
+# UPDATED: Route to view a specific news item (using NewsItem model)
+@app.route('/view_news/<int:news_id>')
+def view_news(news_id):
+    item = NewsItem.query.get_or_404(news_id)
+    return render_template('shared_content_landing.html', item=item, item_type='news')
+
+
+# UPDATED: Route to view a specific job listing (using JobListing model)
+@app.route('/view_job/<int:job_id>')
+def view_job(job_id):
+    item = JobListing.query.get_or_404(job_id)
+    return render_template('shared_content_landing.html', item=item, item_type='job')
+
+# NEW: Route to view a specific sample prompt
+@app.route('/view_prompt/<int:prompt_id>')
+def view_prompt(prompt_id):
+    item = SamplePrompt.query.get_or_404(prompt_id)
+    return render_template('shared_content_landing.html', item=item, item_type='prompt')
+
+
+# Renamed original index route to /app_home
+@app.route('/app_home')
+@login_required # REQUIRE LOGIN FOR APP HOME PAGE
+def app_home():
+    # Pass current_user object to the template to show login/logout status
+    return render_template('index.html', current_user=current_user)
+
+
+# NEW: LLM Benchmark Page Route
+@app.route('/llm_benchmark')
+def llm_benchmark():
+    return render_template('llm_benchmark.html', current_user=current_user)
+
+
+@app.route('/generate', methods=['POST'])
+@login_required # Protect this route
+def generate(): # CHANGED FROM ASYNC
+    user = current_user # Get the current user object
+    now = datetime.utcnow() # Use utcnow for consistency with database default
+
+    # --- Check if the user is locked out ---
+    if user.is_locked:
+        return jsonify({
+            "error": "Your account is locked. Please contact support.",
+            "account_locked": True
+        }), 403 # Forbidden
+        
+    # --- Cooldown Check using database timestamp ---
+    if user.last_generation_time:
+        time_since_last_request = (now - user.last_generation_time).total_seconds()
+        if time_since_last_request < COOLDOWN_SECONDS:
+            remaining_time = int(COOLDOWN_SECONDS - time_since_last_request)
+            app.logger.info(f"User {user.username} is on cooldown. Remaining: {remaining_time}s")
+            return jsonify({
+                "error": f"Please wait {remaining_time} seconds before generating new prompts.",
+                "cooldown_active": True,
+                "remaining_time": remaining_time
+            }), 429 # 429 Too Many Requests
+    # --- END UPDATED ---
+
+    # --- Daily Limit Check ---
+    if not user.is_admin: # Admins are exempt from the daily limit
+        today = now.date()
+        if user.daily_generation_date != today:
+            user.daily_generation_count = 0
+            user.daily_generation_date = today
+            db.session.add(user) # Mark user as modified
+            db.session.commit() # Commit reset immediately to prevent race conditions on count
+
+        if user.daily_generation_count >= user.daily_limit: # Check against per-user limit
+            app.logger.info(f"User {user.username} exceeded their daily prompt limit of {user.daily_limit}.")
+            # NEW: Return a specific payment message instead of just an error
+            return jsonify({
+                "error": f"You have reached your daily limit of {user.daily_limit} prompt generations. If you are looking for more prompts, kindly make a payment to increase your limit.",
+                "daily_limit_reached": True,
+                "payment_link": PAYMENT_LINK
+            }), 429 # 429 Too Many Requests
+    # --- END NEW: Daily Limit Check ---
+
+    prompt_input = request.form.get('prompt_input', '').strip()
+    language_code = request.form.get('language_code', 'en-US')
+    is_json_mode = request.form.get('is_json_mode') == 'true'
+    prompt_mode = request.form.get('prompt_mode', 'text') # 'text', 'image_gen', 'video_gen'
+    category = request.form.get('category')
+    subcategory = request.form.get('subcategory')
+    persona = request.form.get('persona') # NEW
+
+    if not prompt_input:
+        return jsonify({
+            "polished": "Please enter some text to generate prompts.",
+            "creative": "",
+            "technical": "",
+        })
+
+    try:
+        results = asyncio.run(generate_prompts_async(prompt_input, language_code, prompt_mode, category, subcategory, persona)) # NEW: Pass persona
+
+        # --- Update last_generation_time in database and Save raw_input ---
+        user.last_generation_time = now # Record the time of this successful request
+        if not user.is_admin: # Only increment count for non-admin users
+            user.daily_generation_count += 1
+        db.session.add(user) # Add the user object back to the session to mark it as modified
+        db.session.commit()
+        app.logger.info(f"User {user.username}'s last prompt request time updated and count incremented. (Forward Prompt)")
+
+        if current_user.is_authenticated:
+            try:
+                new_raw_prompt = RawPrompt(user_id=current_user.id, raw_text=prompt_input)
+                db.session.add(new_raw_prompt)
+                db.session.commit()
+                app.logger.info(f"Raw prompt saved for user {current_user.username}")
+            except Exception as e:
+                app.logger.error(f"Error saving raw prompt for user {current_user.username}: {e}")
+                db.session.rollback() # Rollback in case of error
+        # --- END UPDATED ---
+
+        return jsonify(results)
+    except Exception as e:
+        app.logger.exception("Error during prompt generation in endpoint:")
+        return jsonify({"error": f"An unexpected server error occurred: {e}. Please check server logs for details."}), 500
+
+
 # --- NEW: Reverse Prompt Endpoint ---
 @app.route('/reverse_prompt', methods=['POST'])
 @login_required
@@ -918,8 +1024,6 @@ def reverse_prompt(): # CHANGED FROM ASYNC
     input_text = data.get('input_text', '').strip()
     language_code = data.get('language_code', 'en-US')
     prompt_mode = data.get('prompt_mode', 'text')
-    category = data.get('category') # NEW
-    persona = data.get('persona') # NEW
 
 
     if not input_text:
@@ -927,16 +1031,6 @@ def reverse_prompt(): # CHANGED FROM ASYNC
 
     if prompt_mode in ['image_gen', 'video_gen']:
         return jsonify({"inferred_prompt": "Reverse prompting is not applicable for image or video generation modes."}), 200
-
-    # --- NEW: Category and Persona Validation for Reverse Prompt ---
-    user_allowed_categories = json.loads(current_user.allowed_categories) if current_user.is_authenticated else []
-    user_allowed_personas = json.loads(current_user.allowed_personas) if current_user.is_authenticated else []
-
-    if not current_user.is_admin and category and category not in user_allowed_categories:
-        return jsonify({"inferred_prompt": f"Error: You do not have permission to use the category '{category}'."}), 200
-    if not current_user.is_admin and persona and persona not in user_allowed_personas:
-        return jsonify({"inferred_prompt": f"Error: You do not have permission to use the persona '{persona}'."}), 200
-    # --- END NEW ---
 
     try:
         inferred_prompt = asyncio.run(generate_reverse_prompt_async(input_text, language_code, prompt_mode))
@@ -1001,18 +1095,7 @@ def process_image_prompt(): # CHANGED FROM ASYNC
     data = request.get_json()
     image_data_b64 = data.get('image_data')
     language_code = data.get('language_code', 'en-US') # Not directly used by Gemini Vision, but good to pass
-    category = data.get('category') # NEW
-    persona = data.get('persona') # NEW
 
-    # --- NEW: Category and Persona Validation for Image Processing ---
-    user_allowed_categories = json.loads(current_user.allowed_categories) if current_user.is_authenticated else []
-    user_allowed_personas = json.loads(current_user.allowed_personas) if current_user.is_authenticated else []
-
-    if not current_user.is_admin and category and category not in user_allowed_categories:
-        return jsonify({"error": f"Error: You do not have permission to use the category '{category}'."}), 403
-    if not current_user.is_admin and persona and persona not in user_allowed_personas:
-        return jsonify({"error": f"Error: You do not have permission to use the persona '{persona}'."}), 403
-    # --- END NEW ---
 
     if not image_data_b64:
         return jsonify({"error": "No image data provided."}), 400
@@ -1070,19 +1153,13 @@ def check_cooldown():
         if daily_count >= user_daily_limit:
             daily_limit_reached = True
 
-    # NEW: Pass allowed categories and personas to frontend
-    allowed_categories = json.loads(user.allowed_categories) if user.allowed_categories else []
-    allowed_personas = json.loads(user.allowed_personas) if user.allowed_personas else []
-
     return jsonify({
         "cooldown_active": cooldown_active,
         "remaining_time": remaining_time,
         "daily_limit_reached": daily_limit_reached,
         "daily_count": daily_count,
         "user_daily_limit": user_daily_limit,
-        "is_admin": user.is_admin,
-        "allowed_categories": allowed_categories, # NEW
-        "allowed_personas": allowed_personas # NEW
+        "is_admin": user.is_admin
     }), 200
 
 
@@ -1674,56 +1751,14 @@ def update_user_quota(user_id):
 
     return redirect(url_for('admin_users'))
 
-# NEW: Admin route to edit user details including categories/personas
-@app.route('/admin/users/edit/<int:user_id>', methods=['GET', 'POST'])
+# NEW: Admin API Performance Route
+@app.route('/admin/api_performance')
 @admin_required
-def edit_user(user_id):
-    user = User.query.get_or_404(user_id)
-
-    # Define ALL possible categories and personas here for the admin form
-    # These should match the CATEGORIES_AND_SUBCATEGORIES and CATEGORY_PERSONAS in index.html
-    all_categories = list(CATEGORIES_AND_SUBCATEGORIES.keys())
-    all_personas = []
-    for category_key in CATEGORY_PERSONAS:
-        for persona_item in CATEGORY_PERSONAS[category_key]:
-            if persona_item not in all_personas: # Avoid duplicates
-                all_personas.append(persona_item)
-    all_personas.sort() # Sort for consistent display
-
-    if request.method == 'POST':
-        user.is_admin = 'is_admin' in request.form
-        user.is_locked = 'is_locked' in request.form
-        user.daily_limit = int(request.form.get('daily_limit', FREE_DAILY_LIMIT))
-        
-        # Get selected categories and personas from the form (will be lists of strings)
-        selected_categories = request.form.getlist('allowed_categories')
-        selected_personas = request.form.getlist('allowed_personas')
-
-        # Store them as JSON strings in the database
-        user.allowed_categories = json.dumps(selected_categories)
-        user.allowed_personas = json.dumps(selected_personas)
-
-        try:
-            db.session.commit()
-            flash(f"User {user.username} updated successfully!", "success")
-            return redirect(url_for('admin_users'))
-        except Exception as e:
-            db.session.rollback()
-            flash(f"Error updating user {user.username}: {e}", "danger")
-            app.logger.error(f"Error updating user {user.username}: {e}")
-
-    # For GET request, parse stored JSON strings back to Python lists
-    user_allowed_categories_list = json.loads(user.allowed_categories) if user.allowed_categories else []
-    user_allowed_personas_list = json.loads(user.allowed_personas) if user.allowed_personas else []
-
-    return render_template('admin_user_edit.html',
-                           user=user,
-                           all_categories=all_categories,
-                           all_personas=all_personas,
-                           user_allowed_categories_list=user_allowed_categories_list,
-                           user_allowed_personas_list=user_allowed_personas_list,
-                           current_user=current_user)
-
+def admin_api_performance():
+    api_logs = ApiRequestLog.query.order_by(ApiRequestLog.request_timestamp.desc()).limit(100).all()
+    # To get usernames for the logs
+    users = {user.id: user for user in User.query.all()}
+    return render_template('admin_api_performance.html', api_logs=api_logs, users=users, current_user=current_user)
 
 @app.route('/admin/users/generate_api_key/<int:user_id>', methods=['POST'])
 @admin_required
@@ -1799,21 +1834,6 @@ def api_generate(user):
         category = data.get('category')
         subcategory = data.get('subcategory')
         persona = data.get('persona')
-
-        # --- NEW: Category and Persona Validation for API ---
-        user_allowed_categories = json.loads(user.allowed_categories) if user.allowed_categories else []
-        user_allowed_personas = json.loads(user.allowed_personas) if user.allowed_personas else []
-
-        if not user.is_admin:
-            if category and category not in user_allowed_categories:
-                status_code = 403
-                response_data = {"error": f"You do not have permission to use the category '{category}'."}
-                return jsonify(response_data), status_code
-            if persona and persona not in user_allowed_personas:
-                status_code = 403
-                response_data = {"error": f"You do not have permission to use the persona '{persona}'."}
-                return jsonify(response_data), status_code
-        # --- END NEW ---
 
         if not prompt_input:
             status_code = 400
@@ -1922,23 +1942,6 @@ def api_reverse_prompt(user):
         input_text = data.get('input_text', '').strip()
         language_code = data.get('language_code', 'en-US')
         prompt_mode = data.get('prompt_mode', 'text')
-        category = data.get('category') # NEW
-        persona = data.get('persona') # NEW
-
-        # --- NEW: Category and Persona Validation for API ---
-        user_allowed_categories = json.loads(user.allowed_categories) if user.allowed_categories else []
-        user_allowed_personas = json.loads(user.allowed_personas) if user.allowed_personas else []
-
-        if not user.is_admin:
-            if category and category not in user_allowed_categories:
-                status_code = 403
-                response_data = {"inferred_prompt": f"Error: You do not have permission to use the category '{category}'."}
-                return jsonify(response_data), status_code
-            if persona and persona not in user_allowed_personas:
-                status_code = 403
-                response_data = {"inferred_prompt": f"Error: You do not have permission to use the persona '{persona}'."}
-                return jsonify(response_data), status_code
-        # --- END NEW ---
 
         if not input_text:
             status_code = 400
@@ -1998,19 +2001,13 @@ with app.app_context():
 
     # NEW: Create an admin user if one doesn't exist for easy testing
     if not User.query.filter_by(username='admin').first():
-        admin_user = User(username='admin', is_admin=True, daily_limit=999999, allowed_categories=json.dumps(list(CATEGORIES_AND_SUBCATEGORIES.keys())), allowed_personas=json.dumps(list(set(p for sublist in CATEGORY_PERSONAS.values() for p in sublist))))
+        admin_user = User(username='admin', is_admin=True, daily_limit=999999)
         admin_user.set_password('adminpass') # Set a default password for the admin
         # For admin, set a dummy email or leave None if not required for testing password reset
         admin_user.email = 'admin@example.com' # Assign a dummy email for admin
         db.session.add(admin_user)
         db.session.commit()
         app.logger.info("Default admin user 'admin' created with password 'adminpass'.")
-    else:
-        # Ensure existing admin has all categories/personas by default
-        admin_user = User.query.filter_by(username='admin').first()
-        admin_user.allowed_categories = json.dumps(list(CATEGORIES_AND_SUBCATEGORIES.keys()))
-        admin_user.allowed_personas = json.dumps(list(set(p for sublist in CATEGORY_PERSONAS.values() for p in sublist)))
-        db.session.commit()
 
 
 # --- Main App Run ---
@@ -2021,3 +2018,4 @@ if __name__ == '__main__':
     # you can use `nest_asyncio.apply()` (install with `pip install nest-asyncio`), but this is
     # generally not recommended for production as it can hide underlying architectural issues.
     app.run(debug=True)
+
