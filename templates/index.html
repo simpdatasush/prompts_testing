@@ -1078,6 +1078,10 @@
        const settingsContent = document.getElementById('settings_content');
        const settingsToggleIcon = document.getElementById('settings_toggle_icon');
 
+       // Global variables to store allowed categories and personas for the current user
+       let allowedCategoriesForUser = [];
+       let allowedPersonasForUser = [];
+
 
        const CATEGORIES_AND_SUBCATEGORIES = {
            "General Writing & Editing": ["Grammar correction", "Rephrasing", "Summarization", "Paraphrasing", "Other"],
@@ -1140,27 +1144,32 @@
 
        function populateCategories() {
            categorySelect.innerHTML = '<option value="">Select a category</option>';
-           for (const category in CATEGORIES_AND_SUBCATEGORIES) { // Use new constant
+           const allCategories = Object.keys(CATEGORIES_AND_SUBCATEGORIES);
+           const categoriesToDisplay = allowedCategoriesForUser.length > 0 ?
+                                       allCategories.filter(cat => allowedCategoriesForUser.includes(cat)) :
+                                       allCategories; // If no specific categories are allowed, show all
+
+           categoriesToDisplay.forEach(category => {
                const option = document.createElement('option');
                option.value = category;
                option.textContent = category;
                categorySelect.appendChild(option);
-           }
+           });
            subcategorySelect.innerHTML = '<option value="">Select a subcategory</option>';
            subcategorySelect.disabled = true;
-           personaSelect.innerHTML = '<option value="">Select a persona</option>'; // NEW: Clear persona
-           personaSelect.disabled = true; // NEW: Disable persona
+           personaSelect.innerHTML = '<option value="">Select a persona</option>';
+           personaSelect.disabled = true;
        }
 
        function populateSubcategories() {
            const selectedCategory = categorySelect.value;
            subcategorySelect.innerHTML = '<option value="">Select a subcategory</option>';
            subcategorySelect.disabled = true;
-           personaSelect.innerHTML = '<option value="">Select a persona</option>'; // NEW: Clear persona when category changes
-           personaSelect.disabled = true; // NEW: Disable persona when category changes
+           personaSelect.innerHTML = '<option value="">Select a persona</option>';
+           personaSelect.disabled = true;
 
-           if (selectedCategory && CATEGORIES_AND_SUBCATEGORIES[selectedCategory]) { // Use new constant
-               CATEGORIES_AND_SUBCATEGORIES[selectedCategory].forEach(sub => { // Use new constant
+           if (selectedCategory && CATEGORIES_AND_SUBCATEGORIES[selectedCategory]) {
+               CATEGORIES_AND_SUBCATEGORIES[selectedCategory].forEach(sub => {
                    const option = document.createElement('option');
                    option.value = sub;
                    option.textContent = sub;
@@ -1168,76 +1177,75 @@
                });
                subcategorySelect.disabled = false;
            }
-           populatePersonas(); // NEW: Populate personas when category changes
+           populatePersonas();
        }
 
-       // NEW: Function to populate personas
+       // Function to populate personas, now filtered by user permissions
        function populatePersonas() {
            const selectedCategory = categorySelect.value;
            personaSelect.innerHTML = '<option value="">Select a persona</option>';
            personaSelect.disabled = true;
 
-           if (selectedCategory && CATEGORY_PERSONAS[selectedCategory]) { // Use new constant
-               CATEGORY_PERSONAS[selectedCategory].forEach(persona => { // Use new constant
-                   const option = document.createElement('option');
-                   option.value = persona;
-                   option.textContent = persona;
-                   personaSelect.appendChild(option);
+           let personasToDisplay = [];
+           if (selectedCategory && CATEGORY_PERSONAS[selectedCategory]) {
+               personasToDisplay = CATEGORY_PERSONAS[selectedCategory];
+           } else {
+               // If no category selected, or category has no specific personas, show all allowed personas
+               // This prevents the persona dropdown from being empty if a user has general persona access
+               // but hasn't selected a category that explicitly lists them.
+               Object.values(CATEGORY_PERSONAS).flat().forEach(p => {
+                   if (!personasToDisplay.includes(p)) {
+                       personasToDisplay.push(p);
+                   }
                });
-               personaSelect.disabled = false;
            }
+
+           // Filter by user's allowed personas if they exist
+           const finalPersonas = allowedPersonasForUser.length > 0 ?
+                                 personasToDisplay.filter(p => allowedPersonasForUser.includes(p)) :
+                                 personasToDisplay; // If no specific personas are allowed, show all
+
+           finalPersonas.sort(); // Sort alphabetically for consistency
+
+           finalPersonas.forEach(persona => {
+               const option = document.createElement('option');
+               option.value = persona;
+               option.textContent = persona;
+               personaSelect.appendChild(option);
+           });
+           personaSelect.disabled = false;
        }
 
 
        function handlePromptModeChange() {
            const selectedMode = promptModeSelect.value;
            
-           // Show/hide category selectors (which are now inside settings) based on mode
+           // Category, Subcategory, and Persona selectors are always visible within settings
+           // Their content will be filtered by populateCategories/populatePersonas based on user permissions.
+           // No need to toggle textCategorySelectors.style.display here based on mode.
+
+           // Handle voice input button visibility/disability
            if (selectedMode === 'text') {
-               textCategorySelectors.style.display = 'flex'; // Use flex for layout
-               populateCategories(); // Populate the category dropdown
                voiceInputButton.disabled = false;
-               // Always hide image input related elements for now
-               triggerImageInputButton.style.display = 'none'; 
-               imageInputSection.style.display = 'none'; 
-               processImageButton.disabled = true; 
-           } else if (selectedMode === 'image_gen') {
-               textCategorySelectors.style.display = 'none';
-               // Clear and reset category/subcategory/persona dropdowns when not in text mode
-               categorySelect.innerHTML = '<option value="">Select a category</option>';
-               subcategorySelect.innerHTML = '<option value="">Select a subcategory</option>';
-               subcategorySelect.disabled = true;
-               personaSelect.innerHTML = '<option value="">Select a persona</option>';
-               personaSelect.disabled = true;
+           } else {
                voiceInputButton.disabled = true;
-               // Always hide image input related elements for now
-               triggerImageInputButton.style.display = 'none'; 
-               imageInputSection.style.display = 'none'; 
-               processImageButton.disabled = true; 
-           } else if (selectedMode === 'video_gen') {
-               textCategorySelectors.style.display = 'none';
-               // Clear and reset category/subcategory/persona dropdowns when not in text mode
-               categorySelect.innerHTML = '<option value="">Select a category</option>';
-               subcategorySelect.innerHTML = '<option value="">Select a subcategory</option>';
-               subcategorySelect.disabled = true;
-               personaSelect.innerHTML = '<option value="">Select a persona</option>';
-               personaSelect.disabled = true;
-               voiceInputButton.disabled = true;
-               // Always hide image input related elements for now
-               triggerImageInputButton.style.display = 'none'; 
-               imageInputSection.style.display = 'none'; 
-               processImageButton.disabled = true; 
-           }
-           
-           if (isRecording) { // If voice recording is active, stop it when mode changes
-               recognition.stop();
+               if (isRecording) {
+                   recognition.stop(); // Stop voice recording if mode changes from text
+               }
            }
 
+           // Keep image input related elements hidden for now, as per the user's explicit instruction
+           triggerImageInputButton.style.display = 'none';
+           imageInputSection.style.display = 'none';
+           processImageButton.disabled = true;
+
+           // Update LLM website buttons based on the selected mode
            setLLMWebsiteButtonsDisabled(false, selectedMode);
        }
 
 
-       document.addEventListener('DOMContentLoaded', () => {
+       document.addEventListener('DOMContentLoaded', async () => { // Made async to await fetch
+           await fetchUserPermissionsAndInitialize(); // Fetch permissions first
            fetchAndDisplaySavedPrompts();
            fetchAndDisplayRawPrompts();
            updateAllButtonStates(); // Initial check and update of all button states
@@ -1246,6 +1254,33 @@
            settingsToggleIcon.classList.remove('fa-chevron-down');
            settingsToggleIcon.classList.add('fa-chevron-up'); // Icon for 'show' state
        });
+
+       // NEW: Function to fetch user permissions
+       async function fetchUserPermissionsAndInitialize() {
+           try {
+               const response = await fetch('/check_cooldown'); // This endpoint now returns permissions
+               if (!response.ok) {
+                   console.error("Failed to fetch user permissions:", response.status);
+                   // Fallback to empty arrays if fetching fails (e.g., not logged in)
+                   allowedCategoriesForUser = [];
+                   allowedPersonasForUser = [];
+                   return;
+               }
+               const data = await response.json();
+               allowedCategoriesForUser = data.allowed_categories || [];
+               allowedPersonasForUser = data.allowed_personas || [];
+               
+               // After fetching permissions, populate the dropdowns
+               populateCategories();
+               populatePersonas();
+
+           } catch (error) {
+               console.error("Error fetching user permissions:", error);
+               allowedCategoriesForUser = [];
+               allowedPersonasForUser = [];
+           }
+       }
+
 
        // Cooldown timer variables
        let cooldownTimerInterval;
@@ -1541,6 +1576,8 @@
            const promptInput = document.getElementById('prompt_input').value.trim(); // Trim whitespace
            const selectedLanguage = document.getElementById('lang_select').value;
            const promptMode = document.getElementById('prompt_mode_select').value; // Get current prompt mode
+           const selectedCategory = document.getElementById('category_select').value; // NEW
+           const selectedPersona = document.getElementById('persona_select').value; // NEW
 
            // Clear previous outputs and token counts
            document.getElementById('polished_output').textContent = '';
@@ -1583,7 +1620,9 @@
                        input_text: promptInput,
                        language_code: selectedLanguage,
                        is_json_mode: false, // Always send false
-                       prompt_mode: promptMode // Send prompt mode
+                       prompt_mode: promptMode, // Send prompt mode
+                       category: selectedCategory, // NEW
+                       persona: selectedPersona // NEW
                    })
                });
 
@@ -1802,19 +1841,21 @@
                reader.onload = function(e) {
                    imagePreview.src = e.target.result;
                    imagePreview.style.display = 'block';
-                   // The image input section is already shown by handlePromptModeChange when mode is image_gen
+                   imageInputSection.style.display = 'block';
                };
                reader.readAsDataURL(file);
            } else {
                imagePreview.src = '#';
                imagePreview.style.display = 'none';
-               // No need to hide imageInputSection here, as it's controlled by handlePromptModeChange
+               imageInputSection.style.display = 'none';
            }
        });
 
        processImageButton.addEventListener('click', async function() {
            const file = imageInput.files[0];
            const selectedLanguage = langSelect.value;
+           const selectedCategory = categorySelect.value; // Pass selected category
+           const selectedPersona = personaSelect.value; // Pass selected persona
 
            if (!file) {
                appOutput.textContent = getMessage("no_image_selected", selectedLanguage);
@@ -1840,7 +1881,9 @@
                        },
                        body: JSON.stringify({
                            image_data: base64data,
-                           language_code: selectedLanguage
+                           language_code: selectedLanguage,
+                           category: selectedCategory, // Pass category
+                           persona: selectedPersona // Pass persona
                        })
                    });
 
@@ -1872,9 +1915,8 @@
                } finally {
                    imageLoadingSpinner.style.display = 'none';
                    processImageButton.disabled = false;
-                   // Reset image preview and input value after processing
+                   imageInputSection.style.display = 'none';
                    imagePreview.src = '#';
-                   imagePreview.style.display = 'none';
                    imageInput.value = '';
                    updateAllButtonStates(); // Re-check status to re-enable generate/reverse buttons
                }
