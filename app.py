@@ -91,6 +91,66 @@ LANGUAGE_MAP = {
  "hi-IN": "Hindi"
 }
 
+# --- CATEGORY AND PERSONA DEFINITIONS (MOVED FROM FRONTEND) ---
+CATEGORIES_AND_SUBCATEGORIES = {
+    "General Writing & Editing": ["Grammar correction", "Rephrasing", "Summarization", "Paraphrasing", "Other"],
+    "Programming & Code": ["Code generation", "Debugging", "Explanation", "Optimization", "Other"],
+    "Business & Finance": ["Business plans", "Financial analysis", "Emails", "Market research", "Other"],
+    "Education & Learning": ["Concept explanations", "Lesson plans", "Study aids", "Quiz generation", "Other"],
+    "Technical Writing & Explanation": ["API docs", "System descriptions", "Technical proposals", "Other"],
+    "Customer Support": ["Auto-replies", "Ticket handling", "FAQ generation", "User guides", "Other"],
+    "Research & Information Retrieval": ["Literature review", "Data extraction", "Comparisons", "Citations", "Other"],
+    "Data Analysis & Interpretation": ["Analyzing datasets", "Summarizing insights", "Chart explanations", "Other"],
+    "Productivity & Planning": ["Task lists", "Planners", "Time management strategies", "Workflows", "Other"],
+    "Creative Writing": ["Stories", "Poems", "Lyrics", "Fictional characters", "Worldbuilding", "Other"],
+    "Marketing & Advertising": ["Ad copy", "Slogans", "Social media posts", "SEO content", "Other"],
+    "Multilingual & Translation": ["Translation", "Localization", "Multilingual prompts", "Other"],
+    "Entertainment & Media": ["Movie/book/game recommendations", "Trivia", "Storytelling", "Other"],
+    "Career & Resume": ["Resume writing", "Cover letters", "Interview prep", "Other"],
+    "Legal & Compliance": ["Contracts", "Disclaimers", "Legal summaries (non-advisory)", "Other"],
+    "Healthcare & Wellness": ["Non-diagnostic advice", "Fitness plans", "Mental health prompts", "Other"],
+    "Image Generation & Visual Design": ["Prompts for image tools", "Scene descriptions", "Visual styles", "Other"],
+    "Event Planning": ["Agendas", "Checklists", "Invitations", "Budget planning", "Other"],
+    "UX/UI & Product Design": ["UX copy", "Persona generation", "Wireframe ideas", "Other"],
+    "Spirituality & Self-Reflection": ["Meditation scripts", "Affirmations", "Philosophical prompts", "Other"],
+    "Gaming": ["Game Developer", "Game Designer", "Gamer", "Stream Host", "Lore Writer", "Other"],
+    "Voice, Audio & Podcasting": ["Scriptwriting", "Transcription", "Voiceover prompts", "Other"],
+    "AI & Prompt Engineering": ["LLM tuning", "Meta-prompts", "Dataset generation", "Evaluations", "Other"],
+    "News & Current Affairs": ["Summaries", "Debate simulations", "Editorial writing", "Other"],
+    "Travel & Culture": ["Itineraries", "Local tips", "Cultural do’s and don’ts", "Other"],
+    "Other": ["General", "Custom", "Uncategorized"],
+}
+
+CATEGORY_PERSONAS = {
+    "General Writing & Editing": ["Author", "Editor", "Copywriter", "Content Creator", "Blogger", "Other"],
+    "Programming & Code": ["Software Developer", "Frontend Engineer", "Backend Engineer", "Data Scientist", "DevOps Engineer", "Other"],
+    "Business & Finance": ["Entrepreneur", "Business Analyst", "Financial Advisor", "Investor", "Startup Founder", "Other"],
+    "Education & Learning": ["Student", "Teacher", "Tutor", "Curriculum Designer", "Lifelong Learner", "Other"],
+    "Technical Writing & Explanation": ["Technical Writer", "System Architect", "Engineer", "Product Manager", "Compliance Officer", "Other"],
+    "Customer Support": ["Support Agent", "Customer Success Manager", "Helpdesk Analyst", "Call Center Manager", "Chatbot Designer", "Other"],
+    "Research & Information Retrieval": ["Researcher", "Scientist", "Academic", "Policy Analyst", "Librarian", "Other"],
+    "Data Analysis & Interpretation": ["Data Analyst", "BI Analyst", "Statistician", "Data Engineer", "Operations Manager", "Other"],
+    "Productivity & Planning": ["Project Manager", "Life Coach", "Executive Assistant", "Scrum Master", "Productivity Hacker", "Other"],
+    "Creative Writing": ["Novelist", "Poet", "Screenwriter", "Songwriter", "Creative Director", "Other"],
+    "Marketing & Advertising": ["Marketing Manager", "Brand Strategist", "SEO Specialist", "Content Marketer", "Media Planner", "Other"],
+    "Multilingual & Translation": ["Translator", "Interpreter", "Language Teacher", "Localization Specialist", "Multilingual Blogger", "Other"],
+    "Entertainment & Media": ["YouTuber", "Streamer", "Podcaster", "Critic", "Fan Fiction Author", "Other"],
+    "Career & Resume": ["Job Seeker", "Career Coach", "HR Recruiter", "Hiring Manager", "Resume Writer", "Other"],
+    "Legal & Compliance": ["Lawyer", "Paralegal", "Compliance Officer", "Policy Advisor", "Contract Manager", "Other"],
+    "Healthcare & Wellness": ["Nutritionist", "Fitness Coach", "Therapist", "Health Blogger", "Wellness Consultant", "Other"],
+    "Image Generation & Visual Design": ["Graphic Designer", "Concept Artist", "Art Director", "Photographer", "AI Image Prompt Engineer", "Other"],
+    "Event Planning": ["Event Planner", "Wedding Coordinator", "Conference Organizer", "Marketing Executive", "Venue Manager", "Other"],
+    "UX/UI & Product Design": ["UX Designer", "UI Designer", "Product Designer", "Interaction Designer", "Design Researcher", "Other"],
+    "Spirituality & Self-Reflection": ["Meditation Coach", "Spiritual Guide", "Mindfulness Blogger", "Philosopher", "Self-help Author", "Other"],
+    "Gaming": ["Game Developer", "Game Designer", "Gamer", "Stream Host", "Lore Writer", "Other"],
+    "Voice, Audio & Podcasting": ["Voice Actor", "Podcaster", "Audio Engineer", "Narrator", "Sound Designer", "Other"],
+    "AI & Prompt Engineering": ["Prompt Engineer", "ML Engineer", "AI Researcher", "NLP Scientist", "Chatbot Developer", "Other"],
+    "News & Current Affairs": ["Journalist", "News Curator", "Political Analyst", "Opinion Writer", "Debater", "Other"],
+    "Travel & Culture": ["Itineraries", "Local tips", "Cultural do’s and don’ts", "Other"],
+    "Other": ["General", "Custom", "Uncategorized"], # Default personas for the "Other" main category
+}
+# --- END CATEGORY AND PERSONA DEFINITIONS ---
+
 
 # --- Configure Google Gemini API ---
 # Ensure your GOOGLE_API_KEY is set in your environment variables
