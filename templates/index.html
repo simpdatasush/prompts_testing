@@ -594,36 +594,7 @@
                 <option value="video_gen">Video Creation</option>
             </select>
         </div>
-
-        <!-- NEW: Category, Subcategory, and Persona Selectors -->
-        <div id="text-category-selectors" class="row mt-3" style="display: none;">
-            <div class="col-md-6 mb-3">
-                <label for="category_select" class="form-label">Category:</label>
-                <select id="category_select" class="form-control">
-                    <option value="">Select a category</option>
-                </select>
-            </div>
-            <div class="col-md-6 mb-3">
-                <label for="subcategory_select" class="form-label">Subcategory:</label>
-                <select id="subcategory_select" class="form-control" disabled>
-                    <option value="">Select a subcategory</option>
-                </select>
-            </div>
-            <div id="text-persona-selector" class="col-md-6 mb-3">
-                <label for="persona_select" class="form-label">Persona:</label>
-                <select id="persona_select" class="form-control" disabled>
-                    <option value="">Select a persona</option>
-                </select>
-            </div>
-            <!-- IMPORTANT NOTE -->
-            <div class="col-12 mt-2">
-                <p class="text-muted" style="font-size: 0.9rem;">
-                    <strong>Important Note:</strong> The personas will be tied to the main category selected. Use the Category filter and either the Subcategory or Persona filter.
-                </p>
-            </div>
-            <!-- END IMPORTANT NOTE -->
-        </div>
-        <!-- END NEW: Category, Subcategory, and Persona Selectors -->
+        <!-- END NEW: Prompt Mode Selector -->
 
         <div class="prompt-input-section card">
             <div class="card-body">
@@ -879,7 +850,7 @@
                "api_key_not_configured": "La clave API de Gemini no está configurada o el modelo de IA no se pudo inicializar.",
                "image_processing": "🖼️ Procesando imagen y extrayendo texto...",
                "image_success":  "✅ Texto extraído de la imagen. Haga clic en \"Générer les invites\" para afiner." ,
-               "image_error":  "❌ Error de procesamiento de imagen :" ,
+               "image_error":  "❌ Error de procesamiento de imagen:" ,
                "no_image_selected":  "❗ Por favor, seleccione un archivo de imagen primero." ,
                "copy_success":  "✅ Indicación copiada al portapapeles." ,
                "copy_fail":  "❌ Échec de la copia de la invite en el portapapeles."
@@ -1016,160 +987,6 @@
                console.error("Error fetching raw prompts:", error);
                pastRawRequestsListElement.innerHTML = '<li class="list-group-item">Error loading past raw requests.</li>';
            }
-       }
-
-
-       const promptModeSelect = document.getElementById('prompt_mode_select');
-       const categorySelect = document.getElementById('category_select');
-       const subcategorySelect = document.getElementById('subcategory_select');
-       const personaSelect = document.getElementById('persona_select'); // NEW
-       const textCategorySelectors = document.getElementById('text-category-selectors');
-
-
-       const CATEGORIES_AND_SUBCATEGORIES = {
-           "General Writing & Editing": ["Grammar correction", "Rephrasing", "Summarization", "Paraphrasing", "Other"],
-           "Programming & Code": ["Code generation", "Debugging", "Explanation", "Optimization", "Other"],
-           "Business & Finance": ["Business plans", "Financial analysis", "Emails", "Market research", "Other"],
-           "Education & Learning": ["Concept explanations", "Lesson plans", "Study aids", "Quiz generation", "Other"],
-           "Technical Writing & Explanation": ["API docs", "System descriptions", "Technical proposals", "Other"],
-           "Customer Support": ["Auto-replies", "Ticket handling", "FAQ generation", "User guides", "Other"],
-           "Research & Information Retrieval": ["Literature review", "Data extraction", "Comparisons", "Citations", "Other"],
-           "Data Analysis & Interpretation": ["Analyzing datasets", "Summarizing insights", "Chart explanations", "Other"],
-           "Productivity & Planning": ["Task lists", "Planners", "Time management strategies", "Workflows", "Other"],
-           "Creative Writing": ["Stories", "Poems", "Lyrics", "Fictional characters", "Worldbuilding", "Other"],
-           "Marketing & Advertising": ["Ad copy", "Slogans", "Social media posts", "SEO content", "Other"],
-           "Multilingual & Translation": ["Translation", "Localization", "Multilingual prompts", "Other"],
-           "Entertainment & Media": ["Movie/book/game recommendations", "Trivia", "Storytelling", "Other"],
-           "Career & Resume": ["Resume writing", "Cover letters", "Interview prep", "Other"],
-           "Legal & Compliance": ["Contracts", "Disclaimers", "Legal summaries (non-advisory)", "Other"],
-           "Healthcare & Wellness": ["Non-diagnostic advice", "Fitness plans", "Mental health prompts", "Other"],
-           "Image Generation & Visual Design": ["Prompts for image tools", "Scene descriptions", "Visual styles", "Other"],
-           "Event Planning": ["Agendas", "Checklists", "Invitations", "Budget planning", "Other"],
-           "UX/UI & Product Design": ["UX copy", "Persona generation", "Wireframe ideas", "Other"],
-           "Spirituality & Self-Reflection": ["Meditation scripts", "Affirmations", "Philosophical prompts", "Other"],
-           "Gaming": ["Game plots", "Character bios", "Level design", "Fan theories", "Other"],
-           "Voice, Audio & Podcasting": ["Scriptwriting", "Transcription", "Voiceover prompts", "Other"],
-           "AI & Prompt Engineering": ["LLM tuning", "Meta-prompts", "Dataset generation", "Evaluations", "Other"],
-           "News & Current Affairs": ["Summaries", "Debate simulations", "Editorial writing", "Other"],
-           "Travel & Culture": ["Itineraries", "Local tips", "Cultural do’s and don’ts", "Other"],
-           "Other": ["General", "Custom", "Uncategorized"],
-       };
-
-       const CATEGORY_PERSONAS = {
-           "General Writing & Editing": ["Author", "Editor", "Copywriter", "Content Creator", "Blogger", "Other"],
-           "Programming & Code": ["Software Developer", "Frontend Engineer", "Backend Engineer", "Data Scientist", "DevOps Engineer", "Other"],
-           "Business & Finance": ["Entrepreneur", "Business Analyst", "Financial Advisor", "Investor", "Startup Founder", "Other"],
-           "Education & Learning": ["Student", "Teacher", "Tutor", "Curriculum Designer", "Lifelong Learner", "Other"],
-           "Technical Writing & Explanation": ["Technical Writer", "System Architect", "Engineer", "Product Manager", "Compliance Officer", "Other"],
-           "Customer Support": ["Support Agent", "Customer Success Manager", "Helpdesk Analyst", "Call Center Manager", "Chatbot Designer", "Other"],
-           "Research & Information Retrieval": ["Researcher", "Scientist", "Academic", "Policy Analyst", "Librarian", "Other"],
-           "Data Analysis & Interpretation": ["Data Analyst", "BI Analyst", "Statistician", "Data Engineer", "Operations Manager", "Other"],
-           "Productivity & Planning": ["Project Manager", "Life Coach", "Executive Assistant", "Scrum Master", "Productivity Hacker", "Other"],
-           "Creative Writing": ["Novelist", "Poet", "Screenwriter", "Songwriter", "Creative Director", "Other"],
-           "Marketing & Advertising": ["Marketing Manager", "Brand Strategist", "SEO Specialist", "Content Marketer", "Media Planner", "Other"],
-           "Multilingual & Translation": ["Translator", "Interpreter", "Language Teacher", "Localization Specialist", "Multilingual Blogger", "Other"],
-           "Entertainment & Media": ["YouTuber", "Streamer", "Podcaster", "Critic", "Fan Fiction Author", "Other"],
-           "Career & Resume": ["Job Seeker", "Career Coach", "HR Recruiter", "Hiring Manager", "Resume Writer", "Other"],
-           "Legal & Compliance": ["Lawyer", "Paralegal", "Compliance Officer", "Policy Advisor", "Contract Manager", "Other"],
-           "Healthcare & Wellness": ["Nutritionist", "Fitness Coach", "Therapist", "Health Blogger", "Wellness Consultant", "Other"],
-           "Image Generation & Visual Design": ["Graphic Designer", "Concept Artist", "Art Director", "Photographer", "AI Image Prompt Engineer", "Other"],
-           "Event Planning": ["Event Planner", "Wedding Coordinator", "Conference Organizer", "Marketing Executive", "Venue Manager", "Other"],
-           "UX/UI & Product Design": ["UX Designer", "UI Designer", "Product Designer", "Interaction Designer", "Design Researcher", "Other"],
-           "Spirituality & Self-Reflection": ["Meditation Coach", "Spiritual Guide", "Mindfulness Blogger", "Philosopher", "Self-help Author", "Other"],
-           "Gaming": ["Game Developer", "Game Designer", "Gamer", "Stream Host", "Lore Writer", "Other"],
-           "Voice, Audio & Podcasting": ["Voice Actor", "Podcaster", "Audio Engineer", "Narrator", "Sound Designer", "Other"],
-           "AI & Prompt Engineering": ["Prompt Engineer", "ML Engineer", "AI Researcher", "NLP Scientist", "Chatbot Developer", "Other"],
-           "News & Current Affairs": ["Journalist", "News Curator", "Political Analyst", "Opinion Writer", "Debater", "Other"],
-           "Travel & Culture": ["Itineraries", "Local tips", "Cultural do’s and don’ts", "Other"],
-           "Other": ["General", "Custom", "Uncategorized"], // Default personas for the "Other" main category
-       };
-
-
-       function populateCategories() {
-           categorySelect.innerHTML = '<option value="">Select a category</option>';
-           for (const category in CATEGORIES_AND_SUBCATEGORIES) { // Use new constant
-               const option = document.createElement('option');
-               option.value = category;
-               option.textContent = category;
-               categorySelect.appendChild(option);
-           }
-           subcategorySelect.innerHTML = '<option value="">Select a subcategory</option>';
-           subcategorySelect.disabled = true;
-           personaSelect.innerHTML = '<option value="">Select a persona</option>'; // NEW: Clear persona
-           personaSelect.disabled = true; // NEW: Disable persona
-       }
-
-       function populateSubcategories() {
-           const selectedCategory = categorySelect.value;
-           subcategorySelect.innerHTML = '<option value="">Select a subcategory</option>';
-           subcategorySelect.disabled = true;
-           personaSelect.innerHTML = '<option value="">Select a persona</option>'; // NEW: Clear persona when category changes
-           personaSelect.disabled = true; // NEW: Disable persona when category changes
-
-           if (selectedCategory && CATEGORIES_AND_SUBCATEGORIES[selectedCategory]) { // Use new constant
-               CATEGORIES_AND_SUBCATEGORIES[selectedCategory].forEach(sub => { // Use new constant
-                   const option = document.createElement('option');
-                   option.value = sub;
-                   option.textContent = sub;
-                   subcategorySelect.appendChild(option);
-               });
-               subcategorySelect.disabled = false;
-           }
-           populatePersonas(); // NEW: Populate personas when category changes
-       }
-
-       // NEW: Function to populate personas
-       function populatePersonas() {
-           const selectedCategory = categorySelect.value;
-           personaSelect.innerHTML = '<option value="">Select a persona</option>';
-           personaSelect.disabled = true;
-
-           if (selectedCategory && CATEGORY_PERSONAS[selectedCategory]) { // Use new constant
-               CATEGORY_PERSONAS[selectedCategory].forEach(persona => { // Use new constant
-                   const option = document.createElement('option');
-                   option.value = persona;
-                   option.textContent = persona;
-                   personaSelect.appendChild(option);
-               });
-               personaSelect.disabled = false;
-           }
-       }
-
-
-       function handlePromptModeChange() {
-           const selectedMode = promptModeSelect.value;
-           
-           // Show/hide category selectors based on mode
-           if (selectedMode === 'text') {
-               textCategorySelectors.style.display = 'flex'; // Use flex for layout
-               populateCategories(); // Populate the category dropdown
-           } else {
-               textCategorySelectors.style.display = 'none';
-               // Clear and reset category/subcategory/persona dropdowns when not in text mode
-               categorySelect.innerHTML = '<option value="">Select a category</option>';
-               subcategorySelect.innerHTML = '<option value="">Select a subcategory</option>';
-               subcategorySelect.disabled = true;
-               personaSelect.innerHTML = '<option value="">Select a persona</option>'; // NEW: Clear persona
-               personaSelect.disabled = true; // NEW: Disable persona
-           }
-
-           // Existing logic for voice/image buttons
-           if (selectedMode === 'text') {
-               voiceInputButton.disabled = false;
-               triggerImageInputButton.disabled = false;
-               processImageButton.disabled = (imageInput.files.length === 0);
-           } else {
-               voiceInputButton.disabled = true;
-               triggerImageInputButton.disabled = true;
-               processImageButton.disabled = true;
-               imageInputSection.style.display = 'none';
-               imagePreview.src = '#';
-               imageInput.value = '';
-               if (isRecording) {
-                   recognition.stop();
-               }
-           }
-           setLLMWebsiteButtonsDisabled(false, selectedMode);
        }
 
 
@@ -1353,9 +1170,6 @@
            const promptInput = document.getElementById('prompt_input').value.trim(); // Trim whitespace
            const selectedLanguage = document.getElementById('lang_select').value;
            const promptMode = document.getElementById('prompt_mode_select').value; // Get current prompt mode
-           const selectedCategory = document.getElementById('category_select').value;
-           const selectedSubcategory = document.getElementById('subcategory_select').value;
-           const selectedPersona = document.getElementById('persona_select').value; // NEW
            
            // Clear previous outputs and token counts
            document.getElementById('polished_output').textContent = '';
@@ -1396,9 +1210,6 @@
                formData.append('language_code', selectedLanguage);
                formData.append('is_json_mode', 'false'); // Always send false
                formData.append('prompt_mode', promptMode); // Send prompt mode
-               formData.append('category', selectedCategory);
-               formData.append('subcategory', selectedSubcategory);
-               formData.append('persona', selectedPersona); // NEW
 
 
                const response = await fetch('/generate', {
@@ -1895,9 +1706,35 @@
        // --- END Full Context View Modal Functions ---
 
        // NEW: Prompt Mode Selector Logic
+       const promptModeSelect = document.getElementById('prompt_mode_select');
+
+       function handlePromptModeChange() {
+           const selectedMode = promptModeSelect.value;
+           
+           // Disable/enable voice and image input buttons based on mode
+           if (selectedMode === 'text') {
+               voiceInputButton.disabled = false;
+               triggerImageInputButton.disabled = false;
+               // Only enable processImageButton if an image is already selected
+               processImageButton.disabled = (imageInput.files.length === 0); 
+           } else {
+               voiceInputButton.disabled = true;
+               triggerImageInputButton.disabled = true;
+               processImageButton.disabled = true;
+               imageInputSection.style.display = 'none'; // Hide image input section
+               imagePreview.src = '#'; // Clear image preview
+               imageInput.value = ''; // Clear file input
+               // If voice recording is active, stop it
+               if (isRecording) {
+                   recognition.stop();
+               }
+           }
+           // Update LLM buttons based on the new mode
+           setLLMWebsiteButtonsDisabled(false, selectedMode); // Re-evaluate LLM button states
+       }
+
+       // Add event listener for the new prompt mode select
        promptModeSelect.addEventListener('change', handlePromptModeChange);
-       categorySelect.addEventListener('change', populateSubcategories);
-       categorySelect.addEventListener('change', populatePersonas); // NEW: Also populate personas when category changes
 
        // Initial call to set button states correctly on page load
        document.addEventListener('DOMContentLoaded', handlePromptModeChange);
