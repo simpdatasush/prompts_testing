@@ -1,419 +1,444 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Admin - Manage Users</title>
-  <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css">
-  <style>
-      body {
-          font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-          background-color: #f0f2f5;
-          color: #333;
-          line-height: 1.6;
-          display: flex;
-          flex-direction: column;
-          min-height: 100vh;
-      }
-      /* Consistent Header Style */
-      .app-header {
-          background-color: #343a40;
-          color: #ffffff;
-          padding: 15px 30px;
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-          box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
-      }
-      .app-header .logo-section {
-          display: flex;
-          align-items: center;
-      }
-      .app-header .app-logo {
-          height: 40px;
-          margin-right: 15px;
-          border-radius: 5px;
-      }
-      .app-header h1.header-title {
-          margin: 0;
-          font-size: 1.8rem;
-          color: #ffffff;
-          text-align: left;
-      }
-      .app-header .auth-section a,
-      .app-header .auth-section span {
-          color: #ffffff;
-          margin-left: 20px;
-          font-weight: normal;
-          text-decoration: none;
-          transition: color 0.2s ease;
-      }
-      .app-header .auth-section a:hover {
-          color: #007bff;
-          text-decoration: underline;
-      }
-      /* Main Container */
-      .container {
-          flex-grow: 1;
-          max-width: 1200px; /* Increased max-width for more columns */
-          background-color: #fff;
-          padding: 30px;
-          border-radius: 8px;
-          box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
-          margin: 50px auto;
-      }
-      h2 {
-          text-align: center;
-          color: #2c3e50;
-          margin-bottom: 20px;
-      }
-      h3 {
-          color: #343a40;
-          margin-top: 30px;
-      }
-      .form-group label {
-          font-weight: bold;
-      }
-      .table-responsive {
-          margin-top: 30px;
-      }
-      .table th {
-          background-color: #e9ecef;
-          color: #343a40;
-          font-weight: bold;
-      }
-      .table td {
-          font-size: 0.9rem;
-          max-width: 200px; /* Adjusted max-width for better display with new columns */
-          word-wrap: break-word;
-      }
-      .table td a {
-          color: #007bff;
-          text-decoration: none;
-      }
-      .table td a:hover {
-          text-decoration: underline;
-      }
-      .btn-action {
-          margin-right: 5px;
-      }
-      .alert-container {
-          margin-bottom: 20px;
-      }
-      .footer {
-          width: 100%;
-          padding: 15px;
-          text-align: center;
-          font-size: 0.8rem;
-          color: #777;
-          background-color: #e9ecef;
-          border-top: 1px solid #dee2e6;
-          margin-top: auto;
-      }
-      .footer-content {
-          max-width: 900px;
-          margin: 0 auto;
-      }
-      .footer-content a {
-          color: #007bff;
-          text-decoration: none;
-      }
-      .footer-content a:hover {
-          text-decoration: underline;
-      }
-      /* Specific styles for multi-select dropdowns in modal */
-      .form-control-multi-select {
-           height: auto; /* Allow height to adjust based on content */
-           min-height: 100px; /* Minimum height for scrollable area */
-           overflow-y: auto; /* Enable vertical scrolling */
-      }
-      @media (max-width: 768px) {
-          .app-header {
-              flex-direction: column;
-              padding: 10px 15px;
-          }
-          .app-header .logo-section {
-              margin-bottom: 10px;
-          }
-          .app-header h1.header-title {
-              font-size: 1.5rem;
-          }
-          .container {
-              margin: 20px auto;
-              padding: 20px;
-          }
-          .footer {
-              padding: 10px;
-          }
-          .table td {
-               max-width: 100px; /* Further reduce max-width on small screens */
-          }
-      }
-  </style>
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>Admin - Manage Users</title>
+   <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css">
+   <style>
+       body {
+           font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+           background-color: #f0f2f5;
+           color: #333;
+           line-height: 1.6;
+           display: flex;
+           flex-direction: column;
+           min-height: 100vh;
+       }
+       /* Consistent Header Style */
+       .app-header {
+           background-color: #343a40;
+           color: #ffffff;
+           padding: 15px 30px;
+           display: flex;
+           justify-content: space-between;
+           align-items: center;
+           box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+       }
+       .app-header .logo-section {
+           display: flex;
+           align-items: center;
+       }
+       .app-header .app-logo {
+           height: 40px;
+           margin-right: 15px;
+           border-radius: 5px;
+       }
+       .app-header h1.header-title {
+           margin: 0;
+           font-size: 1.8rem;
+           color: #ffffff;
+           text-align: left;
+       }
+       .app-header .auth-section a,
+       .app-header .auth-section span {
+           color: #ffffff;
+           margin-left: 20px;
+           font-weight: normal;
+           text-decoration: none;
+           transition: color 0.2s ease;
+       }
+       .app-header .auth-section a:hover {
+           color: #007bff;
+           text-decoration: underline;
+       }
+       /* Main Container */
+       .container {
+           flex-grow: 1;
+           max-width: 1200px; /* Increased max-width for more columns */
+           background-color: #fff;
+           padding: 30px;
+           border-radius: 8px;
+           box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+           margin: 50px auto;
+       }
+       h2 {
+           text-align: center;
+           color: #2c3e50;
+           margin-bottom: 20px;
+       }
+       h3 {
+           color: #343a40;
+           margin-top: 30px;
+       }
+       .form-group label {
+           font-weight: bold;
+       }
+       .table-responsive {
+           margin-top: 30px;
+       }
+       .table th {
+           background-color: #e9ecef;
+           color: #343a40;
+           font-weight: bold;
+       }
+       .table td {
+           font-size: 0.9rem;
+           max-width: 200px; /* Adjusted max-width for better display with new columns */
+           word-wrap: break-word;
+       }
+       .table td a {
+           color: #007bff;
+           text-decoration: none;
+       }
+       .table td a:hover {
+           text-decoration: underline;
+       }
+       .btn-action {
+           margin-right: 5px;
+       }
+       .alert-container {
+           margin-bottom: 20px;
+       }
+       .footer {
+           width: 100%;
+           padding: 15px;
+           text-align: center;
+           font-size: 0.8rem;
+           color: #777;
+           background-color: #e9ecef;
+           border-top: 1px solid #dee2e6;
+           margin-top: auto;
+       }
+       .footer-content {
+           max-width: 900px;
+           margin: 0 auto;
+       }
+       .footer-content a {
+           color: #007bff;
+           text-decoration: none;
+       }
+       .footer-content a:hover {
+           text-decoration: underline;
+       }
+       /* Specific styles for multi-select dropdowns in modal */
+       .form-control-multi-select {
+            height: auto; /* Allow height to adjust based on content */
+            min-height: 100px; /* Minimum height for scrollable area */
+            overflow-y: auto; /* Enable vertical scrolling */
+       }
+       @media (max-width: 768px) {
+           .app-header {
+               flex-direction: column;
+               padding: 10px 15px;
+           }
+           .app-header .logo-section {
+               margin-bottom: 10px;
+           }
+           .app-header h1.header-title {
+               font-size: 1.5rem;
+           }
+           .container {
+               margin: 20px auto;
+               padding: 20px;
+           }
+           .footer {
+               padding: 10px;
+           }
+           .table td {
+                max-width: 100px; /* Further reduce max-width on small screens */
+           }
+       }
+   </style>
 </head>
 <body>
-  <header class="app-header">
-      <div class="logo-section">
-          <img src="https://placehold.co/40x40/007bff/ffffff?text=AI" alt="SuperPrompter Logo" class="app-logo">
-          <h1 class="header-title">SuperPrompter</h1>
-      </div>
-      <div class="auth-section">
-          <a href="{{ url_for('app_home') }}" class="btn btn-outline-light btn-sm mr-2">App Home</a>
-          <a href="{{ url_for('admin_news') }}" class="btn btn-outline-light btn-sm mr-2">Manage News</a>
-          <a href="{{ url_for('admin_jobs') }}" class="btn btn-outline-light btn-sm mr-2">Manage Jobs</a>
-          <a href="{{ url_for('admin_prompts') }}" class="btn btn-outline-light btn-sm mr-2">Manage Prompts</a>
-          <a href="{{ url_for('admin_users') }}" class="btn btn-primary btn-sm mr-2">Manage Users</a>
-          <a href="{{ url_for('admin_api_performance') }}" class="btn btn-outline-light btn-sm mr-2">API Performance</a>
-          {% if current_user.is_authenticated %}
-              <span class="navbar-text mr-2">Logged in as: <strong>{{ current_user.username }}</strong></span>
-              <a href="{{ url_for('logout') }}" class="btn btn-outline-light btn-sm">Logout</a>
-          {% else %}
-              <a href="{{ url_for('login') }}" class="btn btn-outline-light btn-sm">Login</a>
-          {% endif %}
-      </div>
-  </header>
+   <header class="app-header">
+       <div class="logo-section">
+           <img src="https://placehold.co/40x40/007bff/ffffff?text=AI" alt="SuperPrompter Logo" class="app-logo">
+           <h1 class="header-title">SuperPrompter</h1>
+       </div>
+       <div class="auth-section">
+           <a href="{{ url_for('app_home') }}" class="btn btn-outline-light btn-sm mr-2">App Home</a>
+           <a href="{{ url_for('admin_news') }}" class="btn btn-outline-light btn-sm mr-2">Manage News</a>
+           <a href="{{ url_for('admin_jobs') }}" class="btn btn-outline-light btn-sm mr-2">Manage Jobs</a>
+           <a href="{{ url_for('admin_prompts') }}" class="btn btn-outline-light btn-sm mr-2">Manage Prompts</a>
+           <a href="{{ url_for('admin_users') }}" class="btn btn-primary btn-sm mr-2">Manage Users</a>
+           <a href="{{ url_for('admin_api_performance') }}" class="btn btn-outline-light btn-sm mr-2">API Performance</a>
+           {% if current_user.is_authenticated %}
+               <span class="navbar-text mr-2">Logged in as: <strong>{{ current_user.username }}</strong></span>
+               <a href="{{ url_for('logout') }}" class="btn btn-outline-light btn-sm">Logout</a>
+           {% else %}
+               <a href="{{ url_for('login') }}" class="btn btn-outline-light btn-sm">Login</a>
+           {% endif %}
+       </div>
+   </header>
 
 
 
 
-
-
-
-
-  <div class="container">
-      <h2>Admin - Manage Users</h2>
-    
-      {% with messages = get_flashed_messages(with_categories=true) %}
-          {% if messages %}
-              <div class="alert-container">
-                  {% for category, message in messages %}
-                      <div class="alert alert-{{ category }}">{{ message }}</div>
-                  {% endfor %}
-              </div>
-          {% endif %}
-      {% endwith %}
-
-
-
-
-      <div class="table-responsive">
-          <table class="table table-striped table-hover">
-              <thead>
-                  <tr>
-                      <th>ID</th>
-                      <th>Username</th>
-                      <th>Email</th>
-                      <th>Daily Limit</th>
-                      <th>API Key</th>
-                      <th>Access Status</th>
-                      <th>Allowed Categories</th> <!-- NEW COLUMN -->
-                      <th>Allowed Personas</th>   <!-- NEW COLUMN -->
-                      <th>Actions</th>
-                  </tr>
-              </thead>
-              <tbody>
-                  {% for user in users %}
-                  <tr>
-                      <td>{{ user.id }}</td>
-                      <td>{{ user.username }}</td>
-                      <td>{{ user.email if user.email else 'N/A' }}</td>
-                      <td>
-                          {% if not user.is_admin %}
-                              <form action="{{ url_for('update_user_quota', user_id=user.id) }}" method="POST" class="d-inline-flex">
-                                  <input type="number" name="new_limit" value="{{ user.daily_limit }}" class="form-control form-control-sm" style="width: 80px;">
-                                  <button type="submit" class="btn btn-sm btn-primary ml-1">Update</button>
-                              </form>
-                          {% else %}
-                              N/A
-                          {% endif %}
-                      </td>
-                      <td>{{ user.api_key if user.api_key else 'N/A' }}</td>
-                      <td>
-                          {% if user.is_locked %}
-                              <span class="badge badge-danger">Locked</span>
-                          {% else %}
-                              <span class="badge badge-success">Unlocked</span>
-                          {% endif %}
-                      </td>
-                      <td>
-                          {% if user.allowed_categories %}
-                              <span class="badge badge-info">{{ user.allowed_categories | length }} categories</span>
-                          {% else %}
-                              <span class="text-muted">None</span>
-                          {% endif %}
-                      </td>
-                      <td>
-                          {% if user.allowed_personas %}
-                              <span class="badge badge-info">{{ user.allowed_personas | length }} personas</span>
-                          {% else %}
-                              <span class="text-muted">None</span>
-                          {% endif %}
-                      </td>
-                      <td>
-                          {% if not user.is_admin %}
-                              <form action="{{ url_for('toggle_user_access', user_id=user.id) }}" method="POST" style="display:inline;">
-                                  <button type="submit" class="btn btn-sm btn-{{ 'success' if user.is_locked else 'warning' }} btn-action">
-                                      {{ 'Unlock' if user.is_locked else 'Lock' }}
-                                  </button>
-                              </form>
-                              <form action="{{ url_for('generate_api_key', user_id=user.id) }}" method="POST" style="display:inline;">
-                                  <button type="submit" class="btn btn-sm btn-secondary btn-action">Generate API Key</button>
-                              </form>
-                              <button type="button" class="btn btn-sm btn-info btn-action"
-                                      data-toggle="modal" data-target="#editAccessModal"
-                                      data-user-id="{{ user.id }}"
-                                      data-user-username="{{ user.username }}"
-                                      data-allowed-categories="{{ user.allowed_categories | tojson }}"
-                                      data-allowed-personas="{{ user.allowed_personas | tojson }}">
-                                  Edit Access
-                              </button>
-                          {% else %}
-                              <span class="text-muted">Admin</span>
-                          {% endif %}
-                      </td>
-                  </tr>
-                  {% endfor %}
-              </tbody>
-          </table>
-      </div>
-  </div>
-
-
-   <!-- Edit Access Modal -->
-   <div class="modal fade" id="editAccessModal" tabindex="-1" role="dialog" aria-labelledby="editAccessModalLabel" aria-hidden="true">
-       <div class="modal-dialog modal-lg" role="document">
-           <div class="modal-content">
-               <div class="modal-header">
-                   <h5 class="modal-title" id="editAccessModalLabel">Edit User Access: <span id="modalUsername"></span></h5>
-                   <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-                       <span aria-hidden="true">&times;</span>
-                   </button>
+   <div class="container">
+       <h2>Admin - Manage Users</h2>
+      
+       {% with messages = get_flashed_messages(with_categories=true) %}
+           {% if messages %}
+               <div class="alert-container">
+                   {% for category, message in messages %}
+                       <div class="alert alert-{{ category }}">{{ message }}</div>
+                   {% endfor %}
                </div>
-               <form id="editAccessForm" action="" method="POST">
-                   <div class="modal-body">
-                       <input type="hidden" id="modalUserId" name="user_id">
-                       <div class="form-group">
-                           <label for="allowed_categories_select">Allowed Categories:</label>
-                           <select multiple class="form-control form-control-multi-select" id="allowed_categories_select" name="allowed_categories">
-                               <!-- Options will be populated by JavaScript -->
-                           </select>
-                       </div>
-                       <div class="form-group">
-                           <label for="allowed_personas_select">Allowed Personas:</label>
-                           <select multiple class="form-control form-control-multi-select" id="allowed_personas_select" name="allowed_personas">
-                               <!-- Options will be populated by JavaScript -->
-                           </select>
-                       </div>
-                   </div>
-                   <div class="modal-footer">
-                       <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
-                       <button type="submit" class="btn btn-primary">Save Changes</button>
-                   </div>
-               </form>
-           </div>
+           {% endif %}
+       {% endwith %}
+
+
+       <div class="table-responsive">
+           <table class="table table-striped table-hover">
+               <thead>
+                   <tr>
+                       <th>ID</th>
+                       <th>Username</th>
+                       <th>Email</th>
+                       <th>Daily Limit</th>
+                       <th>API Key</th>
+                       <th>Access Status</th>
+                       <th>Allowed Categories</th> <!-- NEW COLUMN -->
+                       <th>Allowed Personas</th>   <!-- NEW COLUMN -->
+                       <th>Actions</th>
+                   </tr>
+               </thead>
+               <tbody>
+                   {% for user in users %}
+                   <tr>
+                       <td>{{ user.id }}</td>
+                       <td>{{ user.username }}</td>
+                       <td>{{ user.email if user.email else 'N/A' }}</td>
+                       <td>
+                           {% if not user.is_admin %}
+                               <form action="{{ url_for('update_user_quota', user_id=user.id) }}" method="POST" class="d-inline-flex">
+                                   <input type="number" name="new_limit" value="{{ user.daily_limit }}" class="form-control form-control-sm" style="width: 80px;">
+                                   <button type="submit" class="btn btn-sm btn-primary ml-1">Update</button>
+                               </form>
+                           {% else %}
+                               N/A
+                           {% endif %}
+                       </td>
+                       <td>{{ user.api_key if user.api_key else 'N/A' }}</td>
+                       <td>
+                           {% if user.is_locked %}
+                               <span class="badge badge-danger">Locked</span>
+                           {% else %}
+                               <span class="badge badge-success">Unlocked</span>
+                           {% endif %}
+                       </td>
+                       <td>
+                           {% if user.allowed_categories %}
+                               <span class="badge badge-info">{{ user.allowed_categories | length }} categories</span>
+                           {% else %}
+                               <span class="text-muted">None</span>
+                           {% endif %}
+                       </td>
+                       <td>
+                           {% if user.allowed_personas %}
+                               <span class="badge badge-info">{{ user.allowed_personas | length }} personas</span>
+                           {% else %}
+                               <span class="text-muted">None</span>
+                           {% endif %}
+                       </td>
+                       <td>
+                           {% if not user.is_admin %}
+                               <form action="{{ url_for('toggle_user_access', user_id=user.id) }}" method="POST" style="display:inline;">
+                                   <button type="submit" class="btn btn-sm btn-{{ 'success' if user.is_locked else 'warning' }} btn-action">
+                                       {{ 'Unlock' if user.is_locked else 'Lock' }}
+                                   </button>
+                               </form>
+                               <form action="{{ url_for('generate_api_key', user_id=user.id) }}" method="POST" style="display:inline;">
+                                   <button type="submit" class="btn btn-sm btn-secondary btn-action">Generate API Key</button>
+                               </form>
+                               <button type="button" class="btn btn-sm btn-info btn-action"
+                                       data-toggle="modal" data-target="#editAccessModal"
+                                       data-user-id="{{ user.id }}"
+                                       data-user-username="{{ user.username }}"
+                                       data-allowed-categories="{{ user.allowed_categories | tojson }}"
+                                       data-allowed-personas="{{ user.allowed_personas | tojson }}">
+                                   Edit Access
+                               </button>
+                           {% else %}
+                               <span class="text-muted">Admin</span>
+                           {% endif %}
+                       </td>
+                   </tr>
+                   {% endfor %}
+               </tbody>
+           </table>
        </div>
    </div>
-   <!-- End Edit Access Modal -->
 
-
-
-
-  <footer class="footer">
-    <div class="footer-content">
-        This is developed by Sushrut Kulkarni &nbsp; Email: <a href="mailto:info@promptsgenerator.ai">info@promptsgenerator.ai</a>
+    <!-- Edit Access Modal -->
+    <div class="modal fade" id="editAccessModal" tabindex="-1" role="dialog" aria-labelledby="editAccessModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="editAccessModalLabel">Edit User Access: <span id="modalUsername"></span></h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <form id="editAccessForm" action="" method="POST">
+                    <div class="modal-body">
+                        <input type="hidden" id="modalUserId" name="user_id">
+                        <div class="form-group">
+                            <label for="allowed_categories_select">Allowed Categories:</label>
+                            <select multiple class="form-control form-control-multi-select" id="allowed_categories_select" name="allowed_categories">
+                                <!-- Options will be populated by JavaScript -->
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="allowed_personas_select">Allowed Personas:</label>
+                            <select multiple class="form-control form-control-multi-select" id="allowed_personas_select" name="allowed_personas">
+                                <!-- Options will be populated by JavaScript -->
+                            </select>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+                        <button type="submit" class="btn btn-primary">Save Changes</button>
+                    </div>
+                </form>
+            </div>
+        </div>
     </div>
-  </footer>
+    <!-- End Edit Access Modal -->
 
 
-  <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/popper.js@1.16.1/dist/umd/popper.min.js"></script>
-  <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
-  <script>
-      // Master lists of categories and personas (should match those in app.py for consistency)
-      const ALL_CATEGORIES = [
-          "General Writing & Editing", "Programming & Code", "Business & Finance",
-          "Education & Learning", "Technical Writing & Explanation", "Customer Support",
-          "Research & Information Retrieval", "Data Analysis & Interpretation",
-          "Productivity & Planning", "Creative Writing", "Marketing & Advertising",
-          "Multilingual & Translation", "Entertainment & Media", "Career & Resume",
-          "Legal & Compliance", "Healthcare & Wellness", "Image Generation & Visual Design",
-          "Event Planning", "UX/UI & Product Design", "Spirituality & Self-Reflection",
-          "Gaming", "Voice, Audio & Podcasting", "AI & Prompt Engineering",
-          "News & Current Affairs", "Travel & Culture", "Other"
-      ];
+   <footer class="footer">
+     <div class="footer-content">
+         This is developed by Sushrut Kulkarni &nbsp; Email: <a href="mailto:info@promptsgenerator.ai">info@promptsgenerator.ai</a>
+     </div>
+   </footer>
+
+   <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+   <script src="https://cdn.jsdelivr.net/npm/popper.js@1.16.1/dist/umd/popper.min.js"></script>
+   <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+   <script>
+       // Master lists of categories and personas (should match those in app.py for consistency)
+       const ALL_CATEGORIES = [
+           "General Writing & Editing", "Programming & Code", "Business & Finance",
+           "Education & Learning", "Technical Writing & Explanation", "Customer Support",
+           "Research & Information Retrieval", "Data Analysis & Interpretation",
+           "Productivity & Planning", "Creative Writing", "Marketing & Advertising",
+           "Multilingual & Translation", "Entertainment & Media", "Career & Resume",
+           "Legal & Compliance", "Healthcare & Wellness", "Image Generation & Visual Design",
+           "Event Planning", "UX/UI & Product Design", "Spirituality & Self-Reflection",
+           "Gaming", "Voice, Audio & Podcasting", "AI & Prompt Engineering",
+           "News & Current Affairs", "Travel & Culture", "Other"
+       ];
+
+       // This mapping is crucial for filtering personas based on selected categories
+       const CATEGORY_PERSONAS_MAP = {
+           "General Writing & Editing": ["Author", "Editor", "Copywriter", "Content Creator", "Blogger", "Other"],
+           "Programming & Code": ["Software Developer", "Frontend Engineer", "Backend Engineer", "Data Scientist", "DevOps Engineer", "Other"],
+           "Business & Finance": ["Entrepreneur", "Business Analyst", "Financial Advisor", "Investor", "Startup Founder", "Other"],
+           "Education & Learning": ["Student", "Teacher", "Tutor", "Curriculum Designer", "Lifelong Learner", "Other"],
+           "Technical Writing & Explanation": ["Technical Writer", "System Architect", "Engineer", "Product Manager", "Compliance Officer", "Other"],
+           "Customer Support": ["Support Agent", "Customer Success Manager", "Helpdesk Analyst", "Call Center Manager", "Chatbot Designer", "Other"],
+           "Research & Information Retrieval": ["Researcher", "Scientist", "Academic", "Policy Analyst", "Librarian", "Other"],
+           "Data Analysis & Interpretation": ["Data Analyst", "BI Analyst", "Statistician", "Data Engineer", "Operations Manager", "Other"],
+           "Productivity & Planning": ["Project Manager", "Life Coach", "Executive Assistant", "Scrum Master", "Productivity Hacker", "Other"],
+           "Creative Writing": ["Novelist", "Poet", "Screenwriter", "Songwriter", "Creative Director", "Other"],
+           "Marketing & Advertising": ["Marketing Manager", "Brand Strategist", "SEO Specialist", "Content Marketer", "Media Planner", "Other"],
+           "Multilingual & Translation": ["Translator", "Interpreter", "Language Teacher", "Localization Specialist", "Multilingual Blogger", "Other"],
+           "Entertainment & Media": ["YouTuber", "Streamer", "Podcaster", "Critic", "Fan Fiction Author", "Other"],
+           "Career & Resume": ["Job Seeker", "Career Coach", "HR Recruiter", "Hiring Manager", "Resume Writer", "Other"],
+           "Legal & Compliance": ["Lawyer", "Paralegal", "Compliance Officer", "Policy Advisor", "Contract Manager", "Other"],
+           "Healthcare & Wellness": ["Nutritionist", "Fitness Coach", "Therapist", "Health Blogger", "Wellness Consultant", "Other"],
+           "Image Generation & Visual Design": ["Graphic Designer", "Concept Artist", "Art Director", "Photographer", "AI Image Prompt Engineer", "Other"],
+           "Event Planning": ["Event Planner", "Wedding Coordinator", "Conference Organizer", "Marketing Executive", "Venue Manager", "Other"],
+           "UX/UI & Product Design": ["UX Designer", "UI Designer", "Product Designer", "Interaction Designer", "Design Researcher", "Other"],
+           "Spirituality & Self-Reflection": ["Meditation Coach", "Spiritual Guide", "Mindfulness Blogger", "Philosopher", "Self-help Author", "Other"],
+           "Gaming": ["Game Developer", "Game Designer", "Gamer", "Stream Host", "Lore Writer", "Other"],
+           "Voice, Audio & Podcasting": ["Voice Actor", "Podcaster", "Audio Engineer", "Narrator", "Sound Designer", "Other"],
+           "AI & Prompt Engineering": ["Prompt Engineer", "ML Engineer", "AI Researcher", "NLP Scientist", "Chatbot Developer", "Other"],
+           "News & Current Affairs": ["Journalist", "News Curator", "Political Analyst", "Opinion Writer", "Debater", "Other"],
+           "Travel & Culture": ["Itineraries", "Local tips", "Cultural do’s and don’ts", "Other"],
+           "Other": ["General", "Custom", "Uncategorized"], // Default personas for the "Other" main category
+       };
+
+       // Function to populate a select element with options
+       function populateSelect(selectElement, options, selectedValues = []) {
+           selectElement.innerHTML = ''; // Clear existing options
+           options.forEach(optionText => {
+               const option = document.createElement('option');
+               option.value = optionText;
+               option.textContent = optionText;
+               if (selectedValues.includes(optionText)) {
+                   option.selected = true;
+               }
+               selectElement.appendChild(option);
+           });
+       }
+
+       // NEW: Function to filter and populate personas based on selected categories
+       function filterAndPopulatePersonas(selectedCategories, currentAllowedPersonas = []) {
+           const personasSelect = document.getElementById('allowed_personas_select');
+           const availablePersonas = new Set(); // Use a Set to store unique personas
+
+           // If no categories are selected, or if 'Other' is the only category, show all personas
+           // This handles the case where the admin might want to grant access to "general" personas
+           // without tying them to a specific category.
+           if (selectedCategories.length === 0) {
+                // If no categories are selected, populate with all possible personas
+                // from the CATEGORY_PERSONAS_MAP values.
+                Object.values(CATEGORY_PERSONAS_MAP).flat().forEach(persona => availablePersonas.add(persona));
+           } else {
+               selectedCategories.forEach(category => {
+                   if (CATEGORY_PERSONAS_MAP[category]) {
+                       CATEGORY_PERSONAS_MAP[category].forEach(persona => {
+                           availablePersonas.add(persona);
+                       });
+                   }
+               });
+           }
+           
+           // Convert Set to Array and sort alphabetically for display
+           const sortedAvailablePersonas = Array.from(availablePersonas).sort();
+           
+           // Populate the personas select, pre-selecting those that are currently allowed AND available
+           populateSelect(personasSelect, sortedAvailablePersonas, currentAllowedPersonas);
+       }
 
 
-      const ALL_PERSONAS = [
-          "Author", "Editor", "Copywriter", "Content Creator", "Blogger",
-          "Software Developer", "Frontend Engineer", "Backend Engineer", "Data Scientist", "DevOps Engineer",
-          "Entrepreneur", "Business Analyst", "Financial Advisor", "Investor", "Startup Founder",
-          "Student", "Teacher", "Tutor", "Curriculum Designer", "Lifelong Learner",
-          "Technical Writer", "System Architect", "Engineer", "Product Manager", "Compliance Officer",
-          "Support Agent", "Customer Success Manager", "Helpdesk Analyst", "Call Center Manager", "Chatbot Designer",
-          "Researcher", "Scientist", "Academic", "Policy Analyst", "Librarian",
-          "Data Analyst", "BI Analyst", "Statistician", "Data Engineer", "Operations Manager",
-          "Project Manager", "Life Coach", "Executive Assistant", "Scrum Master", "Productivity Hacker",
-          "Novelist", "Poet", "Screenwriter", "Songwriter", "Creative Director",
-          "Marketing Manager", "Brand Strategist", "SEO Specialist", "Content Marketer", "Media Planner",
-          "Translator", "Interpreter", "Language Teacher", "Localization Specialist", "Multilingual Blogger",
-          "YouTuber", "Streamer", "Podcaster", "Critic", "Fan Fiction Author",
-          "Job Seeker", "Career Coach", "HR Recruiter", "Hiring Manager", "Resume Writer",
-          "Lawyer", "Paralegal", "Compliance Officer", "Policy Advisor", "Contract Manager",
-          "Nutritionist", "Fitness Coach", "Therapist", "Health Blogger", "Wellness Consultant",
-          "Graphic Designer", "Concept Artist", "Art Director", "Photographer", "AI Image Prompt Engineer",
-          "Event Planner", "Wedding Coordinator", "Conference Organizer", "Marketing Executive", "Venue Manager",
-          "UX Designer", "UI Designer", "Product Designer", "Interaction Designer", "Design Researcher",
-          "Meditation Coach", "Spiritual Guide", "Mindfulness Blogger", "Philosopher", "Self-help Author",
-          "Game Developer", "Game Designer", "Gamer", "Stream Host", "Lore Writer",
-          "Voice Actor", "Podcaster", "Audio Engineer", "Narrator", "Sound Designer",
-          "Prompt Engineer", "ML Engineer", "AI Researcher", "NLP Scientist", "Chatbot Developer",
-          "Journalist", "News Curator", "Political Analyst", "Opinion Writer", "Debater",
-          "Itineraries", "Local tips", "Cultural do’s and don’ts",
-          "General", "Custom", "Uncategorized", "Other"
-      ];
+       // Event listener for the Edit Access Modal to populate fields
+       $('#editAccessModal').on('show.bs.modal', function (event) {
+           const button = $(event.relatedTarget); // Button that triggered the modal
+           const userId = button.data('user-id');
+           const username = button.data('user-username');
+           // Get data attributes, which are already parsed from JSON by Flask's tojson filter
+           const allowedCategories = button.data('allowed-categories') || [];
+           const allowedPersonas = button.data('allowed-personas') || []; // Pass current allowed personas
 
+           const modal = $(this);
+           modal.find('#modalUsername').text(username);
+           modal.find('#modalUserId').val(userId);
+           modal.find('#editAccessForm').attr('action', `/admin/users/update_access/${userId}`);
 
-      // Function to populate a select element with options
-      function populateSelect(selectElement, options, selectedValues = []) {
-          selectElement.innerHTML = ''; // Clear existing options
-          options.forEach(optionText => {
-              const option = document.createElement('option');
-              option.value = optionText;
-              option.textContent = optionText;
-              if (selectedValues.includes(optionText)) {
-                  option.selected = true;
-              }
-              selectElement.appendChild(option);
-          });
-      }
+           // Populate and pre-select categories first
+           const categoriesSelect = modal.find('#allowed_categories_select')[0];
+           populateSelect(categoriesSelect, ALL_CATEGORIES, allowedCategories);
 
+           // Now, filter and populate personas based on the initially selected categories
+           // and the user's currently allowed personas.
+           filterAndPopulatePersonas(allowedCategories, allowedPersonas);
+       });
 
-      // Event listener for the Edit Access Modal to populate fields
-      $('#editAccessModal').on('show.bs.modal', function (event) {
-          const button = $(event.relatedTarget); // Button that triggered the modal
-          const userId = button.data('user-id');
-          const username = button.data('user-username');
-          // Get data attributes, which are already parsed from JSON by Flask's tojson filter
-          const allowedCategories = button.data('allowed-categories') || [];
-          const allowedPersonas = button.data('allowed-personas') || [];
-
-
-          const modal = $(this);
-          modal.find('#modalUsername').text(username);
-          modal.find('#modalUserId').val(userId);
-          modal.find('#editAccessForm').attr('action', `/admin/users/update_access/${userId}`);
-
-
-          // Populate and pre-select categories
-          const categoriesSelect = modal.find('#allowed_categories_select')[0];
-          populateSelect(categoriesSelect, ALL_CATEGORIES, allowedCategories);
-
-
-          // Populate and pre-select personas
-          const personasSelect = modal.find('#allowed_personas_select')[0];
-          populateSelect(personasSelect, ALL_PERSONAS, allowedPersonas);
-      });
-  </script>
+       // NEW: Event listener for changes in the Allowed Categories select
+       $('#allowed_categories_select').on('change', function() {
+           const selectedCategories = Array.from(this.selectedOptions).map(option => option.value);
+           // When categories change, we need to re-filter personas.
+           // We don't have the user's *original* allowed personas here,
+           // so we'll just re-populate based on the newly selected categories.
+           // If the user had a persona selected that is no longer available, it will be deselected.
+           filterAndPopulatePersonas(selectedCategories, []); // Pass empty list for currentAllowedPersonas to clear selections
+       });
+   </script>
 </body>
 </html>
