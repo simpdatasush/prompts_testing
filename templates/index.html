@@ -698,7 +698,8 @@
                             <!-- Voice Input Button -->
                             <button type="button" id="voice_input_button" class="btn btn-outline-secondary mt-2 mt-md-0">🎤 Start Voice Input</button>
                             <input type="file" id="image_input" accept="image/*" class="d-none">
-                            <button type="button" id="trigger_image_input" class="btn btn-outline-secondary mt-2 mt-md-0">📸 Upload Image</button>
+                            <!-- Hidden the Upload Image button explicitly -->
+                            <button type="button" id="trigger_image_input" class="btn btn-outline-secondary mt-2 mt-md-0" style="display: none;">📸 Upload Image</button>
                         </div>
                         <div class="d-flex flex-column flex-md-row gap-2 mt-3 mt-md-0">
                             <button type="submit" id="generate_prompts_btn" class="btn btn-primary mb-2 mb-md-0 mr-2">Generate Prompts</button>
@@ -1078,6 +1079,11 @@
        const settingsContent = document.getElementById('settings_content');
        const settingsToggleIcon = document.getElementById('settings_toggle_icon');
 
+       // These are passed from Flask via Jinja2 if the user is authenticated
+       // Otherwise, they will be undefined, and the default ALL_CATEGORIES/ALL_PERSONAS will be used.
+       const USER_ALLOWED_CATEGORIES = {{ allowed_categories | tojson | default('null') }};
+       const USER_ALLOWED_PERSONAS = {{ allowed_personas | tojson | default('null') }};
+
 
        const CATEGORIES_AND_SUBCATEGORIES = {
            "General Writing & Editing": ["Grammar correction", "Rephrasing", "Summarization", "Paraphrasing", "Other"],
@@ -1139,28 +1145,33 @@
 
 
        function populateCategories() {
+           const categoriesToDisplay = USER_ALLOWED_CATEGORIES && USER_ALLOWED_CATEGORIES.length > 0
+                                       ? USER_ALLOWED_CATEGORIES
+                                       : Object.keys(CATEGORIES_AND_SUBCATEGORIES); // Fallback to all if no specific access or not logged in
+           
            categorySelect.innerHTML = '<option value="">Select a category</option>';
-           for (const category in CATEGORIES_AND_SUBCATEGORIES) { // Use new constant
+           categoriesToDisplay.forEach(category => {
                const option = document.createElement('option');
                option.value = category;
                option.textContent = category;
                categorySelect.appendChild(option);
-           }
+           });
            subcategorySelect.innerHTML = '<option value="">Select a subcategory</option>';
            subcategorySelect.disabled = true;
-           personaSelect.innerHTML = '<option value="">Select a persona</option>'; // NEW: Clear persona
-           personaSelect.disabled = true; // NEW: Disable persona
+           personaSelect.innerHTML = '<option value="">Select a persona</option>';
+           personaSelect.disabled = true;
        }
 
        function populateSubcategories() {
            const selectedCategory = categorySelect.value;
            subcategorySelect.innerHTML = '<option value="">Select a subcategory</option>';
            subcategorySelect.disabled = true;
-           personaSelect.innerHTML = '<option value="">Select a persona</option>'; // NEW: Clear persona when category changes
-           personaSelect.disabled = true; // NEW: Disable persona when category changes
+           personaSelect.innerHTML = '<option value="">Select a persona</option>';
+           personaSelect.disabled = true;
 
-           if (selectedCategory && CATEGORIES_AND_SUBCATEGORIES[selectedCategory]) { // Use new constant
-               CATEGORIES_AND_SUBCATEGORIES[selectedCategory].forEach(sub => { // Use new constant
+           // Determine available subcategories based on selected category from master list
+           if (selectedCategory && CATEGORIES_AND_SUBCATEGORIES[selectedCategory]) {
+               CATEGORIES_AND_SUBCATEGORIES[selectedCategory].forEach(sub => {
                    const option = document.createElement('option');
                    option.value = sub;
                    option.textContent = sub;
@@ -1168,21 +1179,42 @@
                });
                subcategorySelect.disabled = false;
            }
-           populatePersonas(); // NEW: Populate personas when category changes
+           populatePersonas();
        }
 
        // NEW: Function to populate personas
        function populatePersonas() {
            const selectedCategory = categorySelect.value;
+           const personasToDisplay = USER_ALLOWED_PERSONAS && USER_ALLOWED_PERSONAS.length > 0
+                                     ? USER_ALLOWED_PERSONAS
+                                     : (CATEGORY_PERSONAS[selectedCategory] || []); // Fallback to category-specific all, or empty array
+
            personaSelect.innerHTML = '<option value="">Select a persona</option>';
            personaSelect.disabled = true;
 
-           if (selectedCategory && CATEGORY_PERSONAS[selectedCategory]) { // Use new constant
-               CATEGORY_PERSONAS[selectedCategory].forEach(persona => { // Use new constant
-                   const option = document.createElement('option');
-                   option.value = persona;
-                   option.textContent = persona;
-                   personaSelect.appendChild(option);
+           if (selectedCategory) { // Only enable if a category is selected
+               personasToDisplay.forEach(persona => {
+                   // Only add persona if it belongs to the selected category (if we have category-specific personas)
+                   // Or if user has specific allowed personas and this persona is in the list
+                   const isAllowedByCategory = (CATEGORY_PERSONAS[selectedCategory] || []).includes(persona);
+                   const isGloballyAllowed = USER_ALLOWED_PERSONAS && USER_ALLOWED_PERSONAS.includes(persona);
+
+                   // Logic: If USER_ALLOWED_PERSONAS is defined, filter by it. Otherwise, use all from category.
+                   if (USER_ALLOWED_PERSONAS && USER_ALLOWED_PERSONAS.length > 0) {
+                        if(isGloballyAllowed) {
+                            const option = document.createElement('option');
+                            option.value = persona;
+                            option.textContent = persona;
+                            personaSelect.appendChild(option);
+                        }
+                   } else { // No specific user restrictions, use all from selected category
+                       if (CATEGORY_PERSONAS[selectedCategory] && CATEGORY_PERSONAS[selectedCategory].includes(persona)) {
+                           const option = document.createElement('option');
+                           option.value = persona;
+                           option.textContent = persona;
+                           personaSelect.appendChild(option);
+                       }
+                   }
                });
                personaSelect.disabled = false;
            }
@@ -1209,9 +1241,9 @@
                }
            }
 
-           // Keep image input related elements hidden for now, as per the user's explicit instruction
-           triggerImageInputButton.style.display = 'none';
-           imageInputSection.style.display = 'none';
+           // Image input related elements are now permanently hidden via inline style/CSS
+           // No need to set display: 'none' here anymore for triggerImageInputButton
+           imageInputSection.style.display = 'none'; // Keep this as it controls the section visibility
            processImageButton.disabled = true;
 
            // Update LLM website buttons based on the selected mode
@@ -1270,7 +1302,7 @@
            generateButton.disabled = true;
            reversePromptButton.disabled = true;
            voiceInputButton.disabled = true; // Disable voice input during cooldown
-           triggerImageInputButton.disabled = true; // Disable image upload during cooldown
+           // triggerImageInputButton.disabled = true; // No longer needed as button is hidden
            processImageButton.disabled = true; // Disable image processing during cooldown
 
 
@@ -1370,9 +1402,9 @@
                // Handle voice and image input buttons based on prompt mode
                // Keep image input elements hidden for now, regardless of promptMode
                voiceInputButton.disabled = !canGenerate && !isRecording;
-               triggerImageInputButton.style.display = 'none'; 
-               imageInputSection.style.display = 'none'; 
-               processImageButton.disabled = true; 
+               // triggerImageInputButton.style.display = 'none'; // Removed as it's now inline style
+               imageInputSection.style.display = 'none'; // Still needed to hide the section
+               processImageButton.disabled = true;
 
 
            } catch (error) {
@@ -1384,7 +1416,7 @@
                setSaveActionButtonsDisabled(true); // Disable on error
                setLLMWebsiteButtonsDisabled(true); // Disable on error
                voiceInputButton.disabled = true; // Disable on error
-               triggerImageInputButton.disabled = true; // Disable on error
+               // triggerImageInputButton.disabled = true; // No longer needed
                processImageButton.disabled = true; // Disable on error
            }
        }
@@ -1424,7 +1456,7 @@
            generateButton.disabled = true;
            reversePromptButton.disabled = true;
            voiceInputButton.disabled = true; // Disable during generation
-           triggerImageInputButton.disabled = true; // Disable during generation
+           // triggerImageInputButton.disabled = true; // No longer needed
            processImageButton.disabled = true; // Disable during generation
            setSaveActionButtonsDisabled(true); // Disable all LLM-related buttons immediately
            setLLMWebsiteButtonsDisabled(true, promptMode); // Disable LLM website buttons immediately
@@ -1548,7 +1580,7 @@
            generateButton.disabled = true;
            reversePromptButton.disabled = true;
            voiceInputButton.disabled = true; // Disable during generation
-           triggerImageInputButton.disabled = true; // Disable during generation
+           // triggerImageInputButton.disabled = true; // No longer needed
            processImageButton.disabled = true; // Disable during generation
            setSaveActionButtonsDisabled(true); // Disable all LLM-related buttons immediately
            setLLMWebsiteButtonsDisabled(true, promptMode); // Disable LLM website buttons immediately
@@ -1773,95 +1805,17 @@
        }
 
        // --- Image Input JavaScript Logic ---
-       triggerImageInputButton.addEventListener('click', () => {
-           imageInput.click();
-       });
+       // The trigger_image_input button is now permanently hidden via inline style in HTML.
+       // The image_input element has class="d-none" (display: none !important).
+       // The image-input-section is hidden by default in CSS and remains hidden.
+       // Therefore, no event listeners or display logic is needed for these elements.
 
-       imageInput.addEventListener('change', function(event) {
-           const file = event.target.files[0];
-           if (file) {
-               const reader = new FileReader();
-               reader.onload = function(e) {
-                   imagePreview.src = e.target.result;
-                   imagePreview.style.display = 'block';
-                   imageInputSection.style.display = 'block';
-               };
-               reader.readAsDataURL(file);
-           } else {
-               imagePreview.src = '#';
-               imagePreview.style.display = 'none';
-               imageInputSection.style.display = 'none';
-           }
-       });
+       // Removed event listener for triggerImageInputButton.addEventListener('click', ...)
+       // Removed event listener for imageInput.addEventListener('change', ...)
+       // Removed event listener for processImageButton.addEventListener('click', ...)
 
-       processImageButton.addEventListener('click', async function() {
-           const file = imageInput.files[0];
-           const selectedLanguage = langSelect.value;
+       // The image input section and related processing is now completely disabled and hidden.
 
-           if (!file) {
-               appOutput.textContent = getMessage("no_image_selected", selectedLanguage);
-               appOutput.className = 'mt-4 warning';
-               return;
-           }
-
-           // Show loading spinner and disable button
-           imageLoadingSpinner.style.display = 'block';
-           processImageButton.disabled = true;
-           appOutput.textContent = getMessage("image_processing", selectedLanguage);
-           appOutput.className = 'mt-4 info';
-
-           const reader = new FileReader();
-           reader.onloadend = async function() {
-               const base64data = reader.result.split(',')[1];
-
-               try {
-                   const response = await fetch('/process_image_prompt', {
-                       method: 'POST',
-                       headers: {
-                           'Content-Type': 'application/json'
-                       },
-                       body: JSON.stringify({
-                           image_data: base64data,
-                           language_code: selectedLanguage
-                       })
-                   });
-
-                   if (!response.ok) {
-                       if (response.status === 302) {
-                           window.location.href = response.url;
-                           return;
-                       }
-                       const errorData = await response.json();
-                       throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
-                   }
-
-                   const data = await response.json();
-                   if (data.recognized_text) {
-                       promptInputTextarea.value = data.recognized_text;
-                       appOutput.textContent = getMessage("image_success", selectedLanguage);
-                       appOutput.className = 'mt-4 success';
-                       // Optionally, trigger generate prompts automatically
-                       // document.getElementById('promptForm').requestSubmit();
-                   } else {
-                       appOutput.textContent = getMessage("image_error", selectedLanguage) + ` No text recognized.`;
-                       appOutput.className = 'mt-4 danger';
-                   }
-
-               } catch (error) {
-                   appOutput.textContent = getMessage("image_error", selectedLanguage) + ` ${error.message}`;
-                   appOutput.className = 'mt-4 danger';
-                   console.error("Image processing fetch error:", error);
-               } finally {
-                   imageLoadingSpinner.style.display = 'none';
-                   processImageButton.disabled = false;
-                   imageInputSection.style.display = 'none';
-                   imagePreview.src = '#';
-                   imageInput.value = '';
-                   updateAllButtonStates(); // Re-check status to re-enable generate/reverse buttons
-               }
-           };
-           reader.readAsDataURL(file);
-       });
 
        // --- Copy Prompt Text Function ---
        async function copyPromptText(elementId) {
