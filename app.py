@@ -104,6 +104,7 @@ structured_gen_model = genai.GenerativeModel('gemini-2.0-flash') # For structure
 
 
 # --- UPDATED: User Model for SQLAlchemy and Flask-Login ---
+# Added allowed_categories and allowed_personas columns for access control
 class User(db.Model, UserMixin):
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(80), unique=True, nullable=False)
@@ -122,6 +123,12 @@ class User(db.Model, UserMixin):
     payment_date = db.Column(db.DateTime, nullable=True)
     daily_limit = db.Column(db.Integer, default=FREE_DAILY_LIMIT) # NEW: Per-user daily limit
     api_key = db.Column(db.String(100), unique=True, nullable=True) # NEW: API Key for each user
+
+    # NEW: Columns for category and persona access control (stored as JSON strings)
+    # Default to empty JSON list to indicate no specific restrictions initially
+    allowed_categories = db.Column(db.Text, nullable=False, default='[]')
+    allowed_personas = db.Column(db.Text, nullable=False, default='[]')
+
 
     # Relationship for saved prompts (using SavedPrompt model)
     saved_prompts = db.relationship('SavedPrompt', backref='author', lazy=True)
@@ -872,13 +879,19 @@ def view_prompt(prompt_id):
     item = SamplePrompt.query.get_or_404(prompt_id)
     return render_template('shared_content_landing.html', item=item, item_type='prompt')
 
-
 # Renamed original index route to /app_home
 @app.route('/app_home')
 @login_required # REQUIRE LOGIN FOR APP HOME PAGE
 def app_home():
     # Pass current_user object to the template to show login/logout status
-    return render_template('index.html', current_user=current_user)
+    # Also pass allowed_categories and allowed_personas (parsed from JSON string)
+    allowed_categories_list = json.loads(current_user.allowed_categories)
+    allowed_personas_list = json.loads(current_user.allowed_personas)
+
+    return render_template('index.html',
+                           current_user=current_user,
+                           allowed_categories=allowed_categories_list,
+                           allowed_personas=allowed_personas_list)
 
 
 # NEW: LLM Benchmark Page Route
@@ -939,6 +952,19 @@ def generate(): # CHANGED FROM ASYNC
     category = request.form.get('category')
     subcategory = request.form.get('subcategory')
     persona = request.form.get('persona') # NEW
+
+    # --- NEW: Server-side validation for allowed categories/personas ---
+    # Convert stored JSON strings to Python lists for checks
+    user_allowed_categories = json.loads(user.allowed_categories)
+    user_allowed_personas = json.loads(user.allowed_personas)
+
+    if not user.is_admin:
+        if category and category not in user_allowed_categories:
+            return jsonify({"error": "Selected category is not allowed for your account."}), 403
+        if persona and persona not in user_allowed_personas:
+            return jsonify({"error": "Selected persona is not allowed for your account."}), 403
+    # --- END NEW: Server-side validation ---
+
 
     if not prompt_input:
         return jsonify({
@@ -1715,7 +1741,32 @@ def download_database():
 @admin_required
 def admin_users():
     users = User.query.all()
-    return render_template('admin_users.html', users=users, current_user=current_user)
+    # Attempt to parse allowed_categories and allowed_personas from JSON strings
+    # Handle cases where they might be malformed or non-existent (e.g., for new users before first admin edit)
+    users_data = []
+    for user in users:
+        try:
+            allowed_categories = json.loads(user.allowed_categories)
+        except json.JSONDecodeError:
+            allowed_categories = [] # Default to empty list if JSON is invalid
+        try:
+            allowed_personas = json.loads(user.allowed_personas)
+        except json.JSONDecodeError:
+            allowed_personas = [] # Default to empty list if JSON is invalid
+        
+        users_data.append({
+            'id': user.id,
+            'username': user.username,
+            'email': user.email,
+            'daily_limit': user.daily_limit,
+            'api_key': user.api_key,
+            'is_admin': user.is_admin,
+            'is_locked': user.is_locked,
+            'allowed_categories': allowed_categories,
+            'allowed_personas': allowed_personas
+        })
+    
+    return render_template('admin_users.html', users=users_data, current_user=current_user)
 
 @app.route('/admin/users/toggle_access/<int:user_id>', methods=['POST'])
 @admin_required
@@ -1769,6 +1820,31 @@ def generate_api_key(user_id):
     db.session.commit()
     flash(f"New API key generated for {user.username}.", "success")
     return redirect(url_for('admin_users'))
+
+# NEW: Admin route to update allowed categories and personas for a user
+@app.route('/admin/users/update_access/<int:user_id>', methods=['POST'])
+@admin_required
+def update_user_access(user_id):
+    user = User.query.get_or_404(user_id)
+    
+    # Get selected categories and personas from the form
+    # request.form.getlist will return a list of values for multiple select inputs
+    selected_categories = request.form.getlist('allowed_categories')
+    selected_personas = request.form.getlist('allowed_personas')
+
+    try:
+        # Store them as JSON strings in the database
+        user.allowed_categories = json.dumps(selected_categories)
+        user.allowed_personas = json.dumps(selected_personas)
+        db.session.commit()
+        flash(f"Access permissions for {user.username} updated successfully!", "success")
+    except Exception as e:
+        db.session.rollback()
+        flash(f"Error updating access permissions: {e}", "danger")
+        app.logger.error(f"Error updating user access for {user.username}: {e}")
+    
+    return redirect(url_for('admin_users'))
+
 
 # NEW: API endpoint for external clients using API keys to generate prompts
 @app.route('/api/v1/generate', methods=['POST'])
@@ -1834,6 +1910,22 @@ def api_generate(user):
         category = data.get('category')
         subcategory = data.get('subcategory')
         persona = data.get('persona')
+
+        # --- NEW: Server-side validation for allowed categories/personas for API users ---
+        user_allowed_categories = json.loads(user.allowed_categories)
+        user_allowed_personas = json.loads(user.allowed_personas)
+
+        if not user.is_admin:
+            if category and category not in user_allowed_categories:
+                status_code = 403
+                response_data = {"error": "Selected category is not allowed for your account via API."}
+                return jsonify(response_data), status_code
+            if persona and persona not in user_allowed_personas:
+                status_code = 403
+                response_data = {"error": "Selected persona is not allowed for your account via API."}
+                return jsonify(response_data), status_code
+        # --- END NEW: Server-side validation ---
+
 
         if not prompt_input:
             status_code = 400
@@ -2000,11 +2092,57 @@ with app.app_context():
     app.logger.info("Database tables created/checked.")
 
     # NEW: Create an admin user if one doesn't exist for easy testing
+    # Also ensure initial admin gets all categories and personas
     if not User.query.filter_by(username='admin').first():
-        admin_user = User(username='admin', is_admin=True, daily_limit=999999)
+        admin_user = User(
+            username='admin', 
+            is_admin=True, 
+            daily_limit=999999,
+            email = 'admin@example.com', # Assign a dummy email for admin
+            # Populate allowed_categories and allowed_personas with all possible options
+            # This is a placeholder for initial admin setup. In a real app, you might fetch all distinct values.
+            # For now, we'll use a hardcoded list that includes all values from CATEGORIES_AND_SUBCATEGORIES and CATEGORY_PERSONAS
+            allowed_categories=json.dumps([
+                "General Writing & Editing", "Programming & Code", "Business & Finance",
+                "Education & Learning", "Technical Writing & Explanation", "Customer Support",
+                "Research & Information Retrieval", "Data Analysis & Interpretation",
+                "Productivity & Planning", "Creative Writing", "Marketing & Advertising",
+                "Multilingual & Translation", "Entertainment & Media", "Career & Resume",
+                "Legal & Compliance", "Healthcare & Wellness", "Image Generation & Visual Design",
+                "Event Planning", "UX/UI & Product Design", "Spirituality & Self-Reflection",
+                "Gaming", "Voice, Audio & Podcasting", "AI & Prompt Engineering",
+                "News & Current Affairs", "Travel & Culture", "Other"
+            ]),
+            allowed_personas=json.dumps([
+                "Author", "Editor", "Copywriter", "Content Creator", "Blogger",
+                "Software Developer", "Frontend Engineer", "Backend Engineer", "Data Scientist", "DevOps Engineer",
+                "Entrepreneur", "Business Analyst", "Financial Advisor", "Investor", "Startup Founder",
+                "Student", "Teacher", "Tutor", "Curriculum Designer", "Lifelong Learner",
+                "Technical Writer", "System Architect", "Engineer", "Product Manager", "Compliance Officer",
+                "Support Agent", "Customer Success Manager", "Helpdesk Analyst", "Call Center Manager", "Chatbot Designer",
+                "Researcher", "Scientist", "Academic", "Policy Analyst", "Librarian",
+                "Data Analyst", "BI Analyst", "Statistician", "Data Engineer", "Operations Manager",
+                "Project Manager", "Life Coach", "Executive Assistant", "Scrum Master", "Productivity Hacker",
+                "Novelist", "Poet", "Screenwriter", "Songwriter", "Creative Director",
+                "Marketing Manager", "Brand Strategist", "SEO Specialist", "Content Marketer", "Media Planner",
+                "Translator", "Interpreter", "Language Teacher", "Localization Specialist", "Multilingual Blogger",
+                "YouTuber", "Streamer", "Podcaster", "Critic", "Fan Fiction Author",
+                "Job Seeker", "Career Coach", "HR Recruiter", "Hiring Manager", "Resume Writer",
+                "Lawyer", "Paralegal", "Compliance Officer", "Policy Advisor", "Contract Manager",
+                "Nutritionist", "Fitness Coach", "Therapist", "Health Blogger", "Wellness Consultant",
+                "Graphic Designer", "Concept Artist", "Art Director", "Photographer", "AI Image Prompt Engineer",
+                "Event Planner", "Wedding Coordinator", "Conference Organizer", "Marketing Executive", "Venue Manager",
+                "UX Designer", "UI Designer", "Product Designer", "Interaction Designer", "Design Researcher",
+                "Meditation Coach", "Spiritual Guide", "Mindfulness Blogger", "Philosopher", "Self-help Author",
+                "Game Developer", "Game Designer", "Gamer", "Stream Host", "Lore Writer",
+                "Voice Actor", "Podcaster", "Audio Engineer", "Narrator", "Sound Designer",
+                "Prompt Engineer", "ML Engineer", "AI Researcher", "NLP Scientist", "Chatbot Developer",
+                "Journalist", "News Curator", "Political Analyst", "Opinion Writer", "Debater",
+                "Itineraries", "Local tips", "Cultural do’s and don’ts",
+                "General", "Custom", "Uncategorized", "Other"
+            ])
+        )
         admin_user.set_password('adminpass') # Set a default password for the admin
-        # For admin, set a dummy email or leave None if not required for testing password reset
-        admin_user.email = 'admin@example.com' # Assign a dummy email for admin
         db.session.add(admin_user)
         db.session.commit()
         app.logger.info("Default admin user 'admin' created with password 'adminpass'.")
@@ -2018,4 +2156,3 @@ if __name__ == '__main__':
     # you can use `nest_asyncio.apply()` (install with `pip install nest-asyncio`), but this is
     # generally not recommended for production as it can hide underlying architectural issues.
     app.run(debug=True)
-
