@@ -258,8 +258,8 @@
                                        data-toggle="modal" data-target="#editAccessModal"
                                        data-user-id="{{ user.id }}"
                                        data-user-username="{{ user.username }}"
-                                       data-allowed-categories="{{ user.allowed_categories | tojson }}"
-                                       data-allowed-personas="{{ user.allowed_personas | tojson }}">
+                                       data-allowed-categories-json="{{ user.allowed_categories | tojson }}"
+                                       data-allowed-personas-json="{{ user.allowed_personas | tojson }}">
                                    Edit Access
                                </button>
                            {% else %}
@@ -378,7 +378,28 @@
            });
        }
 
-       // NEW: Function to filter and populate personas based on selected categories
+       // Function to safely parse JSON from a data attribute
+       function safeParseJSONAttribute(element, attributeName) {
+           const jsonString = element.attr(attributeName); // Use .attr() to get the raw string
+           if (!jsonString) {
+               return []; // Return empty array if attribute is missing or empty
+           }
+           try {
+               const parsed = JSON.parse(jsonString);
+               // Ensure the parsed result is an array
+               if (Array.isArray(parsed)) {
+                   return parsed;
+               } else {
+                   console.warn(`Data attribute '${attributeName}' contained non-array JSON:`, parsed);
+                   return [];
+               }
+           } catch (e) {
+               console.error(`Error parsing JSON from data attribute '${attributeName}':`, jsonString, e);
+               return []; // Return empty array on parsing error
+           }
+       }
+
+       // Function to filter and populate personas based on selected categories
        function filterAndPopulatePersonas(selectedCategories, currentAllowedPersonas = []) {
            const personasSelect = document.getElementById('allowed_personas_select');
            const availablePersonas = new Set(); // Use a Set to store unique personas
@@ -413,9 +434,10 @@
            const button = $(event.relatedTarget); // Button that triggered the modal
            const userId = button.data('user-id');
            const username = button.data('user-username');
-           // Get data attributes, which are already parsed from JSON by Flask's tojson filter
-           const allowedCategories = button.data('allowed-categories') || [];
-           const allowedPersonas = button.data('allowed-personas') || []; // Pass current allowed personas
+           
+           // Use the new safeParseJSONAttribute function
+           const allowedCategories = safeParseJSONAttribute(button, 'data-allowed-categories-json');
+           const allowedPersonas = safeParseJSONAttribute(button, 'data-allowed-personas-json');
 
            const modal = $(this);
            modal.find('#modalUsername').text(username);
