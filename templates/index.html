@@ -1145,9 +1145,21 @@
 
 
        function populateCategories() {
-           const categoriesToDisplay = USER_ALLOWED_CATEGORIES && USER_ALLOWED_CATEGORIES.length > 0
-                                       ? USER_ALLOWED_CATEGORIES
-                                       : Object.keys(CATEGORIES_AND_SUBCATEGORIES); // Fallback to all if no specific access or not logged in
+           let categoriesToDisplay = [];
+           // If USER_ALLOWED_CATEGORIES is an array (meaning user is logged in and its value is passed from backend)
+           if (Array.isArray(USER_ALLOWED_CATEGORIES)) {
+               // If the array is empty, it means no categories are explicitly allowed for this user.
+               // So categoriesToDisplay remains empty, effectively locking the dropdown.
+               if (USER_ALLOWED_CATEGORIES.length > 0) {
+                   categoriesToDisplay = USER_ALLOWED_CATEGORIES;
+               }
+           } else {
+               // This case should ideally not be hit because of @login_required on /app_home
+               // and the default('null') filter, but as a robust fallback, if USER_ALLOWED_CATEGORIES
+               // is null (e.g., if Jinja default was different or in a non-login context),
+               // display all categories. This ensures the dropdown is never truly empty for non-logged-in views.
+               categoriesToDisplay = Object.keys(CATEGORIES_AND_SUBCATEGORIES);
+           }
            
            categorySelect.innerHTML = '<option value="">Select a category</option>';
            categoriesToDisplay.forEach(category => {
@@ -1185,36 +1197,35 @@
        // NEW: Function to populate personas
        function populatePersonas() {
            const selectedCategory = categorySelect.value;
-           const personasToDisplay = USER_ALLOWED_PERSONAS && USER_ALLOWED_PERSONAS.length > 0
-                                     ? USER_ALLOWED_PERSONAS
-                                     : (CATEGORY_PERSONAS[selectedCategory] || []); // Fallback to category-specific all, or empty array
+           let personasToDisplay = [];
 
            personaSelect.innerHTML = '<option value="">Select a persona</option>';
            personaSelect.disabled = true;
 
            if (selectedCategory) { // Only enable if a category is selected
-               personasToDisplay.forEach(persona => {
-                   // Only add persona if it belongs to the selected category (if we have category-specific personas)
-                   // Or if user has specific allowed personas and this persona is in the list
-                   const isAllowedByCategory = (CATEGORY_PERSONAS[selectedCategory] || []).includes(persona);
-                   const isGloballyAllowed = USER_ALLOWED_PERSONAS && USER_ALLOWED_PERSONAS.includes(persona);
-
-                   // Logic: If USER_ALLOWED_PERSONAS is defined, filter by it. Otherwise, use all from category.
-                   if (USER_ALLOWED_PERSONAS && USER_ALLOWED_PERSONAS.length > 0) {
-                        if(isGloballyAllowed) {
-                            const option = document.createElement('option');
-                            option.value = persona;
-                            option.textContent = persona;
-                            personaSelect.appendChild(option);
-                        }
-                   } else { // No specific user restrictions, use all from selected category
-                       if (CATEGORY_PERSONAS[selectedCategory] && CATEGORY_PERSONAS[selectedCategory].includes(persona)) {
-                           const option = document.createElement('option');
-                           option.value = persona;
-                           option.textContent = persona;
-                           personaSelect.appendChild(option);
-                       }
+               // If USER_ALLOWED_PERSONAS is an array (meaning user is logged in and its value is passed from backend)
+               if (Array.isArray(USER_ALLOWED_PERSONAS)) {
+                   // If USER_ALLOWED_PERSONAS is empty, then no personas are explicitly allowed for this user.
+                   // personasToDisplay remains empty, effectively locking the dropdown.
+                   if (USER_ALLOWED_PERSONAS.length > 0) {
+                       // Filter allowed personas by the selected category's associated personas
+                       const categorySpecificPersonas = CATEGORY_PERSONAS[selectedCategory] || [];
+                       personasToDisplay = USER_ALLOWED_PERSONAS.filter(persona =>
+                           categorySpecificPersonas.includes(persona)
+                       );
                    }
+               } else {
+                   // This case should ideally not be hit because of @login_required on /app_home
+                   // and the default('null') filter. But as a robust fallback, if USER_ALLOWED_PERSONAS
+                   // is null (e.g., non-logged-in context), display all personas for the selected category.
+                   personasToDisplay = CATEGORY_PERSONAS[selectedCategory] || [];
+               }
+
+               personasToDisplay.forEach(persona => {
+                   const option = document.createElement('option');
+                   option.value = persona;
+                   option.textContent = persona;
+                   personaSelect.appendChild(option);
                });
                personaSelect.disabled = false;
            }
@@ -1402,7 +1413,7 @@
                // Handle voice and image input buttons based on prompt mode
                // Keep image input elements hidden for now, regardless of promptMode
                voiceInputButton.disabled = !canGenerate && !isRecording;
-               // triggerImageInputButton.style.display = 'none'; // Removed as it's now inline style
+               // triggerImageInputButton.disabled = true; // No longer needed
                imageInputSection.style.display = 'none'; // Still needed to hide the section
                processImageButton.disabled = true;
 
