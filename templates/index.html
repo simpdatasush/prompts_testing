@@ -589,6 +589,11 @@
            align-items: center;
            gap: 10px; /* Space between the lock icon and the arrow */
        }
+       /* Style for when the settings header is locked (non-interactive) */
+       .settings-header.locked {
+           cursor: not-allowed;
+           opacity: 0.7; /* Slightly dim it to indicate non-interactivity */
+       }
   </style>
 </head>
 <body>
@@ -1263,6 +1268,20 @@
                    settingsLockIcon.classList.add('fa-lock-open', 'unlocked-icon');
                }
            }
+
+           // Control visibility and interactivity of settings content
+           if (isLocked) {
+               settingsContent.style.display = 'none'; // Hide content
+               settingsHeaderToggle.classList.add('locked'); // Add class for cursor/opacity
+               settingsToggleIcon.classList.remove('fa-chevron-down'); // Ensure arrow is 'up'
+               settingsToggleIcon.classList.add('fa-chevron-up');
+           } else {
+               // If unlocked, allow normal toggle behavior
+               settingsContent.style.display = ''; // Remove inline display style
+               settingsHeaderToggle.classList.remove('locked'); // Remove locked class
+               // The chevron icon will be handled by the normal toggle logic
+           }
+
 
            // Disable/enable dropdowns
            categorySelect.disabled = isLocked;
@@ -1951,13 +1970,16 @@
 
        // Settings Toggle Logic
        settingsHeaderToggle.addEventListener('click', () => {
-           settingsContent.classList.toggle('show');
-           if (settingsContent.classList.contains('show')) {
-               settingsToggleIcon.classList.remove('fa-chevron-up');
-               settingsToggleIcon.classList.add('fa-chevron-down');
-           } else {
-               settingsToggleIcon.classList.remove('fa-chevron-down');
-               settingsToggleIcon.classList.add('fa-chevron-up');
+           // Only allow toggle if settings are not locked
+           if (!settingsHeaderToggle.classList.contains('locked')) {
+               settingsContent.classList.toggle('show');
+               if (settingsContent.classList.contains('show')) {
+                   settingsToggleIcon.classList.remove('fa-chevron-up');
+                   settingsToggleIcon.classList.add('fa-chevron-down');
+               } else {
+                   settingsToggleIcon.classList.remove('fa-chevron-down');
+                   settingsToggleIcon.classList.add('fa-chevron-up');
+               }
            }
        });
 
