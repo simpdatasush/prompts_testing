@@ -20,7 +20,7 @@
 
       /* New Header Styles */
       .app-header {
-          background-color: #343a40; /* Dark background for header */
+          background-color: #343a40;
           color: #ffffff;
           padding: 15px 30px;
           display: flex;
@@ -575,6 +575,20 @@
       .settings-content .form-group {
           margin-bottom: 15px;
       }
+       /* Style for locked icon */
+       .settings-header .locked-icon {
+           color: #dc3545; /* Red for locked */
+       }
+       /* Style for unlocked icon */
+       .settings-header .unlocked-icon {
+           color: #28a745; /* Green for unlocked */
+       }
+       /* NEW: Style for the container holding the icons */
+       .settings-icons-container {
+           display: flex;
+           align-items: center;
+           gap: 10px; /* Space between the lock icon and the arrow */
+       }
   </style>
 </head>
 <body>
@@ -633,7 +647,10 @@
         <div class="settings-section">
             <div class="settings-header" id="settings_header_toggle">
                 <h5><i class="fas fa-cog"></i> Settings</h5>
-                <i class="fas fa-chevron-up" id="settings_toggle_icon"></i> <!-- Changed to fa-chevron-up for default hidden -->
+                <div class="settings-icons-container"> <!-- NEW: Wrapper for icons -->
+                    <i id="settings_lock_icon" class="fas"></i> <!-- Lock/Unlock Icon -->
+                    <i class="fas fa-chevron-up" id="settings_toggle_icon"></i> <!-- Hide/Unhide Arrow -->
+                </div>
             </div>
             <div class="settings-content" id="settings_content">
                 <!-- Language Selector -->
@@ -1078,11 +1095,13 @@
        const settingsHeaderToggle = document.getElementById('settings_header_toggle');
        const settingsContent = document.getElementById('settings_content');
        const settingsToggleIcon = document.getElementById('settings_toggle_icon');
+       const settingsLockIcon = document.getElementById('settings_lock_icon'); // NEW: Reference to the lock icon
 
        // These are passed from Flask via Jinja2 if the user is authenticated
        // Otherwise, they will be undefined, and the default ALL_CATEGORIES/ALL_PERSONAS will be used.
        const USER_ALLOWED_CATEGORIES = {{ allowed_categories | tojson | default('null') }};
        const USER_ALLOWED_PERSONAS = {{ allowed_personas | tojson | default('null') }};
+       const IS_ADMIN = {{ current_user.is_admin | tojson | default('false') }}; // NEW: Pass is_admin status
 
 
        const CATEGORIES_AND_SUBCATEGORIES = {
@@ -1105,7 +1124,7 @@
            "Image Generation & Visual Design": ["Prompts for image tools", "Scene descriptions", "Visual styles", "Other"],
            "Event Planning": ["Agendas", "Checklists", "Invitations", "Budget planning", "Other"],
            "UX/UI & Product Design": ["UX copy", "Persona generation", "Wireframe ideas", "Other"],
-           "Spirituality & Self-Reflection": ["Meditation scripts", "Affirmations", "Philosophical prompts", "Other"],
+           "Spirituality & Self-Reflection": ["Meditation coach", "Affirmations", "Philosophical prompts", "Other"],
            "Gaming": ["Game Developer", "Game Designer", "Gamer", "Stream Host", "Lore Writer", "Other"],
            "Voice, Audio & Podcasting": ["Scriptwriting", "Transcription", "Voiceover prompts", "Other"],
            "AI & Prompt Engineering": ["LLM tuning", "Meta-prompts", "Dataset generation", "Evaluations", "Other"],
@@ -1134,7 +1153,7 @@
            "Image Generation & Visual Design": ["Graphic Designer", "Concept Artist", "Art Director", "Photographer", "AI Image Prompt Engineer", "Other"],
            "Event Planning": ["Event Planner", "Wedding Coordinator", "Conference Organizer", "Marketing Executive", "Venue Manager", "Other"],
            "UX/UI & Product Design": ["UX Designer", "UI Designer", "Product Designer", "Interaction Designer", "Design Researcher", "Other"],
-           "Spirituality & Self-Reflection": ["Meditation Coach", "Spiritual Guide", "Mindfulness Blogger", "Philosopher", "Self-help Author", "Other"],
+           "Spirituality & Self-Reflection": ["Meditation coach", "Affirmations", "Philosophical prompts", "Other"],
            "Gaming": ["Game Developer", "Game Designer", "Gamer", "Stream Host", "Lore Writer", "Other"],
            "Voice, Audio & Podcasting": ["Voice Actor", "Podcaster", "Audio Engineer", "Narrator", "Sound Designer", "Other"],
            "AI & Prompt Engineering": ["Prompt Engineer", "ML Engineer", "AI Researcher", "NLP Scientist", "Chatbot Developer", "Other"],
@@ -1231,6 +1250,34 @@
            }
        }
 
+       // NEW: Function to update the lock/unlock state of settings controls
+       function updateSettingsAccessState() {
+           const isLocked = !IS_ADMIN && (Array.isArray(USER_ALLOWED_CATEGORIES) && USER_ALLOWED_CATEGORIES.length === 0);
+
+           // Set lock icon
+           if (settingsLockIcon) {
+               settingsLockIcon.classList.remove('fa-lock', 'fa-lock-open', 'locked-icon', 'unlocked-icon');
+               if (isLocked) {
+                   settingsLockIcon.classList.add('fa-lock', 'locked-icon');
+               } else {
+                   settingsLockIcon.classList.add('fa-lock-open', 'unlocked-icon');
+               }
+           }
+
+           // Disable/enable dropdowns
+           categorySelect.disabled = isLocked;
+           subcategorySelect.disabled = isLocked; // Subcategory is also disabled if main category is locked
+           personaSelect.disabled = isLocked;     // Persona is also disabled if main category is locked
+           langSelect.disabled = isLocked;         // NEW: Disable language select too for consistency
+
+           // If settings are locked, ensure dropdowns are reset to default empty state
+           if (isLocked) {
+               categorySelect.innerHTML = '<option value="">Select a category</option>';
+               subcategorySelect.innerHTML = '<option value="">Select a subcategory</option>';
+               personaSelect.innerHTML = '<option value="">Select a persona</option>';
+           }
+       }
+
 
        function handlePromptModeChange() {
            const selectedMode = promptModeSelect.value;
@@ -1241,6 +1288,7 @@
            // Populate categories and personas regardless of mode, as they can be useful for all types
            populateCategories();
            populatePersonas();
+           updateSettingsAccessState(); // NEW: Call to update lock state after populating
 
            // Handle voice input button visibility/disability
            if (selectedMode === 'text') {
@@ -1270,6 +1318,7 @@
            settingsContent.classList.remove('show'); // Ensure settings are hidden by default
            settingsToggleIcon.classList.remove('fa-chevron-down');
            settingsToggleIcon.classList.add('fa-chevron-up'); // Icon for 'show' state
+           // updateSettingsAccessState() will be called by handlePromptModeChange()
        });
 
        // Cooldown timer variables
@@ -1473,8 +1522,6 @@
            setLLMWebsiteButtonsDisabled(true, promptMode); // Disable LLM website buttons immediately
            generateButton.textContent = 'Generating...';
            cooldownTimerDisplay.style.display = 'none';
-
-           console.log("Frontend: Sending request to /generate...");
 
            try {
                const formData = new FormData();
