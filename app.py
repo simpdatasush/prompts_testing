@@ -372,13 +372,13 @@ def ask_gemini_for_text_prompt(prompt_instruction, max_output_tokens=512):
             generation_config=generation_config
         )
         raw_gemini_text = response.text if response and response.text else "No response from model."
-        return filter_gemini_response(raw_gemini_text).strip()
+        return raw_gemini_text # Return raw text for further processing/filtering
     except google_api_exceptions.GoogleAPICallError as e:
         app.logger.error(f"DEBUG: Google API Call Error (text_model): {e}", exc_info=True)
-        return filter_gemini_response(f"Error communicating with Gemini API: {str(e)}")
+        return f"Error communicating with Gemini API: {str(e)}"
     except Exception as e:
         app.logger.error(f"DEBUG: Unexpected Error calling Gemini API (text_model): {e}", exc_info=True)
-        return filter_gemini_response(f"An unexpected error occurred: {str(e)}")
+        return f"An unexpected error occurred: {str(e)}"
 
 # --- Gemini API interaction function (Synchronous wrapper for structured_gen_model) ---
 # This function will now rely on prompt engineering for JSON output, not responseMimeType
@@ -398,13 +398,13 @@ def ask_gemini_for_structured_prompt(prompt_instruction, generation_config=None,
             generation_config=current_generation_config
         )
         raw_gemini_text = response.text if response and response.text else "No response from model."
-        return filter_gemini_response(raw_gemini_text).strip()
+        return raw_gemini_text # Return raw text for further processing/filtering
     except google_api_exceptions.GoogleAPICallError as e:
         app.logger.error(f"DEBUG: Google API Call Error (structured_gen_model): {e}", exc_info=True)
-        return filter_gemini_response(f"Error communicating with Gemini API: {str(e)}")
+        return f"Error communicating with Gemini API: {str(e)}"
     except Exception as e:
         app.logger.error(f"DEBUG: Unexpected Error calling Gemini API (structured_gen_model): {e}", exc_info=True)
-        return filter_gemini_response(f"An unexpected error occurred: {str(e)}")
+        return f"An unexpected error occurred: {str(e)}"
 
 
 # --- NEW: Gemini API for Image Understanding (Synchronous wrapper for vision_model) ---
@@ -424,13 +424,13 @@ def ask_gemini_for_image_text(image_data_bytes):
 
         response = vision_model.generate_content(prompt_parts)
         extracted_text = response.text if response and response.text else ""
-        return filter_gemini_response(extracted_text).strip() # Filter image response too
+        return extracted_text # Return raw text for further processing/filtering
     except google_api_exceptions.GoogleAPICallError as e:
         app.logger.error(f"Error calling Gemini API for image text extraction: {e}", exc_info=True)
-        return filter_gemini_response(f"Error extracting text from image: {str(e)}")
+        return f"Error extracting text from image: {str(e)}"
     except Exception as e:
         app.logger.error(f"Unexpected Error calling Gemini API for image text extraction: {e}", exc_info=True)
-        return filter_gemini_response(f"An unexpected error occurred during image text extraction: {str(e)}")
+        return f"An unexpected error occurred during image text extraction: {str(e)}"
 
 # Helper function to remove nulls recursively
 def remove_null_values(obj):
@@ -603,7 +603,7 @@ VIDEO_JSON_TEMPLATE = {
         ],
         "specific_character_details": "Gemini should decide",
         "unique_physics": "Gemini should decide",
-        "visual_banding": "Gemini should decide"
+        "visual_banding": "gemini should decide"
     }
 }
 
@@ -750,6 +750,9 @@ async def generate_prompts_async(raw_input, language_code="en-US", prompt_mode='
 
         main_prompt_result = await asyncio.to_thread(ask_gemini_for_text_prompt, base_instruction, max_output_tokens=512)
 
+        # Apply filter_gemini_response here for all main prompt generations
+        main_prompt_result = filter_gemini_response(main_prompt_result)
+
         if "Error" in main_prompt_result or "not configured" in main_prompt_result or "quota" in main_prompt_result.lower(): # Check for quota error
             return {
                 "polished": main_prompt_result,
@@ -783,9 +786,13 @@ async def generate_prompts_async(raw_input, language_code="en-US", prompt_mode='
         creative_coroutine = asyncio.to_thread(ask_gemini_for_text_prompt, language_instruction_prefix + f"Rewrite the following prompt to be more creative and imaginative, encouraging novel ideas and approaches:\n\n{polished_output}{strict_instruction_suffix}")
         technical_coroutine = asyncio.to_thread(ask_gemini_for_text_prompt, language_instruction_prefix + f"Rewrite the following prompt to be more technical, precise, and detailed, focusing on specific requirements and constraints:\n\n{polished_output}{strict_instruction_suffix}")
 
-        creative_output, technical_output = await asyncio.gather(
+        creative_output_raw, technical_output_raw = await asyncio.gather(
             creative_coroutine, technical_coroutine
         )
+        # Apply filter_gemini_response to creative and technical outputs as well
+        creative_output = filter_gemini_response(creative_output_raw)
+        technical_output = filter_gemini_response(technical_output_raw)
+
 
         return {
             "polished": polished_output,
@@ -830,7 +837,7 @@ async def generate_reverse_prompt_async(input_text, language_code="en-US", promp
 
     reverse_prompt_result = await asyncio.to_thread(ask_gemini_for_text_prompt, prompt_instruction, max_output_tokens=512)
 
-    return reverse_prompt_result
+    return filter_gemini_response(reverse_prompt_result) # Apply filter here
 
 
 # --- Flask Routes ---
@@ -1145,6 +1152,122 @@ def process_image_prompt(): # CHANGED FROM ASYNC
         app.logger.exception("Error during image processing endpoint:")
         return jsonify({"error": f"An unexpected server error occurred during image processing: {e}. Please check server logs for details."}), 500
 
+
+# NEW: Endpoint to test a prompt against the LLM and return a sample response
+@app.route('/test_llm_response', methods=['POST'])
+@login_required
+def test_llm_response():
+    user = current_user
+    now = datetime.utcnow()
+
+    # --- Check if the user is locked out ---
+    if user.is_locked:
+        return jsonify({
+            "error": "Your account is locked. Please contact support.",
+            "account_locked": True
+        }), 403 # Forbidden
+
+    # Apply cooldown to test prompt as well
+    if user.last_generation_time:
+        time_since_last_request = (now - user.last_generation_time).total_seconds()
+        if time_since_last_request < COOLDOWN_SECONDS:
+            remaining_time = int(COOLDOWN_SECONDS - time_since_last_request)
+            app.logger.info(f"User {user.username} is on cooldown for test prompt. Remaining: {remaining_time}s")
+            return jsonify({
+                "error": f"Please wait {remaining_time} seconds before testing another prompt.",
+                "cooldown_active": True,
+                "remaining_time": remaining_time
+            }), 429
+
+    # Daily limit check for test prompt
+    if not user.is_admin:
+        today = now.date()
+        if user.daily_generation_date != today:
+            user.daily_generation_count = 0
+            user.daily_generation_date = today
+            db.session.add(user)
+            db.session.commit()
+
+        if user.daily_generation_count >= user.daily_limit:
+            app.logger.info(f"User {user.username} exceeded their daily test prompt limit of {user.daily_limit}.")
+            return jsonify({
+                "error": f"You have reached your daily limit of {user.daily_limit} generations. If you are looking for more prompts, kindly make a payment to increase your limit.",
+                "daily_limit_reached": True,
+                "payment_link": PAYMENT_LINK
+            }), 429
+
+    data = request.get_json()
+    prompt_text = data.get('prompt_text', '').strip()
+    language_code = data.get('language_code', 'en-US')
+    prompt_mode = data.get('prompt_mode', 'text')
+    category = data.get('category')
+    subcategory = data.get('subcategory')
+    persona = data.get('persona')
+
+    if not prompt_text:
+        return jsonify({"error": "No prompt text provided for testing."}), 400
+
+    # --- Server-side validation for allowed categories/personas for test prompts ---
+    user_allowed_categories = json.loads(user.allowed_categories)
+    user_allowed_personas = json.loads(user.allowed_personas)
+
+    if not user.is_admin:
+        if category and category not in user_allowed_categories:
+            return jsonify({"error": "Selected category is not allowed for your account."}), 403
+        if persona and persona not in user_allowed_personas:
+            return jsonify({"error": "Selected persona is not allowed for your account."}), 403
+    # --- END Server-side validation ---
+
+    # Construct the instruction for the LLM, including context if provided
+    context_str = ""
+    if category:
+        context_str += f"The user requested this for the category '{category}'"
+        if subcategory:
+            context_str += f" and subcategory '{subcategory}'."
+        else:
+            context_str += "."
+    if persona:
+        if context_str:
+            context_str += f" The response should be from the perspective of a '{persona}'."
+        else:
+            context_str += f"Craft the response from the perspective of a '{persona}'."
+
+    # Define the model and temperature to be used for the test response
+    llm_model_name = "gemini-2.0-flash" # As defined globally
+    llm_temperature = 0.1 # As defined globally for text_model
+
+    llm_instruction = (
+        f"Generate a concise sample response to the following prompt, as if you are the AI model "
+        f"receiving this prompt. Keep the response brief and to the point, demonstrating how you would "
+        f"interpret and fulfill the prompt. The response MUST be entirely in {LANGUAGE_MAP.get(language_code, 'English')}. "
+        f"{context_str}\n\nPrompt: {prompt_text}"
+    )
+
+    try:
+        # Generate LLM response with a specific token limit (524 tokens as requested)
+        llm_response_text_raw = asyncio.run(ask_gemini_for_text_prompt(llm_instruction, max_output_tokens=524))
+        
+        # Apply filter_gemini_response to the LLM's raw text before returning
+        filtered_llm_response_text = filter_gemini_response(llm_response_text_raw)
+
+        # Update user stats after successful test prompt
+        user.last_generation_time = now
+        if not user.is_admin:
+            user.daily_generation_count += 1
+        db.session.add(user)
+        db.session.commit()
+        app.logger.info(f"User {user.username}'s last prompt request time updated and count incremented after test prompt.")
+
+        return jsonify({
+            "sample_response": filtered_llm_response_text,
+            "model_name": llm_model_name,
+            "temperature": llm_temperature
+        })
+    except Exception as e:
+        app.logger.exception("Error during LLM sample response generation:")
+        # Ensure error message is also filtered before sending to frontend
+        filtered_error_message = filter_gemini_response(f"An unexpected server error occurred during sample response generation: {e}. Please check server logs for details.")
+        return jsonify({"error": filtered_error_message}), 500
 
 # --- UPDATED: Endpoint to check cooldown status for frontend ---
 @app.route('/check_cooldown', methods=['GET'])
@@ -1950,7 +2073,9 @@ def api_generate(user):
     except Exception as e:
         app.logger.exception("Error during API prompt generation in /api/v1/generate:")
         status_code = 500
-        response_data = {"error": f"An unexpected server error occurred: {e}"}
+        # Ensure error message is filtered before sending to frontend
+        filtered_error_message = filter_gemini_response(f"An unexpected server error occurred: {e}")
+        response_data = {"error": filtered_error_message}
         return jsonify(response_data), status_code
     finally:
         end_time = datetime.utcnow()
@@ -2061,7 +2186,9 @@ def api_reverse_prompt(user):
     except Exception as e:
         app.logger.exception("Error during API reverse prompt generation in /api/v1/reverse:")
         status_code = 500
-        response_data = {"error": f"An unexpected server error occurred: {e}"}
+        # Ensure error message is filtered before sending to frontend
+        filtered_error_message = filter_gemini_response(f"An unexpected server error occurred: {e}")
+        response_data = {"error": filtered_error_message}
         return jsonify(response_data), status_code
     finally:
         end_time = datetime.utcnow()
