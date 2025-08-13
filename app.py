@@ -430,7 +430,7 @@ def ask_gemini_for_image_text(image_data_bytes):
         return f"Error extracting text from image: {str(e)}"
     except Exception as e:
         app.logger.error(f"Unexpected Error calling Gemini API for image text extraction: {e}", exc_info=True)
-        return f"An unexpected error occurred during image text extraction: {str(e)}"
+        return f"An unexpected error occurred during image text extraction: {str(e)}")
 
 # Helper function to remove nulls recursively
 def remove_null_values(obj):
@@ -1156,7 +1156,7 @@ def process_image_prompt(): # CHANGED FROM ASYNC
 # NEW: Endpoint to test a prompt against the LLM and return a sample response
 @app.route('/test_llm_response', methods=['POST'])
 @login_required
-def test_llm_response():
+async def test_llm_response(): # CHANGED to async def
     user = current_user
     now = datetime.utcnow()
 
@@ -1245,7 +1245,8 @@ def test_llm_response():
 
     try:
         # Generate LLM response with a specific token limit (524 tokens as requested)
-        llm_response_text_raw = asyncio.run(ask_gemini_for_text_prompt(llm_instruction, max_output_tokens=524))
+        # Use asyncio.to_thread to run the synchronous ask_gemini_for_text_prompt in a separate thread
+        llm_response_text_raw = await asyncio.to_thread(ask_gemini_for_text_prompt, llm_instruction, max_output_tokens=524)
         
         # Apply filter_gemini_response to the LLM's raw text before returning
         filtered_llm_response_text = filter_gemini_response(llm_response_text_raw)
@@ -1265,7 +1266,7 @@ def test_llm_response():
         })
     except Exception as e:
         app.logger.exception("Error during LLM sample response generation:")
-        # Ensure error message is also filtered before sending to frontend
+        # Ensure error message is filtered before sending to frontend
         filtered_error_message = filter_gemini_response(f"An unexpected server error occurred during sample response generation: {e}. Please check server logs for details.")
         return jsonify({"error": filtered_error_message}), 500
 
@@ -1280,7 +1281,7 @@ def check_cooldown():
     remaining_time = 0
     if user.last_generation_time: # Changed from last_prompt_request
         time_since_last_request = (now - user.last_generation_time).total_seconds()
-        if time_since_last_request < COOLDOWN_SECONDS:
+        if time_since_last_request < COOLDown_SECONDS:
             cooldown_active = True
             remaining_time = int(COOLDOWN_SECONDS - time_since_last_request)
 
@@ -2127,7 +2128,7 @@ def api_reverse_prompt(user):
             time_since_last_request = (now - user.last_generation_time).total_seconds()
             if time_since_last_request < COOLDOWN_SECONDS:
                 remaining_time = int(COOLDOWN_SECONDS - time_since_last_request)
-                app.logger.info(f"API user {user.username} is on cooldown for reverse prompt. Remaining: {remaining_time}s")
+                app.logger.info(f"API user {user.username} is on cooldown. Remaining: {remaining_time}s")
                 status_code = 429
                 response_data = {
                     "error": f"Please wait {remaining_time} seconds before performing another reverse prompt.",
