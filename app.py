@@ -1170,7 +1170,7 @@ async def test_llm_response(): # CHANGED to async def
     # Apply cooldown to test prompt as well
     if user.last_generation_time:
         time_since_last_request = (now - user.last_generation_time).total_seconds()
-        if time_since_last_request < COOLDOWN_SECONDS:
+        if time_since_last_request < COOLDOWN_SECONDS: # Corrected variable name
             remaining_time = int(COOLDOWN_SECONDS - time_since_last_request)
             app.logger.info(f"User {user.username} is on cooldown for test prompt. Remaining: {remaining_time}s")
             return jsonify({
@@ -1281,7 +1281,7 @@ def check_cooldown():
     remaining_time = 0
     if user.last_generation_time: # Changed from last_prompt_request
         time_since_last_request = (now - user.last_generation_time).total_seconds()
-        if time_since_last_request < COOLDown_SECONDS:
+        if time_since_last_request < COOLDOWN_SECONDS:
             cooldown_active = True
             remaining_time = int(COOLDOWN_SECONDS - time_since_last_request)
 
@@ -2128,7 +2128,7 @@ def api_reverse_prompt(user):
             time_since_last_request = (now - user.last_generation_time).total_seconds()
             if time_since_last_request < COOLDOWN_SECONDS:
                 remaining_time = int(COOLDOWN_SECONDS - time_since_last_request)
-                app.logger.info(f"API user {user.username} is on cooldown. Remaining: {remaining_time}s")
+                app.logger.info(f"API user {user.username} is on cooldown for reverse prompt. Remaining: {remaining_time}s")
                 status_code = 429
                 response_data = {
                     "error": f"Please wait {remaining_time} seconds before performing another reverse prompt.",
