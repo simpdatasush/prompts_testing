@@ -897,6 +897,9 @@
                 <pre id="fullContextModalText"></pre>
                 <!-- NEW: Area for LLM Sample Response -->
                 <h6 class="mt-4">LLM Sample Response:</h6>
+                <p class="text-muted" style="font-size: 0.85rem;">
+                    Note: For Image and Video Creation modes, the sample response will be a JSON prompt.
+                </p>
                 <div id="llm_test_response_area" class="mt-2">
                     <p>Click "Test Prompt" to generate a sample response.</p>
                 </div>
@@ -1666,7 +1669,7 @@
                console.error("Fetch error caught in JS:", error);
            } finally {
                generateButton.textContent = 'Generate Prompts';
-               updateAllButtonStates(); // Re-check status to re-enable buttons or show cooldown/limit
+               updateAllButtonStates(); // Re-check button states after a generation
            }
        });
 
