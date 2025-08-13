@@ -594,6 +594,36 @@
            cursor: not-allowed;
            opacity: 0.7; /* Slightly dim it to indicate non-interactivity */
        }
+       /* Styles for LLM Test Response area */
+       #llm_test_response_area {
+           margin-top: 20px;
+           padding: 15px;
+           background-color: #f4f6f9; /* Lighter background for response */
+           border-radius: 8px;
+           border: 1px solid #dee2e6;
+           min-height: 50px;
+           overflow-y: auto;
+           font-size: 0.95em;
+           color: #333; /* Darker text for readability */
+           white-space: pre-wrap; /* Preserve whitespace and wrap text */
+           word-wrap: break-word;
+       }
+       #llm_test_response_area.loading {
+           text-align: center;
+           color: #007bff;
+       }
+       #llm_test_response_area.error {
+           color: #721c24; /* Dark red text */
+           border-color: #f5c6cb; /* Light red border */
+           background-color: #f8d7da; /* Light red background */
+       }
+       /* Style for metadata text */
+       .llm-metadata {
+           font-size: 0.8em;
+           color: #6c757d;
+           margin-top: 5px;
+           text-align: right; /* Align metadata to the right */
+       }
   </style>
 </head>
 <body>
@@ -865,6 +895,16 @@
             </div>
             <div class="modal-body-custom">
                 <pre id="fullContextModalText"></pre>
+                <!-- NEW: Area for LLM Sample Response -->
+                <h6 class="mt-4">LLM Sample Response:</h6>
+                <div id="llm_test_response_area" class="mt-2">
+                    <p>Click "Test Prompt" to generate a sample response.</p>
+                </div>
+                <div class="llm-metadata" id="llm_response_metadata"></div> <!-- NEW: Metadata display -->
+                <div class="text-center mt-3">
+                    <button id="llm_test_button" class="btn btn-primary">Test Prompt</button>
+                    <div id="llm_test_loading_spinner" class="loading-spinner mt-2"></div>
+                </div>
             </div>
         </div>
     </div>
@@ -1126,7 +1166,7 @@
            "Career & Resume": ["Resume writing", "Cover letters", "Interview prep", "Other"],
            "Legal & Compliance": ["Contracts", "Disclaimers", "Legal summaries (non-advisory)", "Other"],
            "Healthcare & Wellness": ["Non-diagnostic advice", "Fitness plans", "Mental health prompts", "Other"],
-           "Image Generation & Visual Design": ["Prompts for image tools", "Scene descriptions", "Visual styles", "Other"],
+           "Image Generation & Visual Design": ["Graphic Designer", "Concept Artist", "Art Director", "Photographer", "AI Image Prompt Engineer", "Other"],
            "Event Planning": ["Agendas", "Checklists", "Invitations", "Budget planning", "Other"],
            "UX/UI & Product Design": ["UX copy", "Persona generation", "Wireframe ideas", "Other"],
            "Spirituality & Self-Reflection": ["Meditation coach", "Affirmations", "Philosophical prompts", "Other"],
@@ -1271,7 +1311,8 @@
 
            // Control visibility and interactivity of settings content
            if (isLocked) {
-               settingsContent.style.display = 'none'; // Hide content
+               settingsContent.classList.remove('show'); // Ensure content is hidden
+               settingsContent.style.display = 'none'; // Force hide content
                settingsHeaderToggle.classList.add('locked'); // Add class for cursor/opacity
                settingsToggleIcon.classList.remove('fa-chevron-down'); // Ensure arrow is 'up'
                settingsToggleIcon.classList.add('fa-chevron-up');
@@ -1541,6 +1582,8 @@
            setLLMWebsiteButtonsDisabled(true, promptMode); // Disable LLM website buttons immediately
            generateButton.textContent = 'Generating...';
            cooldownTimerDisplay.style.display = 'none';
+
+           console.log("Frontend: Sending request to /generate...");
 
            try {
                const formData = new FormData();
@@ -1960,6 +2003,15 @@
            modalTitle.textContent = title;
            modalText.textContent = promptText;
            modalOverlay.classList.add('show');
+
+           // NEW: Reset and clear previous test response when modal opens
+           const llmTestResponseArea = document.getElementById('llm_test_response_area');
+           const llmResponseMetadata = document.getElementById('llm_response_metadata');
+           llmTestResponseArea.innerHTML = '<p>Click "Test Prompt" to generate a sample response.</p>';
+           llmResponseMetadata.innerHTML = ''; // Clear metadata
+           llmTestResponseArea.classList.remove('loading', 'error');
+           document.getElementById('llm_test_button').disabled = false;
+           document.getElementById('llm_test_loading_spinner').style.display = 'none';
        }
 
        function closeFullContextView() {
@@ -1987,6 +2039,117 @@
        promptModeSelect.addEventListener('change', handlePromptModeChange);
        categorySelect.addEventListener('change', populateSubcategories);
        categorySelect.addEventListener('change', populatePersonas); // Also populate personas when category changes
+
+       // NEW: Global variables to store current settings for LLM test
+       let currentPromptMode = 'text';
+       let currentCategory = null;
+       let currentSubcategory = null;
+       let currentPersona = null;
+
+       // Update global settings variables when main form elements change
+       promptModeSelect.addEventListener('change', () => {
+           currentPromptMode = promptModeSelect.value;
+       });
+       categorySelect.addEventListener('change', () => {
+           currentCategory = categorySelect.value;
+           // If category changes, subcategory and persona might become irrelevant, reset them
+           currentSubcategory = null;
+           currentPersona = null;
+       });
+       subcategorySelect.addEventListener('change', () => {
+           currentSubcategory = subcategorySelect.value;
+       });
+       personaSelect.addEventListener('change', () => {
+           currentPersona = personaSelect.value;
+       });
+
+
+       // NEW: Test Prompt Button Logic
+       document.getElementById('llm_test_button').addEventListener('click', async function() {
+           const promptText = document.getElementById('fullContextModalText').textContent.trim();
+           const selectedLanguage = document.getElementById('lang_select').value;
+           const llmTestResponseArea = document.getElementById('llm_test_response_area');
+           const llmResponseMetadata = document.getElementById('llm_response_metadata');
+           const llmTestLoadingSpinner = document.getElementById('llm_test_loading_spinner');
+           const testPromptButton = this;
+
+           if (!promptText) {
+               llmTestResponseArea.innerHTML = '<p class="text-danger">No prompt text available to test.</p>';
+               llmTestResponseArea.classList.add('error');
+               llmResponseMetadata.innerHTML = '';
+               return;
+           }
+
+           llmTestResponseArea.innerHTML = '<p>Generating sample response...</p>';
+           llmResponseMetadata.innerHTML = ''; // Clear metadata during loading
+           llmTestResponseArea.classList.remove('error');
+           llmTestResponseArea.classList.add('loading');
+           llmTestLoadingSpinner.style.display = 'block';
+           testPromptButton.disabled = true;
+
+           try {
+               const response = await fetch('/test_llm_response', {
+                   method: 'POST',
+                   headers: {
+                       'Content-Type': 'application/json'
+                   },
+                   body: JSON.stringify({
+                       prompt_text: promptText,
+                       language_code: selectedLanguage,
+                       prompt_mode: currentPromptMode, // Use global variable
+                       category: currentCategory,       // Use global variable
+                       subcategory: currentSubcategory, // Use global variable
+                       persona: currentPersona          // Use global variable
+                   })
+               });
+
+               if (!response.ok) {
+                   const errorData = await response.json();
+                   // Handle specific error types (cooldown, daily limit, account locked)
+                   if (errorData.cooldown_active && errorData.remaining_time) {
+                       llmTestResponseArea.innerHTML = `<p class="text-warning">Cooldown active: Please wait ${errorData.remaining_time} seconds before your next test.</p>`;
+                       llmTestResponseArea.classList.add('error'); // Use error style for warnings too
+                   } else if (errorData.daily_limit_reached) {
+                       llmTestResponseArea.innerHTML = `<p class="text-danger">Daily limit reached: ${errorData.error}</p>`;
+                       llmTestResponseArea.classList.add('error');
+                       // Trigger payment modal if daily limit reached
+                       $('#paymentModalMessage').html(errorData.error);
+                       $('#paymentLinkButton').attr('href', errorData.payment_link);
+                       $('#paymentModal').modal('show');
+                   } else if (errorData.account_locked) {
+                       llmTestResponseArea.innerHTML = `<p class="text-danger">Account Locked: ${errorData.error}</p>`;
+                       llmTestResponseArea.classList.add('error');
+                   } else {
+                       llmTestResponseArea.innerHTML = `<p class="text-danger">Error: ${errorData.error || 'Failed to get sample response.'}</p>`;
+                       llmTestResponseArea.classList.add('error');
+                   }
+                   return;
+               }
+
+               const data = await response.json();
+               if (data.sample_response) {
+                   llmTestResponseArea.innerHTML = `<pre>${data.sample_response}</pre>`;
+                   llmTestResponseArea.classList.remove('error');
+                   // Display metadata
+                   llmResponseMetadata.innerHTML = `Model: ${data.model_name || 'N/A'}, Temp: ${data.temperature || 'N/A'}`;
+               } else {
+                   llmTestResponseArea.innerHTML = '<p class="text-warning">No sample response received.</p>';
+                   llmTestResponseArea.classList.add('error');
+                   llmResponseMetadata.innerHTML = '';
+               }
+
+           } catch (error) {
+               llmTestResponseArea.innerHTML = `<p class="text-danger">Network error: ${error.message}</p>`;
+               llmTestResponseArea.classList.add('error');
+               llmResponseMetadata.innerHTML = '';
+               console.error('Error testing prompt:', error);
+           } finally {
+               llmTestResponseArea.classList.remove('loading');
+               llmTestLoadingSpinner.style.display = 'none';
+               testPromptButton.disabled = false;
+               updateAllButtonStates(); // Re-check button states after a generation
+           }
+       });
 
        // Initial call to set button states correctly on page load
        // handlePromptModeChange called via DOMContentLoaded listener above
