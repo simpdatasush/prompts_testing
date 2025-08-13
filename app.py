@@ -430,7 +430,7 @@ def ask_gemini_for_image_text(image_data_bytes):
         return f"Error extracting text from image: {str(e)}"
     except Exception as e:
         app.logger.error(f"Unexpected Error calling Gemini API for image text extraction: {e}", exc_info=True)
-        return f"An unexpected error occurred during image text extraction: {str(e)}")
+        return f"An unexpected error occurred during image text extraction: {str(e)}"
 
 # Helper function to remove nulls recursively
 def remove_null_values(obj):
