@@ -948,7 +948,7 @@
                "voice_captured":  "✅ Voice input captured. Click \"Generate Prompts\"." ,
                "voice_error":  "❌ Voice input error:" ,
                "voice_start_error":  "❌ Error starting voice input:" ,
-               "voice_ended": "Voice input session ended.",
+               "voice_ended": "Session of voice input ended.",
                "no_prompt_to_save":  "❗ No {type} prompt to save. Generate one first." ,
                "prompt_saved":  "✅ Prompt saved temporarily!" ,
                "save_failed":  "❌ Failed to save prompt:" ,
@@ -1166,7 +1166,7 @@
            "Career & Resume": ["Resume writing", "Cover letters", "Interview prep", "Other"],
            "Legal & Compliance": ["Contracts", "Disclaimers", "Legal summaries (non-advisory)", "Other"],
            "Healthcare & Wellness": ["Non-diagnostic advice", "Fitness plans", "Mental health prompts", "Other"],
-           "Image Generation & Visual Design": ["Graphic Designer", "Concept Artist", "Art Director", "Photographer", "AI Image Prompt Engineer", "Other"],
+           "Image Generation & Visual Design": ["Prompts for image tools", "Scene descriptions", "Visual styles", "Other"],
            "Event Planning": ["Agendas", "Checklists", "Invitations", "Budget planning", "Other"],
            "UX/UI & Product Design": ["UX copy", "Persona generation", "Wireframe ideas", "Other"],
            "Spirituality & Self-Reflection": ["Meditation coach", "Affirmations", "Philosophical prompts", "Other"],
@@ -2130,8 +2130,7 @@
                if (data.sample_response) {
                    llmTestResponseArea.innerHTML = `<pre>${data.sample_response}</pre>`;
                    llmTestResponseArea.classList.remove('error');
-                   // Display metadata
-                   llmResponseMetadata.innerHTML = `Model: ${data.model_name || 'N/A'}, Temp: ${data.temperature || 'N/A'}`;
+                   // COMMENTED OUT: llmResponseMetadata.innerHTML = `Model: ${data.model_name || 'N/A'}, Temp: ${data.temperature || 'N/A'}`;
                } else {
                    llmTestResponseArea.innerHTML = '<p class="text-warning">No sample response received.</p>';
                    llmTestResponseArea.classList.add('error');
