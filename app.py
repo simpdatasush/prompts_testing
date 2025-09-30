@@ -362,7 +362,7 @@ def filter_gemini_response(text):
 
 
 # --- Gemini API interaction function (Synchronous wrapper for text_model) ---
-def ask_gemini_for_text_prompt(prompt_instruction, max_output_tokens=1028):
+def ask_gemini_for_text_prompt(prompt_instruction, max_output_tokens=2048):
     try:
         generation_config = {
             "max_output_tokens": max_output_tokens,
