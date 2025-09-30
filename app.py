@@ -91,16 +91,17 @@ LANGUAGE_MAP = {
  "hi-IN": "Hindi"
 }
 
+# https://ai.google.dev/gemini-api/docs/pricing#gemini-2.5-flash
 
 # --- Configure Google Gemini API ---
 # Ensure your GOOGLE_API_KEY is set in your environment variables
 genai.configure(api_key=os.environ.get("GOOGLE_API_KEY"))
 
 # Initialize Gemini models as per user's specific requirements
-# ALL MODELS ARE NOW SET TO 'gemini-2.0-flash' as requested by the user.
-text_model = genai.GenerativeModel('gemini-2.0-flash') # For general text generation
-vision_model = genai.GenerativeModel('gemini-2.0-flash') # For image understanding
-structured_gen_model = genai.GenerativeModel('gemini-2.0-flash') # For structured JSON generation
+# ALL MODELS ARE NOW SET TO 'gemini-2.5-flash' as requested by the user.
+text_model = genai.GenerativeModel('gemini-2.5-flash') # For general text generation
+vision_model = genai.GenerativeModel('gemini-2.5-flash') # For image understanding
+structured_gen_model = genai.GenerativeModel('gemini-2.5-flash') # For structured JSON generation
 
 
 # --- UPDATED: User Model for SQLAlchemy and Flask-Login ---
@@ -1233,7 +1234,7 @@ async def test_llm_response(): # CHANGED to async def
             context_str += f"Craft the response from the perspective of a '{persona}'."
 
     # Define the model and temperature to be used for the test response
-    llm_model_name = "gemini-2.0-flash" # As defined globally
+    llm_model_name = "gemini-2.5-flash" # As defined globally
     llm_temperature = 0.1 # As defined globally for text_model
 
     llm_instruction = (
