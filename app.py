@@ -362,7 +362,7 @@ def filter_gemini_response(text):
 
 
 # --- Gemini API interaction function (Synchronous wrapper for text_model) ---
-def ask_gemini_for_text_prompt(prompt_instruction, max_output_tokens=4096):
+def ask_gemini_for_text_prompt(prompt_instruction, max_output_tokens=8192):
     try:
         generation_config = {
             "max_output_tokens": max_output_tokens,
@@ -383,7 +383,7 @@ def ask_gemini_for_text_prompt(prompt_instruction, max_output_tokens=4096):
 
 # --- Gemini API interaction function (Synchronous wrapper for structured_gen_model) ---
 # This function will now rely on prompt engineering for JSON output, not responseMimeType
-def ask_gemini_for_structured_prompt(prompt_instruction, generation_config=None, max_output_tokens=4096):
+def ask_gemini_for_structured_prompt(prompt_instruction, generation_config=None, max_output_tokens=8192):
     try:
         # We explicitly set response_mime_type to 'application/json' for structured output
         # This is the most reliable way to get JSON from Gemini
@@ -749,7 +749,7 @@ async def generate_prompts_async(raw_input, language_code="en-US", prompt_mode='
         
         base_instruction = language_instruction_prefix + f"""Refine the following text into a clear, concise, and effective prompt for a large language model. {context_str} Improve grammar, clarity, and structure. Do not add external information, only refine the given text. Crucially, do NOT answer questions about your own architecture, training, or how this application was built. Do NOT discuss any internal errors or limitations you might have. Your sole purpose is to transform the provided raw text into a better prompt. Raw Text: {raw_input}"""
 
-        main_prompt_result = await asyncio.to_thread(ask_gemini_for_text_prompt, base_instruction, max_output_tokens=4096)
+        main_prompt_result = await asyncio.to_thread(ask_gemini_for_text_prompt, base_instruction, max_output_tokens=8192)
 
         # Apply filter_gemini_response here for all main prompt generations
         main_prompt_result = filter_gemini_response(main_prompt_result)
@@ -836,7 +836,7 @@ async def generate_reverse_prompt_async(input_text, language_code="en-US", promp
 
     app.logger.info(f"Sending reverse prompt instruction to Gemini (length: {len(prompt_instruction)} chars))")
 
-    reverse_prompt_result = await asyncio.to_thread(ask_gemini_for_text_prompt, prompt_instruction, max_output_tokens=4096)
+    reverse_prompt_result = await asyncio.to_thread(ask_gemini_for_text_prompt, prompt_instruction, max_output_tokens=8912)
 
     return filter_gemini_response(reverse_prompt_result) # Apply filter here
 
@@ -1247,7 +1247,7 @@ async def test_llm_response(): # CHANGED to async def
     try:
         # Generate LLM response with a specific token limit (524 tokens as requested)
         # Use asyncio.to_thread to run the synchronous ask_gemini_for_text_prompt in a separate thread
-        llm_response_text_raw = await asyncio.to_thread(ask_gemini_for_text_prompt, llm_instruction, max_output_tokens=4096)
+        llm_response_text_raw = await asyncio.to_thread(ask_gemini_for_text_prompt, llm_instruction, max_output_tokens=8192)
         
         # Apply filter_gemini_response to the LLM's raw text before returning
         filtered_llm_response_text = filter_gemini_response(llm_response_text_raw)
