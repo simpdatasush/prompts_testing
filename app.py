@@ -99,10 +99,24 @@ genai.configure(api_key=os.environ.get("GOOGLE_API_KEY"))
 
 # Initialize Gemini models as per user's specific requirements
 # ALL MODELS ARE NOW SET TO 'gemini-2.5-flash' as requested by the user.
-text_model = genai.GenerativeModel('gemini-2.5-flash') # For general text generation
 vision_model = genai.GenerativeModel('gemini-2.5-flash') # For image understanding
-structured_gen_model = genai.GenerativeModel('gemini-2.5-flash') # For structured JSON generation
 
+# --- NEW: Dynamic Model Selection Logic ---
+def get_dynamic_model_name(prompt_instruction: str, min_chars_for_2_5_flash: int = 300) -> str:
+    """
+    Selects the Gemini model based on the complexity (length) of the prompt instruction.
+    For structured generation, we will use a higher threshold (500) in the calling function.
+    """
+    # The length of the final instruction (including system prompt and user raw input)
+    prompt_length = len(prompt_instruction)
+    if prompt_length >= min_chars_for_2_5_flash:
+        model_name = 'gemini-2.5-flash'
+    else:
+        model_name = 'gemini-2.0-flash'
+
+    app.logger.info(f"Model selected: {model_name} (Prompt length: {prompt_length})")
+    return model_name
+# --- END NEW: Dynamic Model Selection Logic —
 
 # --- UPDATED: User Model for SQLAlchemy and Flask-Login ---
 # Added allowed_categories and allowed_personas columns for access control
@@ -362,49 +376,60 @@ def filter_gemini_response(text):
 
 
 # --- Gemini API interaction function (Synchronous wrapper for text_model) ---
+# REPLACED FUNCTION
 def ask_gemini_for_text_prompt(prompt_instruction, max_output_tokens=8192):
+    # Determine model dynamically and instantiate it
+    model_name = get_dynamic_model_name(prompt_instruction, min_chars_for_2_5_flash=300)
+    model = genai.GenerativeModel(model_name)
+
     try:
         generation_config = {
             "max_output_tokens": max_output_tokens,
             "temperature": 0.1
         }
-        response = text_model.generate_content(
+        response = model.generate_content(
             contents=[{"role": "user", "parts": [{"text": prompt_instruction}]}],
             generation_config=generation_config
         )
         raw_gemini_text = response.text if response and response.text else "No response from model."
         return raw_gemini_text # Return raw text for further processing/filtering
     except google_api_exceptions.GoogleAPICallError as e:
-        app.logger.error(f"DEBUG: Google API Call Error (text_model): {e}", exc_info=True)
+        app.logger.error(f"DEBUG: Google API Call Error ({model_name}): {e}", exc_info=True)
         return f"Error communicating with Gemini API: {str(e)}"
     except Exception as e:
-        app.logger.error(f"DEBUG: Unexpected Error calling Gemini API (text_model): {e}", exc_info=True)
+        app.logger.error(f"DEBUG: Unexpected Error calling Gemini API ({model_name}): {e}", exc_info=True)
         return f"An unexpected error occurred: {str(e)}"
 
+
 # --- Gemini API interaction function (Synchronous wrapper for structured_gen_model) ---
-# This function will now rely on prompt engineering for JSON output, not responseMimeType
+# REPLACED FUNCTION
 def ask_gemini_for_structured_prompt(prompt_instruction, generation_config=None, max_output_tokens=8192):
+    # Determine model dynamically and instantiate it
+    # Structured output is generally more complex, so we use a higher threshold (500)
+    # or rely on the long template instruction to push it over 300 anyway.
+    model_name = get_dynamic_model_name(prompt_instruction, min_chars_for_2_5_flash=500)
+    model = genai.GenerativeModel(model_name)
+
     try:
         # We explicitly set response_mime_type to 'application/json' for structured output
-        # This is the most reliable way to get JSON from Gemini
         current_generation_config = generation_config.copy() if generation_config else {}
         if "max_output_tokens" not in current_generation_config:
             current_generation_config["max_output_tokens"] = max_output_tokens
-        
+
         # Ensure response_mime_type is set for structured output
         current_generation_config["response_mime_type"] = "application/json"
 
-        response = structured_gen_model.generate_content(
+        response = model.generate_content(
             contents=[{"role": "user", "parts": [{"text": prompt_instruction}]}],
             generation_config=current_generation_config
         )
         raw_gemini_text = response.text if response and response.text else "No response from model."
         return raw_gemini_text # Return raw text for further processing/filtering
     except google_api_exceptions.GoogleAPICallError as e:
-        app.logger.error(f"DEBUG: Google API Call Error (structured_gen_model): {e}", exc_info=True)
+        app.logger.error(f"DEBUG: Google API Call Error ({model_name}): {e}", exc_info=True)
         return f"Error communicating with Gemini API: {str(e)}"
     except Exception as e:
-        app.logger.error(f"DEBUG: Unexpected Error calling Gemini API (structured_gen_model): {e}", exc_info=True)
+        app.logger.error(f"DEBUG: Unexpected Error calling Gemini API ({model_name}): {e}", exc_info=True)
         return f"An unexpected error occurred: {str(e)}"
 
 
