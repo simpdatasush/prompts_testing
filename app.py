@@ -1358,7 +1358,10 @@ async def test_llm_response(): # CHANGED to async def
     try:
         # Generate LLM response with a specific token limit (524 tokens as requested)
         # Use asyncio.to_thread to run the synchronous ask_gemini_for_text_prompt in a separate thread
-        llm_response_text_raw = await asyncio.to_thread(ask_gemini_for_text_prompt, llm_instruction, max_output_tokens=8192)
+        # --- FIX: Provide the required 'model_name' argument ---
+        # For testing/admin purposes, we default to the fastest, cheapest model: gemini-2.0-flash.
+        TEST_MODEL = 'gemini-2.0-flash'
+        llm_response_text_raw = await asyncio.to_thread(ask_gemini_for_text_prompt, llm_instruction, model_name=TEST_MODEL, max_output_tokens=8192)
         
         # Apply filter_gemini_response to the LLM's raw text before returning
         filtered_llm_response_text = filter_gemini_response(llm_response_text_raw)
