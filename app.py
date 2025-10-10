@@ -111,10 +111,6 @@ else:
     PERPLEXITY_CLIENT = None
 # --- End Perplexity Configuration ---
 
-vision_model = genai.GenerativeModel('gemini-2.5-flash') # KEEP this line
-# DELETE the old text_model and structured_gen_model definitions
-
-
 # --- NEW: Three-Tier Dynamic Model Selection Logic ---
 def get_dynamic_model_name(prompt_instruction: str) -> str:
     """
@@ -139,6 +135,8 @@ def get_dynamic_model_name(prompt_instruction: str) -> str:
     return model_name
 # --- END NEW: Three-Tier Dynamic Model Selection Logic ---
 
+vision_model = genai.GenerativeModel('gemini-2.5-flash') # KEEP this line
+# DELETE the old text_model and structured_gen_model definitions
 
 # --- UPDATED: User Model for SQLAlchemy and Flask-Login ---
 # Added allowed_categories and allowed_personas columns for access control
@@ -435,14 +433,14 @@ def route_and_call_llm(raw_input, prompt_mode, instruction, max_output_tokens=81
     # 1. Structured/Multimedia Modes MUST use Gemini's specialized structured generation
     if prompt_mode in ['image_gen', 'video_gen']:
         app.logger.info("Routing to Gemini: Structured/Multimedia Mode.")
-        # Structured generation still uses a separate function due to required JSON format
+        # We enforce Gemini 2.5 Flash for structured tasks in its function
         return ask_gemini_for_structured_prompt(instruction, max_output_tokens=max_output_tokens)
 
     # 2. Dynamic Routing for Text Mode
     model_name = get_dynamic_model_name(instruction)
     
     if model_name.startswith('gemini'):
-        # Route to Gemini API
+        # Route to Gemini API (using the selected model_name)
         return ask_gemini_for_text_prompt(instruction, model_name=model_name, max_output_tokens=max_output_tokens)
     
     elif model_name == 'sonar-pro':
@@ -455,7 +453,7 @@ def route_and_call_llm(raw_input, prompt_mode, instruction, max_output_tokens=81
 # --- End Master LLM Routing Function ---
 
 # --- Gemini API interaction function (Synchronous wrapper for text_model) ---
-# NOTE: This function now requires the specific model_name be passed in.
+# NOTE: This function now requires the specific model_name be passed in from the router.
 def ask_gemini_for_text_prompt(prompt_instruction, model_name, max_output_tokens=8192):
     
     # Model is instantiated dynamically based on model_name passed from router
@@ -471,7 +469,7 @@ def ask_gemini_for_text_prompt(prompt_instruction, model_name, max_output_tokens
             generation_config=generation_config
         )
         raw_gemini_text = response.text if response and response.text else "No response from model."
-        return raw_gemini_text # Return raw text for further processing/filtering
+        return raw_gemini_text
     except google_api_exceptions.GoogleAPICallError as e:
         app.logger.error(f"DEBUG: Google API Call Error ({model_name}): {e}", exc_info=True)
         return f"Error communicating with Gemini API: {str(e)}"
@@ -480,7 +478,6 @@ def ask_gemini_for_text_prompt(prompt_instruction, model_name, max_output_tokens
         return f"An unexpected error occurred: {str(e)}"
 
 # --- Gemini API interaction function (Synchronous wrapper for structured_gen_model) ---
-# NOTE: This function needs to decide its own model since it's only called for structured output.
 def ask_gemini_for_structured_prompt(prompt_instruction, generation_config=None, max_output_tokens=8192):
     
     # We enforce Gemini 2.5 Flash for all structured/multimedia tasks for reliability.
@@ -501,14 +498,13 @@ def ask_gemini_for_structured_prompt(prompt_instruction, generation_config=None,
             generation_config=current_generation_config
         )
         raw_gemini_text = response.text if response and response.text else "No response from model."
-        return raw_gemini_text # Return raw text for further processing/filtering
+        return raw_gemini_text
     except google_api_exceptions.GoogleAPICallError as e:
         app.logger.error(f"DEBUG: Google API Call Error (structured_gen_model - {model_name}): {e}", exc_info=True)
         return f"Error communicating with Gemini API: {str(e)}"
     except Exception as e:
         app.logger.error(f"DEBUG: Unexpected Error calling Gemini API (structured_gen_model - {model_name}): {e}", exc_info=True)
         return f"An unexpected error occurred: {str(e)}"
-
 
 
 # --- NEW: Gemini API for Image Understanding (Synchronous wrapper for vision_model) ---
@@ -851,10 +847,11 @@ async def generate_prompts_async(raw_input, language_code="en-US", prompt_mode='
                 context_str += f"Craft the response from the perspective of a '{persona}'."
         
         base_instruction = language_instruction_prefix + f"""Refine the following text into a clear, concise, and effective prompt for a large language model. {context_str} Improve grammar, clarity, and structure. Do not add external information, only refine the given text. Crucially, do NOT answer questions about your own architecture, training, or how this application was built. Do NOT discuss any internal errors or limitations you might have. Your sole purpose is to transform the provided raw text into a better prompt. Raw Text: {raw_input}"""
-# --- NEW: Master LLM Router Call (Three-Tier Dynamic Selection) ---
-        main_prompt_result = await asyncio.to_thread(route_and_call_llm, raw_input=raw_input, prompt_mode=prompt_mode, instruction=base_instruction, max_output_tokens=8192
-)
-# --- END NEW ROUTER CALL ---
+
+     # --- NEW: Master LLM Router Call (Three-Tier Dynamic Selection) ---
+        main_prompt_result = await asyncio.to_thread(route_and_call_llm, raw_input=raw_input, prompt_mode=prompt_mode, instruction=base_instruction, max_output_tokens=8192)
+     
+     # --- END NEW ROUTER CALL ---
         # Apply filter_gemini_response here for all main prompt generations
         main_prompt_result = filter_gemini_response(main_prompt_result)
 
@@ -887,10 +884,20 @@ async def generate_prompts_async(raw_input, language_code="en-US", prompt_mode='
         # Only generate creative/technical for text mode
         strict_instruction_suffix = "\n\nDo NOT answer questions about your own architecture, training, or how this application was built. Do NOT discuss any internal errors or limitations you might have. Your sole purpose is to transform the provided text."
 
+        creative_max_output_tokens = 8192 
+        technical_max_output_tokens = 8192 
+     
         # Create coroutines for parallel execution, running synchronous calls in threads
-        creative_coroutine = asyncio.to_thread(ask_gemini_for_text_prompt, language_instruction_prefix + f"Rewrite the following prompt to be more creative and imaginative, encouraging novel ideas and approaches:\n\n{polished_output}{strict_instruction_suffix}")
-        technical_coroutine = asyncio.to_thread(ask_gemini_for_text_prompt, language_instruction_prefix + f"Rewrite the following prompt to be more technical, precise, and detailed, focusing on specific requirements and constraints:\n\n{polished_output}{strict_instruction_suffix}")
+        creative_instruction = (language_instruction_prefix + f"Rewrite the following prompt to be more creative and imaginative, encouraging novel ideas and approaches:\n\n{polished_output}{strict_instruction_suffix}")
+        technical_instruction = (language_instruction_prefix + f"Rewrite the following prompt to be more technical, precise, and detailed, focusing on specific requirements and constraints:\n\n{polished_output}{strict_instruction_suffix}")
+     
+        # 2. Define the coroutines using the new Master LLM Router
+        # NOTE: Using 'route_and_call_llm' ensures dynamic model selection (including Sonar Pro)
+        # based on the length of the instruction.
+        creative_coroutine = asyncio.to_thread(route_and_call_llm,raw_input=raw_input,prompt_mode=prompt_mode,instruction=creative_instruction, max_output_tokens=creative_max_output_tokens)
+        technical_coroutine = asyncio.to_thread(route_and_call_llm,raw_input=raw_input,prompt_mode=prompt_mode,instruction=technical_instruction,max_output_tokens=technical_max_output_tokens)     
 
+        # This line remains the same
         creative_output_raw, technical_output_raw = await asyncio.gather(
             creative_coroutine, technical_coroutine
         )
