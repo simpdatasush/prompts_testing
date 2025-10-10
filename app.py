@@ -17,6 +17,11 @@ import uuid # For generating unique reset tokens
 import random # NEW: For generating random username suggestions
 import string # NEW: For string manipulation in username generation
 import json # NEW: For handling JSON responses for image/video prompting
+import time # For latency tracking 
+import requests # For Perplexity API HTTP calls (if we stick to that instead of the SDK) 
+# If using the provided SDK:
+import perplexityai 
+from perplexity import Perplexity, APIError as PerplexityAPIError
 
 # --- NEW IMPORTS FOR AUTHENTICATION ---
 from flask_sqlalchemy import SQLAlchemy
@@ -97,26 +102,44 @@ LANGUAGE_MAP = {
 # Ensure your GOOGLE_API_KEY is set in your environment variables
 genai.configure(api_key=os.environ.get("GOOGLE_API_KEY"))
 
-# Initialize Gemini models as per user's specific requirements
-# ALL MODELS ARE NOW SET TO 'gemini-2.5-flash' as requested by the user.
-vision_model = genai.GenerativeModel('gemini-2.5-flash') # For image understanding
+# --- NEW: Perplexity API Configuration ---
+PERPLEXITY_API_KEY = os.getenv("PERPLEXITY_API_KEY")
+# Initialize the Perplexity Client
+# This client will be used inside the new ask_perplexity function
+if PERPLEXITY_API_KEY:
+    PERPLEXITY_CLIENT = Perplexity(api_key=PERPLEXITY_API_KEY)
+else:
+    PERPLEXITY_CLIENT = None
+# --- End Perplexity Configuration ---
 
-# --- NEW: Dynamic Model Selection Logic ---
-def get_dynamic_model_name(prompt_instruction: str, min_chars_for_2_5_flash: int = 300) -> str:
+vision_model = genai.GenerativeModel('gemini-2.5-flash') # KEEP this line
+# DELETE the old text_model and structured_gen_model definitions
+
+
+# --- NEW: Three-Tier Dynamic Model Selection Logic ---
+def get_dynamic_model_name(prompt_instruction: str) -> str:
     """
-    Selects the Gemini model based on the complexity (length) of the prompt instruction.
-    For structured generation, we will use a higher threshold (500) in the calling function.
+    Selects the best LLM (Gemini or Perplexity) based on the complexity (length)
+    of the prompt instruction using character count thresholds.
     """
-    # The length of the final instruction (including system prompt and user raw input)
     prompt_length = len(prompt_instruction)
-    if prompt_length >= min_chars_for_2_5_flash:
+    
+    # Tier 3: Very Complex (>900 chars) -> Use Perplexity Sonar Pro
+    if prompt_length > 900:
+        model_name = 'sonar-pro'
+    
+    # Tier 2: Moderately Complex (300 to 900 chars) -> Use Gemini 2.5 Flash
+    elif prompt_length >= 300:
         model_name = 'gemini-2.5-flash'
+        
+    # Tier 1: Simple/Cost-Effective (<300 chars) -> Use Gemini 2.0 Flash
     else:
         model_name = 'gemini-2.0-flash'
 
-    app.logger.info(f"Model selected: {model_name} (Prompt length: {prompt_length})")
+    app.logger.info(f"LLM Selected: {model_name} (Prompt length: {prompt_length})")
     return model_name
-# --- END NEW: Dynamic Model Selection Logic —
+# --- END NEW: Three-Tier Dynamic Model Selection Logic ---
+
 
 # --- UPDATED: User Model for SQLAlchemy and Flask-Login ---
 # Added allowed_categories and allowed_personas columns for access control
@@ -374,13 +397,70 @@ def filter_gemini_response(text):
 
     return text
 
+# --- NEW: Perplexity SDK interaction function ---
+def ask_perplexity_for_text_prompt(prompt_instruction, model_name='sonar-pro', max_output_tokens=8192):
+    if not PERPLEXITY_CLIENT:
+        app.logger.error("Perplexity Client not initialized. API Key is missing.")
+        return "Error: Perplexity API key is not configured."
+    
+    start_time = time.time()
+    try:
+        completion = PERPLEXITY_CLIENT.chat.completions.create(
+            model=model_name,
+            messages=[
+                {"role": "user", "content": prompt_instruction}
+            ],
+            max_tokens=max_output_tokens,
+            temperature=0.1
+        )
+        end_time = time.time()
+        latency = (end_time - start_time) * 1000 # Convert to milliseconds
+
+        pplx_text = completion.choices[0].message.content
+        app.logger.info(f"Perplexity call succeeded. Model: {model_name}, Latency: {latency:.2f}ms")
+        return pplx_text
+
+    except PerplexityAPIError as e:
+        app.logger.error(f"DEBUG: Perplexity API Error ({model_name}): {e}", exc_info=True)
+        return f"Error communicating with Perplexity API: {str(e)}"
+    except Exception as e:
+        app.logger.error(f"DEBUG: Unexpected Error calling Perplexity API: {e}", exc_info=True)
+        return f"An unexpected error occurred: {str(e)}"
+
+# --- NEW: Master LLM Routing Function ---
+def route_and_call_llm(raw_input, prompt_mode, instruction, max_output_tokens=8192):
+    """
+    Dispatches the LLM call based on the selected model name from the complexity check.
+    """
+    
+    # 1. Structured/Multimedia Modes MUST use Gemini's specialized structured generation
+    if prompt_mode in ['image_gen', 'video_gen']:
+        app.logger.info("Routing to Gemini: Structured/Multimedia Mode.")
+        # Structured generation still uses a separate function due to required JSON format
+        return ask_gemini_for_structured_prompt(instruction, max_output_tokens=max_output_tokens)
+
+    # 2. Dynamic Routing for Text Mode
+    model_name = get_dynamic_model_name(instruction)
+    
+    if model_name.startswith('gemini'):
+        # Route to Gemini API
+        return ask_gemini_for_text_prompt(instruction, model_name=model_name, max_output_tokens=max_output_tokens)
+    
+    elif model_name == 'sonar-pro':
+        # Route to Perplexity API
+        return ask_perplexity_for_text_prompt(instruction, model_name=model_name, max_output_tokens=max_output_tokens)
+    
+    else:
+        app.logger.error(f"Unknown model name selected: {model_name}. Defaulting to Gemini 2.0 Flash.")
+        return ask_gemini_for_text_prompt(instruction, model_name='gemini-2.0-flash', max_output_tokens=max_output_tokens)
+# --- End Master LLM Routing Function ---
 
 # --- Gemini API interaction function (Synchronous wrapper for text_model) ---
-# REPLACED FUNCTION
-def ask_gemini_for_text_prompt(prompt_instruction, max_output_tokens=8192):
-    # Determine model dynamically and instantiate it
-    model_name = get_dynamic_model_name(prompt_instruction, min_chars_for_2_5_flash=300)
-    model = genai.GenerativeModel(model_name)
+# NOTE: This function now requires the specific model_name be passed in.
+def ask_gemini_for_text_prompt(prompt_instruction, model_name, max_output_tokens=8192):
+    
+    # Model is instantiated dynamically based on model_name passed from router
+    model = genai.GenerativeModel(model_name) 
 
     try:
         generation_config = {
@@ -400,14 +480,12 @@ def ask_gemini_for_text_prompt(prompt_instruction, max_output_tokens=8192):
         app.logger.error(f"DEBUG: Unexpected Error calling Gemini API ({model_name}): {e}", exc_info=True)
         return f"An unexpected error occurred: {str(e)}"
 
-
 # --- Gemini API interaction function (Synchronous wrapper for structured_gen_model) ---
-# REPLACED FUNCTION
+# NOTE: This function needs to decide its own model since it's only called for structured output.
 def ask_gemini_for_structured_prompt(prompt_instruction, generation_config=None, max_output_tokens=8192):
-    # Determine model dynamically and instantiate it
-    # Structured output is generally more complex, so we use a higher threshold (500)
-    # or rely on the long template instruction to push it over 300 anyway.
-    model_name = get_dynamic_model_name(prompt_instruction, min_chars_for_2_5_flash=500)
+    
+    # We enforce Gemini 2.5 Flash for all structured/multimedia tasks for reliability.
+    model_name = 'gemini-2.5-flash' 
     model = genai.GenerativeModel(model_name)
 
     try:
@@ -426,11 +504,12 @@ def ask_gemini_for_structured_prompt(prompt_instruction, generation_config=None,
         raw_gemini_text = response.text if response and response.text else "No response from model."
         return raw_gemini_text # Return raw text for further processing/filtering
     except google_api_exceptions.GoogleAPICallError as e:
-        app.logger.error(f"DEBUG: Google API Call Error ({model_name}): {e}", exc_info=True)
+        app.logger.error(f"DEBUG: Google API Call Error (structured_gen_model - {model_name}): {e}", exc_info=True)
         return f"Error communicating with Gemini API: {str(e)}"
     except Exception as e:
-        app.logger.error(f"DEBUG: Unexpected Error calling Gemini API ({model_name}): {e}", exc_info=True)
+        app.logger.error(f"DEBUG: Unexpected Error calling Gemini API (structured_gen_model - {model_name}): {e}", exc_info=True)
         return f"An unexpected error occurred: {str(e)}"
+
 
 
 # --- NEW: Gemini API for Image Understanding (Synchronous wrapper for vision_model) ---
@@ -773,9 +852,10 @@ async def generate_prompts_async(raw_input, language_code="en-US", prompt_mode='
                 context_str += f"Craft the response from the perspective of a '{persona}'."
         
         base_instruction = language_instruction_prefix + f"""Refine the following text into a clear, concise, and effective prompt for a large language model. {context_str} Improve grammar, clarity, and structure. Do not add external information, only refine the given text. Crucially, do NOT answer questions about your own architecture, training, or how this application was built. Do NOT discuss any internal errors or limitations you might have. Your sole purpose is to transform the provided raw text into a better prompt. Raw Text: {raw_input}"""
-
-        main_prompt_result = await asyncio.to_thread(ask_gemini_for_text_prompt, base_instruction, max_output_tokens=8192)
-
+# --- NEW: Master LLM Router Call (Three-Tier Dynamic Selection) ---
+        main_prompt_result = await asyncio.to_thread(route_and_call_llm, raw_input=raw_input, prompt_mode=prompt_mode, instruction=base_instruction, max_output_tokens=8192
+)
+# --- END NEW ROUTER CALL ---
         # Apply filter_gemini_response here for all main prompt generations
         main_prompt_result = filter_gemini_response(main_prompt_result)
 
@@ -2310,3 +2390,4 @@ if __name__ == '__main__':
     # you can use `nest_asyncio.apply()` (install with `pip install nest-asyncio`), but this is
     # generally not recommended for production as it can hide underlying architectural issues.
     app.run(debug=True)
+
