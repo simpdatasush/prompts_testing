@@ -904,10 +904,12 @@
                     <p>Click "Test Prompt" to generate a sample response.</p>
                 </div>
                 <div class="llm-metadata" id="llm_response_metadata"></div> <!-- NEW: Metadata display -->
-                <div class="text-center mt-3">
-                    <button id="llm_test_button" class="btn btn-primary">Test Prompt</button>
-                    <div id="llm_test_loading_spinner" class="loading-spinner mt-2"></div>
+               <div class="text-center mt-3">
+                    <div class="btn-group" role="group" aria-label="Prompt Actions">
+		<button id="llm_test_button" class="btn btn-primary">Test LLM</button>
+		<button id="perplexitySearchButton" class="btn btn-secondary"><i class="fas fa-search"></i> Perplexity Search</button>
                 </div>
+   <div id="llm_test_loading_spinner" class="loading-spinner mt-2"></div>
             </div>
         </div>
     </div>
@@ -1999,7 +2001,7 @@
        // --- Full Context View Modal Functions ---
        function openFullContextView(title, elementId) {
            const modalOverlay = document.getElementById('fullContextModalOverlay');
-           const modalTitle = document.getElementById('fullContextModalTitle');
+           const modalTitle = document.getElementById('fullContextModalTitle')
            const modalText = document.getElementById('fullContextModalText');
            const promptText = document.getElementById(elementId).textContent.trim();
 
@@ -2068,93 +2070,186 @@
 
 
        // NEW: Test Prompt Button Logic
-       document.getElementById('llm_test_button').addEventListener('click', async function() {
-           const promptText = document.getElementById('fullContextModalText').textContent.trim();
-           const selectedLanguage = document.getElementById('lang_select').value;
-           const llmTestResponseArea = document.getElementById('llm_test_response_area');
-           const llmResponseMetadata = document.getElementById('llm_response_metadata');
-           const llmTestLoadingSpinner = document.getElementById('llm_test_loading_spinner');
-           const testPromptButton = this;
+document.getElementById('llm_test_button').addEventListener('click', async function() {
+    const promptText = document.getElementById('fullContextModalText').textContent.trim();
+    const selectedLanguage = document.getElementById('lang_select').value;
+    const llmTestResponseArea = document.getElementById('llm_test_response_area');
+    const llmResponseMetadata = document.getElementById('llm_response_metadata');
+    const llmTestLoadingSpinner = document.getElementById('llm_test_loading_spinner');
+    const testPromptButton = this;
+    // Get current mode/category/persona from global variables if they exist, 
+    // or set defaults if they are only locally defined in other functions.
+    const currentPromptMode = document.getElementById('prompt_mode_select').value;
+    const currentCategory = document.getElementById('category_select') ? document.getElementById('category_select').value : null;
+    const currentSubcategory = document.getElementById('subcategory_select') ? document.getElementById('subcategory_select').value : null;
+    const currentPersona = document.getElementById('persona_select') ? document.getElementById('persona_select').value : null;
 
-           if (!promptText) {
-               llmTestResponseArea.innerHTML = '<p class="text-danger">No prompt text available to test.</p>';
-               llmTestResponseArea.classList.add('error');
-               llmResponseMetadata.innerHTML = '';
-               return;
-           }
 
-           llmTestResponseArea.innerHTML = '<p>Generating sample response...</p>';
-           llmResponseMetadata.innerHTML = ''; // Clear metadata during loading
-           llmTestResponseArea.classList.remove('error');
-           llmTestResponseArea.classList.add('loading');
-           llmTestLoadingSpinner.style.display = 'block';
-           testPromptButton.disabled = true;
+    if (!promptText) {
+        llmTestResponseArea.innerHTML = '<p class="text-danger">No prompt text available to test.</p>';
+        llmTestResponseArea.classList.add('error');
+        llmResponseMetadata.innerHTML = '';
+        return;
+    }
 
-           try {
-               const response = await fetch('/test_llm_response', {
-                   method: 'POST',
-                   headers: {
-                       'Content-Type': 'application/json'
-                   },
-                   body: JSON.stringify({
-                       prompt_text: promptText,
-                       language_code: selectedLanguage,
-                       prompt_mode: currentPromptMode, // Use global variable
-                       category: currentCategory,       // Use global variable
-                       subcategory: currentSubcategory, // Use global variable
-                       persona: currentPersona          // Use global variable
-                   })
-               });
+    llmTestResponseArea.innerHTML = '<p><i class="fas fa-microchip"></i> Generating sample response...</p>';
+    llmResponseMetadata.innerHTML = ''; // Clear metadata during loading
+    llmTestResponseArea.classList.remove('error');
+    llmTestResponseArea.classList.add('loading');
+    llmTestLoadingSpinner.style.display = 'block';
+    testPromptButton.disabled = true;
 
-               if (!response.ok) {
-                   const errorData = await response.json();
-                   // Handle specific error types (cooldown, daily limit, account locked)
-                   if (errorData.cooldown_active && errorData.remaining_time) {
-                       llmTestResponseArea.innerHTML = `<p class="text-warning">Cooldown active: Please wait ${errorData.remaining_time} seconds before your next test.</p>`;
-                       llmTestResponseArea.classList.add('error'); // Use error style for warnings too
-                   } else if (errorData.daily_limit_reached) {
-                       llmTestResponseArea.innerHTML = `<p class="text-danger">Daily limit reached: ${errorData.error}</p>`;
-                       llmTestResponseArea.classList.add('error');
-                       // Trigger payment modal if daily limit reached
-                       $('#paymentModalMessage').html(errorData.error);
-                       $('#paymentLinkButton').attr('href', errorData.payment_link);
-                       $('#paymentModal').modal('show');
-                   } else if (errorData.account_locked) {
-                       llmTestResponseArea.innerHTML = `<p class="text-danger">Account Locked: ${errorData.error}</p>`;
-                       llmTestResponseArea.classList.add('error');
-                   } else {
-                       llmTestResponseArea.innerHTML = `<p class="text-danger">Error: ${errorData.error || 'Failed to get sample response.'}</p>`;
-                       llmTestResponseArea.classList.add('error');
-                   }
-                   return;
-               }
+    try {
+        const response = await fetch('/test_llm_response', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                prompt_text: promptText,
+                language_code: selectedLanguage,
+                prompt_mode: currentPromptMode,
+                category: currentCategory,
+                subcategory: currentSubcategory,
+                persona: currentPersona
+            })
+        });
 
-               const data = await response.json();
-               if (data.sample_response) {
-                   llmTestResponseArea.innerHTML = `<pre>${data.sample_response}</pre>`;
-                   llmTestResponseArea.classList.remove('error');
-                   // COMMENTED OUT: llmResponseMetadata.innerHTML = `Model: ${data.model_name || 'N/A'}, Temp: ${data.temperature || 'N/A'}`;
-               } else {
-                   llmTestResponseArea.innerHTML = '<p class="text-warning">No sample response received.</p>';
-                   llmTestResponseArea.classList.add('error');
-                   llmResponseMetadata.innerHTML = '';
-               }
+        if (!response.ok) {
+            const errorData = await response.json();
+            // Handle specific error types (cooldown, daily limit, account locked)
+            if (errorData.cooldown_active && errorData.remaining_time) {
+                llmTestResponseArea.innerHTML = `<p class="text-warning">Cooldown active: Please wait ${errorData.remaining_time} seconds before your next test.</p>`;
+                llmTestResponseArea.classList.add('error'); // Use error style for warnings too
+            } else if (errorData.daily_limit_reached) {
+                llmTestResponseArea.innerHTML = `<p class="text-danger">Daily limit reached: ${errorData.error}</p>`;
+                llmTestResponseArea.classList.add('error');
+                // Trigger payment modal if daily limit reached
+                $('#paymentModalMessage').html(errorData.error);
+                $('#paymentLinkButton').attr('href', errorData.payment_link);
+                $('#paymentModal').modal('show');
+            } else if (errorData.account_locked) {
+                llmTestResponseArea.innerHTML = `<p class="text-danger">Account Locked: ${errorData.error}</p>`;
+                llmTestResponseArea.classList.add('error');
+            } else {
+                llmTestResponseArea.innerHTML = `<p class="text-danger">Error: ${errorData.error || 'Failed to get sample response.'}</p>`;
+                llmTestResponseArea.classList.add('error');
+            }
+            return;
+        }
 
-           } catch (error) {
-               llmTestResponseArea.innerHTML = `<p class="text-danger">Network error: ${error.message}</p>`;
-               llmTestResponseArea.classList.add('error');
-               llmResponseMetadata.innerHTML = '';
-               console.error('Error testing prompt:', error);
-           } finally {
-               llmTestResponseArea.classList.remove('loading');
-               llmTestLoadingSpinner.style.display = 'none';
-               testPromptButton.disabled = false;
-               updateAllButtonStates(); // Re-check button states after a generation
-           }
-       });
+        const data = await response.json();
+        if (data.sample_response) {
+            llmTestResponseArea.innerHTML = `<pre>${data.sample_response}</pre>`;
+            llmTestResponseArea.classList.remove('error');
+            // COMMENTED OUT: llmResponseMetadata.innerHTML = `Model: ${data.model_name || 'N/A'}, Temp: ${data.temperature || 'N/A'}`;
+        } else {
+            llmTestResponseArea.innerHTML = '<p class="text-warning">No sample response received.</p>';
+            llmTestResponseArea.classList.add('error');
+            llmResponseMetadata.innerHTML = '';
+        }
 
-       // Initial call to set button states correctly on page load
-       // handlePromptModeChange called via DOMContentLoaded listener above
-   </script>
+    } catch (error) {
+        llmTestResponseArea.innerHTML = `<p class="text-danger">Network error: ${error.message}</p>`;
+        llmTestResponseArea.classList.add('error');
+        llmResponseMetadata.innerHTML = '';
+        console.error('Error testing prompt:', error);
+    } finally {
+        llmTestResponseArea.classList.remove('loading');
+        llmTestLoadingSpinner.style.display = 'none';
+        testPromptButton.disabled = false;
+        updateAllButtonStates(); // Re-check button states after a generation
+    }
+});
+
+
+// --- NEW: Perplexity Search Button Listener ---
+const perplexitySearchButton = document.getElementById('perplexitySearchButton');
+
+if (perplexitySearchButton) {
+    perplexitySearchButton.addEventListener('click', async function() {
+        const button = this;
+        // The prompt text is retrieved from the full context modal text area
+        const promptTextElement = document.getElementById('fullContextModalText'); 
+        const llmTestResponseArea = document.getElementById('llm_test_response_area'); 
+        const llmTestLoadingSpinner = document.getElementById('llm_test_loading_spinner'); 
+        const llmResponseMetadata = document.getElementById('llm_response_metadata');
+
+        if (!promptTextElement) {
+            llmTestResponseArea.innerHTML = '<p class="text-danger">Error: Could not find the prompt text to search.</p>';
+            llmTestResponseArea.classList.add('error');
+            llmResponseMetadata.innerHTML = '';
+            return;
+        }
+
+        const prompt_text = promptTextElement.textContent.trim();
+
+        // 1. UI Feedback: Disable button and show loading spinner
+        button.disabled = true;
+        llmTestResponseArea.classList.add('loading');
+        llmTestResponseArea.classList.remove('error');
+        llmTestResponseArea.innerHTML = '<p class="text-secondary"><i class="fas fa-spinner fa-spin"></i> Searching the internet via Perplexity...</p>';
+        llmTestLoadingSpinner.style.display = 'block';
+        llmResponseMetadata.innerHTML = ''; // Clear metadata
+
+        try {
+            // 2. Send the request to the new backend route
+            const response = await fetch('/search_perplexity', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ prompt_text: prompt_text })
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                llmTestResponseArea.innerHTML = `<p class="text-danger"><i class="fas fa-times-circle"></i> Search Error: ${errorData.error || response.statusText}</p>`;
+                llmTestResponseArea.classList.add('error');
+                return;
+            }
+
+            const data = await response.json();
+            
+            // 3. Process and display results in the existing response area
+            if (data.results && data.results.length > 0) {
+                let resultsHtml = '<h5><i class="fas fa-globe"></i> Perplexity Search Results:</h5>';
+                resultsHtml += '<ul class="list-unstyled mt-3">';
+                
+                data.results.forEach((result, index) => {
+                    // Truncate the title to keep the display clean
+                    const title = result.title.length > 80 ? result.title.substring(0, 80) + '...' : result.title;
+                    resultsHtml += `
+                        <li class="mb-2 p-2 border-bottom">
+                            <strong>${index + 1}.</strong> <a href="${result.url}" target="_blank" rel="noopener noreferrer" class="text-primary font-weight-bold">${title}</a>
+                            <br><small class="text-muted">${result.url}</small>
+                        </li>
+                    `;
+                });
+                resultsHtml += '</ul>';
+                
+                llmTestResponseArea.innerHTML = resultsHtml;
+            } else {
+                llmTestResponseArea.innerHTML = '<p class="text-warning"><i class="fas fa-exclamation-triangle"></i> Search completed, but no relevant results were found.</p>';
+            }
+
+        } catch (error) {
+            llmTestResponseArea.innerHTML = `<p class="text-danger"><i class="fas fa-exclamation-circle"></i> Network error: ${error.message}</p>`;
+            llmTestResponseArea.classList.add('error');
+            console.error('Error during Perplexity search:', error);
+        } finally {
+            // 4. Reset UI
+            llmTestResponseArea.classList.remove('loading');
+            llmTestLoadingSpinner.style.display = 'none';
+            button.disabled = false;
+        }
+    });
+}
+// --- END NEW Perplexity Search Button Listener ---
+
+// Initial call to set button states correctly on page load
+// handlePromptModeChange called via DOMContentLoaded listener above
+</script>
 </body>
 </html>
+
