@@ -452,8 +452,7 @@ def route_and_call_llm(raw_input, prompt_mode, instruction, max_output_tokens=81
         return ask_gemini_for_text_prompt(instruction, model_name='gemini-2.0-flash', max_output_tokens=max_output_tokens)
 # --- End Master LLM Routing Function —
 
-# --- NEW: Perplexity Search API Function —
-
+# --- CORRECTED: Perplexity Search API Function ---
 def perform_perplexity_search(query_text: str):
     """
     Performs a synchronous search using the Perplexity Search API.
@@ -467,9 +466,8 @@ def perform_perplexity_search(query_text: str):
         # The user's prompt text is used as the query
         search_results = PERPLEXITY_CLIENT.search.create(
             query=[query_text],
-            # Use 'web' search mode for general research
-            search_mode='web', 
-            # Limit results to a reasonable number for display in the pop-up
+            # Removed the problematic parameter: search_mode='web'
+            # The API will now use its default search mode (which is typically web)
             max_results=5 
         )
         
@@ -490,7 +488,7 @@ def perform_perplexity_search(query_text: str):
     except Exception as e:
         app.logger.error(f"Unexpected Error during Perplexity Search: {e}", exc_info=True)
         return {"error": f"An unexpected error occurred: {str(e)}"}
-# --- END NEW Perplexity Search API Function ---
+# --- END CORRECTED Perplexity Search API Function ---
 
 
 # --- Gemini API interaction function (Synchronous wrapper for text_model) ---
