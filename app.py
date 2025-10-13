@@ -450,7 +450,48 @@ def route_and_call_llm(raw_input, prompt_mode, instruction, max_output_tokens=81
     else:
         app.logger.error(f"Unknown model name selected: {model_name}. Defaulting to Gemini 2.0 Flash.")
         return ask_gemini_for_text_prompt(instruction, model_name='gemini-2.0-flash', max_output_tokens=max_output_tokens)
-# --- End Master LLM Routing Function ---
+# --- End Master LLM Routing Function —
+
+# --- NEW: Perplexity Search API Function —
+
+def perform_perplexity_search(query_text: str):
+    """
+    Performs a synchronous search using the Perplexity Search API.
+    Returns a list of dictionaries containing title and URL, or an error message.
+    """
+    if not PERPLEXITY_CLIENT:
+        app.logger.error("Perplexity Client not initialized. API Key is missing.")
+        return {"error": "Perplexity API key is not configured."}
+
+    try:
+        # The user's prompt text is used as the query
+        search_results = PERPLEXITY_CLIENT.search.create(
+            query=[query_text],
+            # Use 'web' search mode for general research
+            search_mode='web', 
+            # Limit results to a reasonable number for display in the pop-up
+            max_results=5 
+        )
+        
+        # Format the results into a clean list of dictionaries
+        formatted_results = []
+        for result in search_results.results:
+            formatted_results.append({
+                "title": result.title,
+                "url": result.url
+            })
+            
+        app.logger.info(f"Perplexity Search succeeded for query: {query_text[:50]}...")
+        return {"results": formatted_results}
+
+    except PerplexityAPIError as e:
+        app.logger.error(f"Perplexity Search API Error: {e}", exc_info=True)
+        return {"error": f"Error communicating with Perplexity API: {str(e)}"}
+    except Exception as e:
+        app.logger.error(f"Unexpected Error during Perplexity Search: {e}", exc_info=True)
+        return {"error": f"An unexpected error occurred: {str(e)}"}
+# --- END NEW Perplexity Search API Function ---
+
 
 # --- Gemini API interaction function (Synchronous wrapper for text_model) ---
 # NOTE: This function now requires the specific model_name be passed in from the router.
@@ -1031,6 +1072,8 @@ def generate(): # CHANGED FROM ASYNC
             "error": "Your account is locked. Please contact support.",
             "account_locked": True
         }), 403 # Forbidden
+
+
         
     # --- Cooldown Check using database timestamp ---
     if user.last_generation_time:
@@ -1263,6 +1306,33 @@ def process_image_prompt(): # CHANGED FROM ASYNC
     except Exception as e:
         app.logger.exception("Error during image processing endpoint:")
         return jsonify({"error": f"An unexpected server error occurred during image processing: {e}. Please check server logs for details."}), 500
+
+
+# --- NEW: Route to Handle Perplexity Search Request from Frontend ---
+@app.route('/search_perplexity', methods=['POST'])
+@login_required
+async def search_perplexity():
+    # Expects JSON data: {"prompt_text": "the published prompt content"}
+    data = request.get_json()
+    prompt_text = data.get('prompt_text', '').strip()
+
+    if not prompt_text:
+        return jsonify({"error": "No prompt text provided for search."}), 400
+
+    # Execute the synchronous search function in a separate thread
+    # Note: We must use asyncio.to_thread because the Perplexity SDK is synchronous
+    # and the route is asynchronous (async def)
+    search_response = await asyncio.to_thread(perform_perplexity_search, prompt_text)
+
+    # Log the search activity (optional, but good practice)
+    app.logger.info(f"User {current_user.id} performed Perplexity search: {prompt_text[:50]}...")
+
+    # The function already returns a dictionary with 'results' or 'error'
+    if "error" in search_response:
+        return jsonify(search_response), 500
+    
+    return jsonify(search_response), 200
+# --- END NEW Search Route ---
 
 
 # NEW: Endpoint to test a prompt against the LLM and return a sample response
