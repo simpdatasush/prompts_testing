@@ -791,7 +791,7 @@
                     </div>
                     <div class="card-body">
                         <pre id="polished_output"></pre>
-                        <div class="d-flex mt-2"><button class="save-button btn btn-sm btn-primary mr-2" data-prompt-type="polished">Save</button><button class="share-button btn btn-sm btn-outline-success" data-prompt-type="polished"><i class="fas fa-share-alt"></i> Share</button></div>
+                        <button class="save-button btn btn-sm btn-primary mt-2" data-prompt-type="polished">Save</button>
                     </div>
                 </div>
             </div>
@@ -807,7 +807,7 @@
                     </div>
                     <div class="card-body">
                         <pre id="creative_output"></pre>
-                        <div class="d-flex mt-2"><button class="save-button btn btn-sm btn-primary mr-2" data-prompt-type="creative">Save</button><button class="share-button btn btn-sm btn-outline-success" data-prompt-type="creative"><i class="fas fa-share-alt"></i> Share</button></div>
+                        <button class="save-button btn btn-sm btn-primary mt-2" data-prompt-type="creative">Save</button>
                     </div>
                 </div>
             </div>
@@ -823,7 +823,7 @@
                     </div>
                     <div class="card-body">
                         <pre id="technical_output"></pre>
-                        <div class="d-flex mt-2"><button class="save-button btn btn-sm btn-primary mr-2" data-prompt-type="technical">Save</button><button class="share-button btn btn-sm btn-outline-success" data-prompt-type="technical"><i class="fas fa-share-alt"></i> Share</button></div>
+                        <button class="save-button btn btn-sm btn-primary mt-2" data-prompt-type="technical">Save</button>
                     </div>
                 </div>
             </div>
@@ -936,30 +936,6 @@
       </div>
     </div>
     <!-- END NEW: Payment Modal -->
-
-	</div>
-	<div class="modal fade" id="shareModal" tabindex="-1" aria-labelledby="shareModalLabel" aria-hidden="true">
-	<div class="modal-dialog modal-dialog-centered modal-sm">
-	<div class="modal-content">
-	<div class="modal-header">
-	<h5 class="modal-title" id="shareModalLabel">Share Prompt: <span id="sharePromptType"></span></h5>
-	<button type="button" class="close" data-dismiss="modal" aria-label="Close">
-	<span aria-hidden="true">&times;</span>
-	</button>
-	</div>
-	<div class="modal-body text-center">
-	<p>Choose your platform:</p>
-	<button id="shareXButton" class="btn btn-dark btn-block mb-2" target="_blank" rel="noopener noreferrer">
-	<i class="fab fa-twitter"></i> Share on X
-	</button>
-	<button id="shareLinkedInButton" class="btn btn-info btn-block" target="_blank" rel="noopener noreferrer">
-	<i class="fab fa-linkedin"></i> Share on LinkedIn
-	</button>
-	</div>
-	</div>
-	</div>
-	</div>
-	<script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
 
 
    <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
@@ -1860,57 +1836,6 @@
            });
        });
 
-	   });
-});
-
-// --- NEW: Social Share Logic ---
-// Get references to the share modal and buttons
-const shareModal = $('#shareModal');
-const shareXButton = document.getElementById('shareXButton');
-const shareLinkedInButton = document.getElementById('shareLinkedInButton');
-let currentPromptToShare = ''; // Global variable to hold the text of the prompt
-
-document.querySelectorAll('.share-button').forEach(button => {
-    button.addEventListener('click', function() {
-        const promptType = this.dataset.promptType;
-        const promptElementId = `${promptType}_output`;
-        const promptText = document.getElementById(promptElementId).textContent.trim();
-        const selectedLanguage = document.getElementById('lang_select').value;
-        const appOutput = document.getElementById('app_output');
-
-        if (!promptText) {
-            appOutput.textContent = getMessage("no_prompt_to_save", selectedLanguage, {type: "selected"});
-            appOutput.className = 'mt-4 warning';
-            return;
-        }
-
-        // Set global variable and modal title
-        currentPromptToShare = promptText;
-        document.getElementById('sharePromptType').textContent = promptType.charAt(0).toUpperCase() + promptType.slice(1);
-
-        // Update link targets
-        const baseMessage = `Check out this AI prompt idea I generated with Creative AI: ${promptText}`;
-        const tweetMessage = baseMessage.length > 280 ? baseMessage.substring(0, 277) + '...' : baseMessage;
-        
-        // X/Twitter URL construction
-        const xUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(tweetMessage)}`;
-        
-        // LinkedIn URL construction (We use article share, focusing on title/summary/source)
-        const linkedInTitle = `New AI Prompt Idea: ${promptType.charAt(0).toUpperCase() + promptType.slice(1)} Variant`;
-        const linkedInSummary = promptText;
-        const linkedInUrl = `https://www.linkedin.com/shareArticle?mini=true&url=${encodeURIComponent(window.location.href)}&title=${encodeURIComponent(linkedInTitle)}&summary=${encodeURIComponent(linkedInSummary)}&source=${encodeURIComponent('Creative AI')}`;
-
-        // Set event listeners for the modal buttons to use the prepared URLs
-        shareXButton.onclick = () => window.open(xUrl, '_blank', 'width=600,height=400');
-        shareLinkedInButton.onclick = () => window.open(linkedInUrl, '_blank', 'width=600,height=600');
-        
-        // Show the modal using jQuery/Bootstrap
-        shareModal.modal('show');
-    });
-});
-// --- END NEW: Social Share Logic ---
-
-// --- Web Speech API for Voice Input with Language Selector ---
        // --- Web Speech API for Voice Input with Language Selector ---
        const promptInputTextarea = document.getElementById('prompt_input');
        const langSelect = document.getElementById('lang_select');
@@ -2327,4 +2252,3 @@ if (perplexitySearchButton) {
 </script>
 </body>
 </html>
-
