@@ -1855,7 +1855,68 @@
                    console.error("Network error saving prompt:", error);
                }
            });
-       });
+        });
+
+// --- NEW: Social Media Share Functions ---
+function sharePromptToSocial(platform, promptText) {
+    const appName = "Creative AI Prompt Generator";
+    // Use a truncated text for the URL to ensure it fits the limits, but keep it informative
+    const truncatedPrompt = promptText.length > 200 ? promptText.substring(0, 200) + '...' : promptText;
+    const shareText = `🔥 Just generated this awesome prompt using the ${appName}: \n\n"${truncatedPrompt}"\n\n#AIPrompt #GenerativeAI #PromptEngineering`;
+    
+    let url = '';
+    
+    if (platform === 'x') {
+        // X (Twitter) share URL
+        url = `https://twitter.com/intent/tweet?text=${encodeURIComponent(shareText)}`;
+    } else if (platform === 'linkedin') {
+        // LinkedIn share URL for a new post
+        const appUrl = window.location.origin;
+        // The URL parameter is mandatory and creates the link preview.
+        // We rely on the user to paste the generated text manually for maximum effect.
+        url = `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(appUrl)}`;
+    } else {
+        return;
+    }
+
+    window.open(url, '_blank', 'width=600,height=400');
+}
+// --- END NEW: Social Media Share Functions ---
+
+
+document.addEventListener('DOMContentLoaded', () => {
+    fetchAndDisplaySavedPrompts();
+    fetchAndDisplayRawPrompts();
+    updateAllButtonStates();
+    handlePromptModeChange();
+    settingsContent.classList.remove('show');
+    settingsToggleIcon.classList.remove('fa-chevron-down');
+    settingsToggleIcon.classList.add('fa-chevron-up');
+
+    // NEW: Event listener for all Share buttons
+    document.querySelectorAll('.share-button').forEach(button => {
+        button.addEventListener('click', function() {
+            const platform = this.dataset.llmShare;
+            const elementId = this.dataset.promptElementId;
+            const promptText = document.getElementById(elementId).textContent.trim();
+            const selectedLanguage = document.getElementById('lang_select').value;
+            const appOutput = document.getElementById('app_output');
+
+            if (!promptText) {
+                appOutput.textContent = getMessage("no_prompt_to_save", selectedLanguage, {type: "selected"});
+                appOutput.className = 'mt-4 warning';
+                return;
+            }
+
+            sharePromptToSocial(platform, promptText);
+
+            // Optional: Provide feedback to the user
+            const platformName = platform === 'x' ? 'X' : 'LinkedIn';
+            appOutput.textContent = `✅ Prompt opened in new window for sharing on ${platformName}!`;
+            appOutput.className = 'mt-4 info';
+        });
+    });
+});
 
        // --- Web Speech API for Voice Input with Language Selector ---
        const promptInputTextarea = document.getElementById('prompt_input');
