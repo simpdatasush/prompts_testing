@@ -1512,7 +1512,7 @@ async def test_llm_response(): # CHANGED to async def
             return jsonify({"error": "Selected persona is not allowed for your account."}), 403
     # --- END Server-side validation ---
 
-    # Construct the instruction for the LLM, including context if provided
+# Construct the instruction for the LLM, including context if provided
     context_str = ""
     if category:
         context_str += f"The user requested this for the category '{category}'"
@@ -1542,11 +1542,6 @@ async def test_llm_response(): # CHANGED to async def
         # Use asyncio.to_thread to run the synchronous ask_gemini_for_text_prompt in a separate thread
         # --- FIX: Provide the required 'model_name' argument ---
         # For testing/admin purposes, we default to the fastest, cheapest model: gemini-2.0-flash.
-        try:
-        # Generate LLM response with a specific token limit (524 tokens as requested)
-        # Use asyncio.to_thread to run the synchronous ask_gemini_for_text_prompt in a separate thread
-        # --- FIX: Provide the required 'model_name' argument ---
-        # For testing/admin purposes, we default to the fastest, cheapest model: gemini-2.0-flash.
         TEST_MODEL = 'gemini-2.0-flash'
         # --- START MODIFIED BLOCK (Feature 1 - Iterative Test) ---
         llm_test_results = await perform_iterative_test_async(
@@ -1571,21 +1566,21 @@ async def test_llm_response(): # CHANGED to async def
         user.last_generation_time = now
         if not user.is_admin:
             user.daily_generation_count += 1
-        db.session.add(user)
-        db.session.commit()
+            db.session.add(user)
+            db.session.commit()
         app.logger.info(f"User {user.username}'s last prompt request time updated and count incremented after test prompt.")
 
-       return jsonify({
-           "sample_response": filtered_llm_response_text,
-           "model_name": llm_model_name,
-           "temperature": llm_temperature
-       })
+        return jsonify({
+            "sample_response": filtered_llm_response_text,
+            "model_name": llm_model_name,
+            "temperature": llm_temperature
+        })
     except Exception as e:
         app.logger.exception("Error during LLM sample response generation:")
         # Ensure error message is filtered before sending to frontend
         filtered_error_message = filter_gemini_response(f"An unexpected server error occurred during sample response generation: {e}. Please check server logs for details.")
         return jsonify({"error": filtered_error_message}), 500
-
+     
 # --- UPDATED: Endpoint to check cooldown status for frontend ---
 @app.route('/check_cooldown', methods=['GET'])
 @login_required
