@@ -927,6 +927,7 @@
                     <div class="btn-group" role="group" aria-label="Prompt Actions">
 		<button id="llm_test_button" class="btn btn-primary">Test LLM</button>
 		<button id="perplexitySearchButton" class="btn btn-secondary"><i class="fas fa-search"></i> Web Search</button>
+		<button id="emailResponseButton" class="btn btn-success"><i class="fas fa-envelope"></i> Send to Email</button>				
                 </div>
    <div id="llm_test_loading_spinner" class="loading-spinner mt-2"></div>
             </div>
@@ -2326,6 +2327,72 @@ if (perplexitySearchButton) {
     });
 }
 // --- END NEW Perplexity Search Button Listener ---
+
+// --- NEW: Send to Email Button Listener (Feature 2) ---
+const emailResponseButton = document.getElementById('emailResponseButton');
+const fullContextModalTitle = document.getElementById('fullContextModalTitle');
+
+if (emailResponseButton) {
+    emailResponseButton.addEventListener('click', async function() {
+        const button = this;
+        const promptTitle = fullContextModalTitle.textContent.trim();
+        const responseTextElement = document.getElementById('llm_test_response_area');
+        const responseText = responseTextElement.innerText.trim(); // Use innerText to get formatted text
+
+        const selectedLanguage = document.getElementById('lang_select').value;
+        const appOutput = document.getElementById('app_output');
+
+        if (!responseText || responseText.includes("Click \"Test Prompt\"")) {
+            appOutput.textContent = '❗ Please generate a sample response first.';
+            appOutput.className = 'mt-4 warning';
+            return;
+        }
+
+        // 1. UI Feedback: Disable button and show loading
+        button.disabled = true;
+        const originalText = button.innerHTML;
+        button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Sending...';
+        appOutput.textContent = '📧 Attempting to send email...';
+        appOutput.className = 'mt-4 info';
+
+        try {
+            // 2. Send the request to the new backend route
+            const response = await fetch('/send_test_response_email', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    prompt_title: promptTitle,
+                    response_content: responseText
+                })
+            });
+
+            const data = await response.json();
+
+            if (response.ok && data.success) {
+                appOutput.textContent = '✅ Sample response sent to your registered email!';
+                appOutput.className = 'mt-4 success';
+            } else {
+                appOutput.textContent = `❌ Email failed to send: ${data.error || 'Server error.'}`;
+                appOutput.className = 'mt-4 danger';
+                console.error('Email send failure:', data.error);
+            }
+
+        } catch (error) {
+            appOutput.textContent = `❌ Network error while trying to send email: ${error.message}`;
+            appOutput.className = 'mt-4 danger';
+            console.error('Network error sending email:', error);
+        } finally {
+            // 4. Reset UI
+            button.innerHTML = originalText;
+            button.disabled = false;
+        }
+    });
+}
+// --- END NEW Send to Email Button Listener ---
+
+// Initial call to set button states correctly on page load	   
 
 // Initial call to set button states correctly on page load
 // handlePromptModeChange called via DOMContentLoaded listener above
