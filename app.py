@@ -61,7 +61,7 @@ login_manager.login_message_category = 'info' # Category for flash messages
 
 # --- NEW: Flask-Mail Configuration ---
 app.config['MAIL_SERVER'] = 'smtp.hostinger.com'
-app.config['MAIL_PORT'] = 587
+app.config['MAIL_PORT'] = 465
 app.config['MAIL_USE_SSL'] = True
 app.config['MAIL_USERNAME'] = 'info@promptsgenerator.ai'
 app.config['MAIL_PASSWORD'] = os.getenv('EMAIL_PASSWORD') # IMPORTANT: Set this environment variable!
@@ -580,60 +580,6 @@ def remove_null_values(obj):
     else:
         return obj
 
-# --- NEW: User Intent/Safety Analysis Function ---
-def check_user_intent(raw_input):
-    """
-    Uses structured generation to classify user intent for safety.
-    Returns (True, None) if safe, or (False, error_message) if unsafe.
-    """
-    safety_instruction = (
-        "Analyze the following raw user input for explicit signs of malicious activity, "
-        "illegal content, self-harm/suicide, or severe bad intent (e.g., hate speech). "
-        "Fill out the provided JSON schema. If the intent is safe, set 'is_safe' to 'true' "
-        "and 'reason' to 'User intent is safe.' If unsafe, set 'is_safe' to 'false' "
-        "and provide a non-specific, policy-aligned reason. "
-        "The response must be ONLY the completed JSON object. "
-        f"Raw User Input: '{raw_input}'\n"
-        f"JSON Template to fill:\n{json.dumps(SAFETY_CHECK_TEMPLATE, indent=2)}"
-    )
-
-    # Use the structured prompt function (enforced to gemini-2.5-flash)
-    safety_result_raw = ask_gemini_for_structured_prompt(safety_instruction, max_output_tokens=512)
-    
-    # Check for API error
-    if "Error" in safety_result_raw or "not configured" in safety_result_raw:
-        app.logger.error(f"Safety check API call failed: {safety_result_raw}")
-        # Allow generation to proceed with a warning, rather than blocking the app entirely on a safety check API error
-        return (True, None) 
-    
-    try:
-        # Strip markdown and parse JSON
-        match = re.search(r"^\s*```(?:json)?\s*(.*?)\s*```\s*$", safety_result_raw, re.DOTALL)
-        json_string_to_parse = match.group(1) if match else safety_result_raw
-        
-        parsed_json = json.loads(json_string_to_parse)
-        is_safe = str(parsed_json.get('is_safe', 'false')).lower() == 'true'
-        reason = parsed_json.get('reason', 'Safety policy violation detected.')
-        
-        if not is_safe:
-            app.logger.warning(f"Safety Check Blocked: User: {current_user.username}, Reason: {reason}, Input: {raw_input[:50]}...")
-            return (False, reason)
-        
-        return (True, None)
-
-    except json.JSONDecodeError as e:
-        app.logger.error(f"Safety check: Failed to decode JSON. Raw: {safety_result_raw[:100]}..., Error: {e}")
-        # Default to safe if the model returns garbage JSON (fail safe for functionality)
-        return (True, None)
-# --- END NEW: User Intent/Safety Analysis Function ---
-
-# Define the JSON template for image and video generation
-SAFETY_CHECK_TEMPLATE = {
-    "is_safe": "true or false",
-    "reason": "Provide a brief, non-alarming reason if unsafe, otherwise state 'User intent is safe.'",
-    "suggested_action": "['None', 'Block Generation', 'Warn User', 'Filter Prompt']"
-}
-
 # Define the JSON templates for image and video generation
 IMAGE_JSON_TEMPLATE = {
     "meta": {
@@ -1040,7 +986,7 @@ async def generate_reverse_prompt_async(input_text, language_code="en-US", promp
 
     app.logger.info(f"Sending reverse prompt instruction to Gemini (length: {len(prompt_instruction)} chars))")
 
-    reverse_prompt_result = await asyncio.to_thread(ask_gemini_for_text_prompt, prompt_instruction, model_name='gemini-2.0-flash', max_output_tokens=8912)
+    reverse_prompt_result = await asyncio.to_thread(ask_gemini_for_text_prompt, prompt_instruction, max_output_tokens=8912)
 
     return filter_gemini_response(reverse_prompt_result) # Apply filter here
 
@@ -1186,15 +1132,6 @@ def generate(): # CHANGED FROM ASYNC
             "creative": "",
             "technical": "",
         })
-     
-     # --- NEW: Server-side Safety Check (Feature 3) ---
-    is_safe, safety_reason = check_user_intent(prompt_input)
-    if not is_safe:
-        return jsonify({
-            "error": f"Safety Policy Violation: {safety_reason}",
-            "safety_blocked": True
-        }), 403 # Forbidden due to content policy
-    # --- END NEW ---
 
     try:
         results = asyncio.run(generate_prompts_async(prompt_input, language_code, prompt_mode, category, subcategory, persona)) # NEW: Pass persona
@@ -1395,57 +1332,6 @@ async def search_perplexity():
     return jsonify(search_response), 200
 # --- END NEW Search Route ---
 
-# --- UPDATED: Endpoint to check cooldown status for frontend ---
-# --- NEW: Iterative LLM Test Logic (Feature 1) ---
-async def perform_iterative_test_async(prompt_text, language_code, prompt_mode, category, subcategory, persona, user_id):
-    # 1. First Generation: Get the sample response to the original prompt
-    context_str = ""
-    if category: context_str += f"The user requested this for the category '{category}'"
-    if subcategory: context_str += f" and subcategory '{subcategory}'."
-    if persona: context_str += f" The response should be from the perspective of a '{persona}'."
-
-    llm_instruction = (
-        f"Generate a concise sample response to the following prompt. Keep the response brief (max 300 words). "
-        f"The response MUST be entirely in {LANGUAGE_MAP.get(language_code, 'English')}. "
-        f"{context_str}\n\nPrompt: {prompt_text}"
-    )
-    TEST_MODEL = 'gemini-2.0-flash' # Using the defined test model
-    response_a_raw = await asyncio.to_thread(ask_gemini_for_text_prompt, llm_instruction, model_name=TEST_MODEL, max_output_tokens=8192)
-    response_a = filter_gemini_response(response_a_raw)
-
-    if "Error" in response_a or "No response" in response_a:
-        return {"error": response_a}
-    
-    # 2. Reverse Prompting: Use Response A as input to generate a refined prompt (Prompt B)
-    # Note: We must call the async reverse prompt function here
-    refined_prompt_b = await generate_reverse_prompt_async(response_a, language_code, prompt_mode)
-    
-    if "Error" in refined_prompt_b or "not applicable" in refined_prompt_b:
-         # If reverse fails, just return the first response with a warning
-        return {
-            "sample_response": response_a,
-            "warning": "Refinement step failed or is not applicable. Showing initial response."
-        }
-
-    # 3. Second Generation: Test the refined prompt (Prompt B) to get the final response (Response B)
-    llm_instruction_b = (
-        f"Generate a concise, enhanced sample response to the following *refined* prompt. Keep the response brief (max 300 words). "
-        f"The response MUST be entirely in {LANGUAGE_MAP.get(language_code, 'English')}. "
-        f"{context_str}\n\nRefined Prompt: {refined_prompt_b}"
-    )
-    response_b_raw = await asyncio.to_thread(ask_gemini_for_text_prompt, llm_instruction_b, model_name=TEST_MODEL, max_output_tokens=8192)
-    response_b = filter_gemini_response(response_b_raw)
-    
-    if "Error" in response_b or "No response" in response_b:
-        # Fallback if the second generation fails
-        return {"error": response_b}
-
-    return {
-        "sample_response": response_b,
-        "model_name": TEST_MODEL,
-        "temperature": 0.1,
-        "refined_prompt": refined_prompt_b # Optional: can be displayed for debugging
-    }
 
 # NEW: Endpoint to test a prompt against the LLM and return a sample response
 @app.route('/test_llm_response', methods=['POST'])
@@ -1512,7 +1398,7 @@ async def test_llm_response(): # CHANGED to async def
             return jsonify({"error": "Selected persona is not allowed for your account."}), 403
     # --- END Server-side validation ---
 
-# Construct the instruction for the LLM, including context if provided
+    # Construct the instruction for the LLM, including context if provided
     context_str = ""
     if category:
         context_str += f"The user requested this for the category '{category}'"
@@ -1543,31 +1429,17 @@ async def test_llm_response(): # CHANGED to async def
         # --- FIX: Provide the required 'model_name' argument ---
         # For testing/admin purposes, we default to the fastest, cheapest model: gemini-2.0-flash.
         TEST_MODEL = 'gemini-2.0-flash'
-        # --- START MODIFIED BLOCK (Feature 1 - Iterative Test) ---
-        llm_test_results = await perform_iterative_test_async(
-            prompt_text, language_code, prompt_mode, category, subcategory, persona, user.id
-        )
-
-        if "error" in llm_test_results:
-            # Raise an exception if the iterative test function returns an error
-            raise Exception(llm_test_results["error"])
-
-        # Correctly assign variables based on the output of the iterative function
-        filtered_llm_response_text = llm_test_results["sample_response"]
-        llm_model_name = llm_test_results.get("model_name", TEST_MODEL) # Use model name from result or fallback
-        llm_temperature = llm_test_results.get("temperature", 0.1)
-        # Note: The old variable llm_response_text_raw is now correctly omitted.
-        # --- END MODIFIED BLOCK ---
+        llm_response_text_raw = await asyncio.to_thread(ask_gemini_for_text_prompt, llm_instruction, model_name=TEST_MODEL, max_output_tokens=8192)
         
         # Apply filter_gemini_response to the LLM's raw text before returning
-        # filtered_llm_response_text = filter_gemini_response(llm_response_text_raw) # REMOVED: Filtering and final variable assignment is now handled above.
+        filtered_llm_response_text = filter_gemini_response(llm_response_text_raw)
 
         # Update user stats after successful test prompt
         user.last_generation_time = now
         if not user.is_admin:
             user.daily_generation_count += 1
-            db.session.add(user)
-            db.session.commit()
+        db.session.add(user)
+        db.session.commit()
         app.logger.info(f"User {user.username}'s last prompt request time updated and count incremented after test prompt.")
 
         return jsonify({
@@ -1580,7 +1452,7 @@ async def test_llm_response(): # CHANGED to async def
         # Ensure error message is filtered before sending to frontend
         filtered_error_message = filter_gemini_response(f"An unexpected server error occurred during sample response generation: {e}. Please check server logs for details.")
         return jsonify({"error": filtered_error_message}), 500
-     
+
 # --- UPDATED: Endpoint to check cooldown status for frontend ---
 @app.route('/check_cooldown', methods=['GET'])
 @login_required
@@ -2042,75 +1914,6 @@ def reset_password(token):
         return redirect(url_for('login'))
     return render_template('reset_password.html', token=token)
 
-# --- NEW: Send Test Response Email Route (Feature 2) ---
-@app.route('/send_test_response_email', methods=['POST'])
-@login_required
-def send_test_response_email():
-    if not current_user.email:
-        return jsonify({'success': False, 'error': 'No email address registered for this account.'}), 400
-
-    data = request.get_json()
-    prompt_title = data.get('prompt_title', 'LLM Test Response')
-    response_content = data.get('response_content', 'No content provided.')
-    
-    # We use a simple, single generation count for this action as per the requirement
-    user = current_user
-    now = datetime.utcnow()
-    
-    # Apply Cooldown and Daily Limit Check (reusing logic from check_cooldown)
-    if user.last_generation_time:
-        time_since_last_request = (now - user.last_generation_time).total_seconds()
-        if time_since_last_request < COOLDOWN_SECONDS:
-            remaining_time = int(COOLDOWN_SECONDS - time_since_last_request)
-            return jsonify({'success': False, 'error': f"Please wait {remaining_time} seconds before emailing."}), 429
-            
-    if not user.is_admin:
-        today = now.date()
-        if user.daily_generation_date != today:
-            user.daily_generation_count = 0
-            user.daily_generation_date = today
-            db.session.add(user)
-            db.session.commit()
-            
-        if user.daily_generation_count >= user.daily_limit:
-            return jsonify({'success': False, 'error': f"Daily limit reached. Cannot send email."}), 429
-
-    try:
-        msg = Message(f'Your {prompt_title} - AI Prompt Generator',
-                      sender=app.config['MAIL_DEFAULT_SENDER'],
-                      recipients=[current_user.email])
-        msg.body = f"""
-Dear {current_user.username},
-
-Here is the LLM test response you generated for the prompt: "{prompt_title}".
-
---- Response Content ---
-
-{response_content}
-
------------------------
-
-You can use this response to further refine your prompt in the app.
-
-Sincerely,
-The SuperPrompter Team
-"""
-        mail.send(msg)
-        
-        # Update generation count and cooldown time for this action
-        user.last_generation_time = now
-        if not user.is_admin:
-            user.daily_generation_count += 1
-            db.session.add(user)
-            db.session.commit()
-        app.logger.info(f"Test response email sent to {current_user.email} for user {current_user.username}")
-        
-        return jsonify({'success': True}), 200
-        
-    except Exception as e:
-        app.logger.error(f"Failed to send test response email to {current_user.email}: {e}", exc_info=True)
-        return jsonify({'success': False, 'error': 'Failed to send email due to a server error.'}), 500
-# --- END NEW Send Test Response Email Route ---
 
 # NEW: Newsletter Subscription Route
 @app.route('/subscribe_newsletter', methods=['POST'])
@@ -2437,17 +2240,6 @@ def api_generate(user):
                 "error": "Please provide some text to generate prompts."
             }
             return jsonify(response_data), status_code
-         
-       # --- NEW: Server-side Safety Check (Feature 3) for API ---
-        is_safe, safety_reason = check_user_intent(prompt_input)
-        if not is_safe:
-            status_code = 403
-            response_data = {
-                "error": f"Safety Policy Violation: {safety_reason}",
-                "safety_blocked": True
-            }
-            return jsonify(response_data), status_code
-        # --- END NEW ---
 
         results = asyncio.run(generate_prompts_async(raw_input=prompt_input, language_code=language_code, prompt_mode=prompt_mode, category=category, subcategory=subcategory, persona=persona))
 
@@ -2675,4 +2467,3 @@ if __name__ == '__main__':
     # you can use `nest_asyncio.apply()` (install with `pip install nest-asyncio`), but this is
     # generally not recommended for production as it can hide underlying architectural issues.
     app.run(debug=True)
-
