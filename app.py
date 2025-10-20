@@ -61,7 +61,7 @@ login_manager.login_message_category = 'info' # Category for flash messages
 
 # --- NEW: Flask-Mail Configuration ---
 app.config['MAIL_SERVER'] = 'smtp.hostinger.com'
-app.config['MAIL_PORT'] = 465
+app.config['MAIL_PORT'] = 587
 app.config['MAIL_USE_SSL'] = True
 app.config['MAIL_USERNAME'] = 'info@promptsgenerator.ai'
 app.config['MAIL_PASSWORD'] = os.getenv('EMAIL_PASSWORD') # IMPORTANT: Set this environment variable!
