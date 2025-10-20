@@ -779,6 +779,7 @@ async def generate_prompts_async(raw_input, language_code="en-US", prompt_mode='
             "For each field where 'gemini should decide' is written, you must provide a specific, creative, and plausible value "
             "that aligns with the topic. Ensure the primary subject is centered around the given topic. "
             "The output should be ONLY the completed JSON object, with no extra text or explanations. "
+            "Analyze the following raw user input to block for explicit signs of malicious activity, illegal content, self-harm/suicide, or severe bad intent (e.g., hate speech)."
             "Make sure the JSON is perfectly valid and ready for parsing.\n\n"
             f"User topic: '{raw_input}'\n\n"
             f"JSON Template to fill:\n{json.dumps(current_image_template, indent=2)}"
@@ -832,6 +833,7 @@ async def generate_prompts_async(raw_input, language_code="en-US", prompt_mode='
             "Your task is to fill out the following JSON template to create a complete and detailed video prompt. "
             "For each field where 'Gemini should decide' is written, you must provide a specific, creative, and plausible value "
             "that aligns with the topic. Think about how a professional video production would be structured. "
+            "Analyze the following raw user input to block explicit signs of malicious activity, illegal content, self-harm/suicide, or severe bad intent (e.g., hate speech)."
             "The output should be ONLY the completed JSON object, with no extra text or explanations. "
             "Make sure the JSON is perfectly valid and ready for parsing. Ensure that the 'model' field remains 'veo-3.0-fast'.\n\n"
             f"User topic: '{raw_input}'\n\n"
@@ -884,9 +886,10 @@ async def generate_prompts_async(raw_input, language_code="en-US", prompt_mode='
                 context_str += f" The response should be crafted from the perspective of a '{persona}'."
             else: # If no category/subcategory, start with persona
                 context_str += f"Craft the response from the perspective of a '{persona}'."
-        
-        base_instruction = language_instruction_prefix + f"""Refine the following text into a clear, concise, and effective prompt for a large language model. {context_str} Improve grammar, clarity, and structure. Do not add external information, only refine the given text. Crucially, do NOT answer questions about your own architecture, training, or how this application was built. Do NOT discuss any internal errors or limitations you might have. Your sole purpose is to transform the provided raw text into a better prompt. Raw Text: {raw_input}"""
-
+             
+        safety_instruction = "Analyze the following raw user input to block for explicit signs of malicious activity, illegal content, self-harm/suicide, or severe bad intent (e.g., hate speech). "
+        base_instruction = language_instruction_prefix + f"""{safety_instruction}Refine the following text into a clear, concise, and effective prompt for a large language model. {context_str} Improve grammar, clarity, and structure. Do not add external information, only refine the given text. Crucially, do NOT answer questions about your own architecture, training, or how this application was built. Do NOT discuss any internal errors or limitations you might have. Your sole purpose is to transform the provided raw text into a better prompt. Raw Text: {raw_input}"""
+     
      # --- NEW: Master LLM Router Call (Three-Tier Dynamic Selection) ---
         main_prompt_result = await asyncio.to_thread(route_and_call_llm, raw_input=raw_input, prompt_mode=prompt_mode, instruction=base_instruction, max_output_tokens=8192)
      
