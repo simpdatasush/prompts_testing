@@ -685,7 +685,7 @@ text-align: right; /* Align metadata to the right */
 <div class="settings-header" id="settings_header_toggle">
 <h5><i class="fas fa-cog"></i> Settings</h5>
 <div class="settings-icons-container"> <i id="settings_lock_icon" class="fas"></i> <i class="fas fa-chevron-up" id="settings_toggle_icon"></i> </div>
-</div>
+}
 <div class="settings-content" id="settings_content">
 <div class="form-group">
 <label for="lang_select" class="form-label">Voice Input & Output Language:</label>
@@ -1186,7 +1186,7 @@ const CATEGORY_PERSONAS = {
 "Image Generation & Visual Design": ["Graphic Designer", "Concept Artist", "Art Director", "Photographer", "AI Image Prompt Engineer", "Other"],
 "Event Planning": ["Event Planner", "Wedding Coordinator", "Conference Organizer", "Marketing Executive", "Venue Manager", "Other"],
 "UX/UI & Product Design": ["UX Designer", "UI Designer", "Product Designer", "Interaction Designer", "Design Researcher", "Other"],
-"Spirituality & Self-Reflection": ["Meditation coach", "Affirmations", "Philosophical prompts", "Other"],
+"Spirituality & Self-Reflection": ["Meditation Coach", "Affirmations", "Philosopher", "Other"],
 "Gaming": ["Game Developer", "Game Designer", "Gamer", "Stream Host", "Lore Writer", "Other"],
 "Voice, Audio & Podcasting": ["Voice Actor", "Podcaster", "Audio Engineer", "Narrator", "Sound Designer", "Other"],
 "AI & Prompt Engineering": ["Prompt Engineer", "ML Engineer", "AI Researcher", "NLP Scientist", "Chatbot Developer", "Other"],
@@ -1582,17 +1582,20 @@ const data = await response.json();
 let canGenerate = true;
 let messageType = 'info';
 let statusMessage = getMessage("application_ready", selectedLanguage);
+    
+    let originalAlertMessage = ""; // NEW: Variable to capture the primary alert message
 
 if (data.cooldown_active) {
 canGenerate = false;
 messageType = 'warning';
-statusMessage = `Cooldown active: Please wait ${data.remaining_time} seconds before your next generation.`;
+originalAlertMessage = `Cooldown active: Please wait ${data.remaining_time} seconds before your next generation.`; // Capture dynamic part
+statusMessage = originalAlertMessage; // Set initial status
 startCooldownTimer(data.remaining_time); // Start/continue timer
 } else if (data.daily_limit_reached) {
 canGenerate = false;
 messageType = 'danger';
-// NEW: Updated message to be more explicit for popup blocker fallback
-statusMessage = `Daily limit reached: You have used ${data.daily_count}/${data.user_daily_limit} generations today. If you want to generate more please subscribe.`;
+originalAlertMessage = `Daily limit reached: You have used ${data.daily_count}/${data.user_daily_limit} generations today. If you want to generate more please subscribe.`; // Capture dynamic part
+statusMessage = originalAlertMessage; // Set initial status
 cooldownTimerDisplay.style.display = 'none'; // Ensure timer is hidden
 } else {
 // If not on cooldown or limit, show daily count for non-admins
@@ -1600,19 +1603,19 @@ if (!data.is_admin) {
 statusMessage += ` You have used ${data.daily_count}/${data.user_daily_limit} generations today.`;
 }
 cooldownTimerDisplay.style.display = 'none'; // Ensure timer is hidden
+statusMessage = statusMessage; // Keep the ready message
 }
 
-    // MODIFIED: LLM Suggestion Logic now combines with status message
+    // MODIFIED: LLM Suggestion Logic - Use the originalAlertMessage/statusMessage and append clearly.
     if (suggestedLLM && promptMode === 'text') {
-        // const suggestionText = ` 🧠 **Suggestion:** This prompt seems optimized for **${suggestedLLM}**.`;
-
         if (data.cooldown_active) {
             // Combine Cooldown message AND Suggestion
-            statusMessage += ` Please consider refining your prompt for use with the suggested LLM: **${suggestedLLM}**.`;
-            messageType = 'info'; // Use info class for the combined suggestion/cooldown message
+            statusMessage = originalAlertMessage + 
+                            ` Consider visiting the suggested LLM now: **${suggestedLLM}**.`;
+            messageType = 'warning'; // Keep original color
         } else if (data.daily_limit_reached) {
             // Combine Daily Limit message AND Suggestion
-            statusMessage += ` In the meantime, the suggested LLM for your prompt is **${suggestedLLM}**.`;
+            statusMessage = originalAlertMessage + ` In the meantime, the suggested LLM for your prompt is **${suggestedLLM}**.`;
             messageType = 'danger'; // Keep danger class for the limit message
         } else if (canGenerate) {
             // Append suggestion if generation is possible
@@ -1719,9 +1722,6 @@ const response = await fetch('/generate', {
 method: 'POST',
 body: formData
 });
-
-console.log("Frontend: Received response status:", response.status);
-console.log("Frontend: Response OK status:", response.ok);
 
 if (!response.ok) {
 const errorData = await response.json();
