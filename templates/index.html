@@ -1602,14 +1602,18 @@ statusMessage += ` You have used ${data.daily_count}/${data.user_daily_limit} ge
 cooldownTimerDisplay.style.display = 'none'; // Ensure timer is hidden
 }
 
-    // NEW: LLM Suggestion Logic
+    // MODIFIED: LLM Suggestion Logic now combines with status message
     if (suggestedLLM && promptMode === 'text') {
         const suggestionText = ` 🧠 **Suggestion:** This prompt seems optimized for **${suggestedLLM}**.`;
 
-        if (data.cooldown_active || data.daily_limit_reached) {
-            // Overwrite statusMessage with suggestion if cooldown/limit is active
-            statusMessage = `**You are currently on cooldown/limit.** ${suggestionText}`;
-            messageType = 'info'; // Use info class for the suggestion message
+        if (data.cooldown_active) {
+            // Combine Cooldown message AND Suggestion
+            statusMessage += ` Please consider refining your prompt for use with the suggested LLM: **${suggestedLLM}**.`;
+            messageType = 'info'; // Use info class for the combined suggestion/cooldown message
+        } else if (data.daily_limit_reached) {
+            // Combine Daily Limit message AND Suggestion
+            statusMessage += ` In the meantime, the suggested LLM for your prompt is **${suggestedLLM}**.`;
+            messageType = 'danger'; // Keep danger class for the limit message
         } else if (canGenerate) {
             // Append suggestion if generation is possible
             statusMessage += suggestionText;
@@ -1618,6 +1622,8 @@ cooldownTimerDisplay.style.display = 'none'; // Ensure timer is hidden
 
 appOutput.textContent = statusMessage;
 appOutput.className = `mt-4 ${messageType}`; // Update class for styling
+
+// ... (rest of function remains the same)
 
 // Only disable generate/reverse buttons based on canGenerate
 generateButton.disabled = !canGenerate;
