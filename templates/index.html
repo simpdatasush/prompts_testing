@@ -784,7 +784,7 @@ Upload an image containing handwritten text. The AI will attempt to recognize it
 </div>
 </div>
 </div>
-}
+</div>
 <div class="col">
 <div class="card">
 <div class="card-header">
@@ -814,7 +814,7 @@ Upload an image containing handwritten text. The AI will attempt to recognize it
 <button class="btn btn-sm btn-outline-secondary mr-1" onclick="copyPromptText('technical_output')"><i class="fas fa-copy"></i> Copy</button>
 <button class="btn btn-sm btn-outline-info" onclick="openFullContextView('Technical Variant', 'technical_output')"><i class="fas fa-expand-alt"></i> View Full</button>
 </div>
-}
+</div>
 <div class="card-body">
 <pre id="technical_output"></pre>
 <div class="prompt-actions-footer mt-2">
@@ -1486,39 +1486,77 @@ function suggestBestLLM(promptInput, category, persona) {
             maxScore = score;
             bestLLM = llm.name;
         } else if (score === maxScore && score > 0) {
-            // Tie-breaker: prefer the first one in the map (or simply keep the current one)
-            // For now, we keep the existing bestLLM.
+            // Tie-breaker: prefer the current one if scores are tied
         }
     });
 
-    // Only return a suggestion if a strong keyword match was found
+    // Only return a suggestion if a strong match (score > 0) was found
     return maxScore > 0 ? bestLLM : null;
 }
 
 
 // Function to enable/disable LLM website buttons
 function setLLMWebsiteButtonsDisabled(isDisabled, mode = 'text') {
-    const isImageMode = mode === 'image_gen';
-    const isVideoMode = mode === 'video_gen';
+    // List of buttons that are enabled/disabled
+    const textButtons = [chatGPTBtn, claudeBtn, mistralBtn, geminiBtn, grokBtn, perplexityBtn, deepSeekBtn];
+    const imageVideoButtons = [midjourneyBtn, dalle3Btn, sdxlBtn, soraBtn, veo3Btn];
 
-    // List of LLMs to enable/disable based on user's explicit request for image mode
-    const textLLMsForImageMode = ['chatgpt', 'claude', 'mistral', 'gemini', 'grok', 'perplexity'];
+    // List of text-based LLMs the user requested to keep enabled in image mode
+    const textLLMsForImageMode = ['chatgpt', 'claude', 'mistral', 'gemini', 'grok', 'perplexity', 'deepseek'];
+    const imageGenLLMs = ['midjourney', 'dalle3', 'sdxl']; // Tools capable of image generation
+    const videoGenLLMs = ['sora', 'veo3']; // Tools capable of video generation
+    
+    // First, disable everything if isDisabled is true (no output)
+    if (isDisabled) {
+        [...textButtons, ...imageVideoButtons].forEach(btn => {
+            if (btn) btn.disabled = true;
+        });
+        return;
+    }
 
-    // Text LLMs
-if (chatGPTBtn) chatGPTBtn.disabled = isDisabled || (isImageMode && !textLLMsForImageMode.includes('chatgpt')) || (isVideoMode);
-if (claudeBtn) claudeBtn.disabled = isDisabled || (isImageMode && !textLLMsForImageMode.includes('claude')) || (isVideoMode);
-if (mistralBtn) mistralBtn.disabled = isDisabled || (isImageMode && !textLLMsForImageMode.includes('mistral')) || (isVideoMode);
-if (geminiBtn) geminiBtn.disabled = isDisabled || (isVideoMode && !['gemini'].includes('gemini')); // Enable Gemini for image gen (user list) and video gen (Veo)
-if (grokBtn) grokBtn.disabled = isDisabled || (isImageMode && !textLLMsForImageMode.includes('grok')) || (isVideoMode);
-if (perplexityBtn) perplexityBtn.disabled = isDisabled || (isImageMode && !textLLMsForImageMode.includes('perplexity')) || (isVideoMode);
-if (deepSeekBtn) deepSeekBtn.disabled = isDisabled || (isImageMode) || (isVideoMode); // Disable DeepSeek for both image and video modes
+    // Secondary filtering based on mode (if output is present)
+    textButtons.forEach(btn => {
+        const btnId = btn.id.replace('_llm_btn', '');
+        let shouldDisable = true;
 
-    // Image/Video LLMs
-if (midjourneyBtn) midjourneyBtn.disabled = isDisabled || (isImageMode && !isImageMode) || (isVideoMode);
-if (dalle3Btn) dalle3Btn.disabled = isDisabled || (isImageMode && !isImageMode) || (isVideoMode); // DALL-E 3 must be enabled for image_gen mode
-if (sdxlBtn) sdxlBtn.disabled = isDisabled || (isImageMode) || (isVideoMode);
-if (soraBtn) soraBtn.disabled = isDisabled || (isImageMode) || (isVideoMode && !isVideoMode);
-if (veo3Btn) veo3Btn.disabled = isDisabled || (isImageMode) || (isVideoMode && !isVideoMode);
+        if (mode === 'text') {
+            shouldDisable = false; // Enable all text buttons
+        } else if (mode === 'image_gen') {
+            // Enable the specific list of text LLMs provided by the user
+            if (textLLMsForImageMode.includes(btnId)) {
+                shouldDisable = false;
+            }
+        } else if (mode === 'video_gen') {
+            // In video mode, assume text LLMs are generally irrelevant
+            shouldDisable = true; 
+        }
+
+        if (btn) btn.disabled = shouldDisable;
+    });
+
+    imageVideoButtons.forEach(btn => {
+        const btnId = btn.id.replace('_llm_btn', '');
+        let shouldDisable = true;
+
+        if (mode === 'image_gen') {
+            // Enable image tools + Gemini/Dalle3/etc. (the text LLMs were handled above)
+            if (imageGenLLMs.includes(btnId) || (btnId === 'dalle3')) { 
+                shouldDisable = false;
+            } else {
+                // Disable video tools
+                shouldDisable = true;
+            }
+        } else if (mode === 'video_gen') {
+            // Enable video tools
+            if (videoGenLLMs.includes(btnId)) {
+                shouldDisable = false;
+            }
+        } else { // mode === 'text'
+            shouldDisable = true;
+        }
+
+        if (btn) btn.disabled = shouldDisable;
+    });
 }
 
 // Function to enable/disable save/download buttons
@@ -2432,6 +2470,4 @@ button.disabled = false;
 // Initial call to set button states correctly on page load
 // handlePromptModeChange called via DOMContentLoaded listener above
 </script>
-</body>
 </html>
-
