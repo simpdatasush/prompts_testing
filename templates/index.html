@@ -1452,7 +1452,7 @@ const LLM_NICHE_MAP = [
 function suggestBestLLM(promptInput, category, persona) {
     if (!promptInput) return null; // No suggestion if no input
 
-    const text = (promptInput + ' ' + category + ' ' + persona).toLowerCase();
+    const text = (promptInput + ' ' + (category || '') + ' ' + (persona || '')).toLowerCase();
 
     // Tally scores based on keyword and category/persona match
     let scores = {};
@@ -1486,7 +1486,7 @@ function suggestBestLLM(promptInput, category, persona) {
             maxScore = score;
             bestLLM = llm.name;
         } else if (score === maxScore && score > 0) {
-            // Tie-breaker: prefer the current one if scores are tied
+            // Tie-breaker: keep the existing bestLLM.
         }
     });
 
@@ -1604,7 +1604,7 @@ cooldownTimerDisplay.style.display = 'none'; // Ensure timer is hidden
 
     // MODIFIED: LLM Suggestion Logic now combines with status message
     if (suggestedLLM && promptMode === 'text') {
-        const suggestionText = ` 🧠 **Suggestion:** This prompt seems optimized for **${suggestedLLM}**.`;
+        // const suggestionText = ` 🧠 **Suggestion:** This prompt seems optimized for **${suggestedLLM}**.`;
 
         if (data.cooldown_active) {
             // Combine Cooldown message AND Suggestion
@@ -1616,14 +1616,12 @@ cooldownTimerDisplay.style.display = 'none'; // Ensure timer is hidden
             messageType = 'danger'; // Keep danger class for the limit message
         } else if (canGenerate) {
             // Append suggestion if generation is possible
-            statusMessage += suggestionText;
+            statusMessage += ` 🧠 **Suggestion:** This prompt seems optimized for **${suggestedLLM}**.`;
         }
     }
 
 appOutput.textContent = statusMessage;
 appOutput.className = `mt-4 ${messageType}`; // Update class for styling
-
-// ... (rest of function remains the same)
 
 // Only disable generate/reverse buttons based on canGenerate
 generateButton.disabled = !canGenerate;
@@ -2485,4 +2483,5 @@ button.disabled = false;
 // Initial call to set button states correctly on page load
 // handlePromptModeChange called via DOMContentLoaded listener above
 </script>
+</body>
 </html>
