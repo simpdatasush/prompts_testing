@@ -1602,9 +1602,18 @@ statusMessage += ` You have used ${data.daily_count}/${data.user_daily_limit} ge
 cooldownTimerDisplay.style.display = 'none'; // Ensure timer is hidden
 }
 
-    // NEW: Add LLM suggestion to the status message if applicable
-    if (canGenerate && suggestedLLM && promptMode === 'text') {
-        statusMessage += ` 🧠 **Suggestion:** This prompt seems optimized for **${suggestedLLM}**.`;
+    // NEW: LLM Suggestion Logic
+    if (suggestedLLM && promptMode === 'text') {
+        const suggestionText = ` 🧠 **Suggestion:** This prompt seems optimized for **${suggestedLLM}**.`;
+
+        if (data.cooldown_active || data.daily_limit_reached) {
+            // Overwrite statusMessage with suggestion if cooldown/limit is active
+            statusMessage = `**You are currently on cooldown/limit.** ${suggestionText}`;
+            messageType = 'info'; // Use info class for the suggestion message
+        } else if (canGenerate) {
+            // Append suggestion if generation is possible
+            statusMessage += suggestionText;
+        }
     }
 
 appOutput.textContent = statusMessage;
