@@ -784,7 +784,7 @@ Upload an image containing handwritten text. The AI will attempt to recognize it
 </div>
 </div>
 </div>
-</div>
+}
 <div class="col">
 <div class="card">
 <div class="card-header">
@@ -814,7 +814,7 @@ Upload an image containing handwritten text. The AI will attempt to recognize it
 <button class="btn btn-sm btn-outline-secondary mr-1" onclick="copyPromptText('technical_output')"><i class="fas fa-copy"></i> Copy</button>
 <button class="btn btn-sm btn-outline-info" onclick="openFullContextView('Technical Variant', 'technical_output')"><i class="fas fa-expand-alt"></i> View Full</button>
 </div>
-</div>
+}
 <div class="card-body">
 <pre id="technical_output"></pre>
 <div class="prompt-actions-footer mt-2">
@@ -1431,23 +1431,94 @@ updateAllButtonStates(); // Re-check status to re-enable buttons
 }, 1000);
 }
 
+// --- LLM Niche Map (Based on Screenshot 2025-10-29) ---
+const LLM_NICHE_MAP = [
+    { name: "ChatGPT", keywords: ["mathematical", "math", "multi-step", "reasoning", "haiku", "algebra"], categories: ["Programming & Code", "Education & Learning"], persona: [] },
+    { name: "Claude", keywords: ["coding", "ethical", "document analysis", "agentic", "structured"], categories: ["Programming & Code", "Technical Writing & Explanation", "Legal & Compliance"], persona: ["Compliance Officer", "Lawyer", "Software Developer"] },
+    { name: "Mistral", keywords: ["multilingual", "translation", "speed", "resource-constrained", "edge"], categories: ["Multilingual & Translation"], persona: [] },
+    { name: "Gemini", keywords: ["multimodal", "image", "video", "adaptive reasoning", "puzzles", "visual design"], categories: ["Image Generation & Visual Design", "Data Analysis & Interpretation", "UX/UI & Product Design"], persona: [] },
+    { name: "Grok", keywords: ["exploratory reasoning", "scientific", "logic puzzles", "unfiltered", "x.ai"], categories: ["Research & Information Retrieval", "Education & Learning", "Spirituality & Self-Reflection"], persona: ["Scientist", "Researcher", "Philosopher"] },
+    { name: "Perplexity", keywords: ["research-oriented", "fact-checked", "multi-source", "verifiable", "citations", "web"], categories: ["Research & Information Retrieval", "News & Current Affairs", "Data Analysis & Interpretation"], persona: ["Researcher", "Journalist", "Academic"] },
+    { name: "DeepSeek", keywords: ["algorithmic", "financial modeling", "math", "tool use", "banking"], categories: ["Business & Finance", "Programming & Code"], persona: ["Financial Advisor", "Business Analyst"] },
+];
+
+/**
+ * Suggests the best LLM based on user input, category, and persona.
+ * @param {string} promptInput The raw input text.
+ * @param {string} category The selected category.
+ * @param {string} persona The selected persona.
+ * @returns {string} The name of the suggested LLM, or null.
+ */
+function suggestBestLLM(promptInput, category, persona) {
+    if (!promptInput) return null; // No suggestion if no input
+
+    const text = (promptInput + ' ' + category + ' ' + persona).toLowerCase();
+
+    // Tally scores based on keyword and category/persona match
+    let scores = {};
+    let maxScore = -1;
+    let bestLLM = null;
+
+    LLM_NICHE_MAP.forEach(llm => {
+        let score = 0;
+        
+        // Score for direct keyword matches (Strength/Niche)
+        llm.keywords.forEach(keyword => {
+            if (text.includes(keyword.toLowerCase())) {
+                score += 2; // Strong match weight
+            }
+        });
+
+        // Score for category match
+        if (category && llm.categories.includes(category)) {
+            score += 1;
+        }
+
+        // Score for persona match
+        if (persona && llm.persona.includes(persona)) {
+            score += 1;
+        }
+        
+        scores[llm.name] = score;
+
+        // Determine the highest score
+        if (score > maxScore) {
+            maxScore = score;
+            bestLLM = llm.name;
+        } else if (score === maxScore && score > 0) {
+            // Tie-breaker: prefer the first one in the map (or simply keep the current one)
+            // For now, we keep the existing bestLLM.
+        }
+    });
+
+    // Only return a suggestion if a strong keyword match was found
+    return maxScore > 0 ? bestLLM : null;
+}
+
+
 // Function to enable/disable LLM website buttons
 function setLLMWebsiteButtonsDisabled(isDisabled, mode = 'text') {
-// Disable/enable all text LLMs
-if (chatGPTBtn) chatGPTBtn.disabled = isDisabled || (mode !== 'text');
-if (claudeBtn) claudeBtn.disabled = isDisabled || (mode !== 'text');
-if (mistralBtn) mistralBtn.disabled = isDisabled || (mode !== 'text');
-if (geminiBtn) geminiBtn.disabled = isDisabled || (mode !== 'text');
-if (grokBtn) grokBtn.disabled = isDisabled || (mode !== 'text');
-if (perplexityBtn) perplexityBtn.disabled = isDisabled || (mode !== 'text');
-if (deepSeekBtn) deepSeekBtn.disabled = isDisabled || (mode !== 'text');
+    const isImageMode = mode === 'image_gen';
+    const isVideoMode = mode === 'video_gen';
 
-// Disable/enable image/video LLMs
-if (midjourneyBtn) midjourneyBtn.disabled = isDisabled || (mode === 'text');
-if (dalle3Btn) dalle3Btn.disabled = isDisabled || (mode === 'text');
-if (sdxlBtn) sdxlBtn.disabled = isDisabled || (mode === 'text');
-if (soraBtn) soraBtn.disabled = isDisabled || (mode === 'text');
-if (veo3Btn) veo3Btn.disabled = isDisabled || (mode === 'text');
+    // List of LLMs to enable/disable based on user's explicit request for image mode
+    const textLLMsForImageMode = ['chatgpt', 'claude', 'mistral', 'gemini', 'grok', 'perplexity'];
+
+    // Text LLMs
+if (chatGPTBtn) chatGPTBtn.disabled = isDisabled || (isImageMode && !textLLMsForImageMode.includes('chatgpt')) || (isVideoMode);
+if (claudeBtn) claudeBtn.disabled = isDisabled || (isImageMode && !textLLMsForImageMode.includes('claude')) || (isVideoMode);
+if (mistralBtn) mistralBtn.disabled = isDisabled || (isImageMode && !textLLMsForImageMode.includes('mistral')) || (isVideoMode);
+if (geminiBtn) geminiBtn.disabled = isDisabled || (isVideoMode && !['gemini'].includes('gemini')); // Enable Gemini for image gen (user list) and video gen (Veo)
+if (grokBtn) grokBtn.disabled = isDisabled || (isImageMode && !textLLMsForImageMode.includes('grok')) || (isVideoMode);
+if (perplexityBtn) perplexityBtn.disabled = isDisabled || (isImageMode && !textLLMsForImageMode.includes('perplexity')) || (isVideoMode);
+if (deepSeekBtn) deepSeekBtn.disabled = isDisabled || (isImageMode) || (isVideoMode); // Disable DeepSeek for both image and video modes
+
+    // Image/Video LLMs
+if (midjourneyBtn) midjourneyBtn.disabled = isDisabled || (isImageMode && !isImageMode) || (isVideoMode);
+if (dalle3Btn) dalle3Btn.disabled = isDisabled || (isImageMode && !isImageMode) || (isVideoMode); // DALL-E 3 must be enabled for image_gen mode
+if (sdxlBtn) sdxlBtn.disabled = isDisabled || (isImageMode) || (isVideoMode);
+if (soraBtn) soraBtn.disabled = isDisabled || (isImageMode) || (isVideoMode && !isVideoMode);
+if (veo3Btn) veo3Btn.disabled = isDisabled || (isImageMode) || (isVideoMode && !isVideoMode);
 }
 
 // Function to enable/disable save/download buttons
@@ -1461,6 +1532,10 @@ async function updateAllButtonStates() {
 const promptInput = document.getElementById('prompt_input').value.trim();
 const selectedLanguage = document.getElementById('lang_select').value;
 const promptMode = document.getElementById('prompt_mode_select').value; // Get current prompt mode
+    const selectedCategory = document.getElementById('category_select').value;
+    const selectedPersona = document.getElementById('persona_select').value;
+    const suggestedLLM = suggestBestLLM(promptInput, selectedCategory, selectedPersona); // NEW: Get LLM suggestion
+
 
 try {
 const response = await fetch('/check_cooldown');
@@ -1488,6 +1563,11 @@ statusMessage += ` You have used ${data.daily_count}/${data.user_daily_limit} ge
 }
 cooldownTimerDisplay.style.display = 'none'; // Ensure timer is hidden
 }
+
+    // NEW: Add LLM suggestion to the status message if applicable
+    if (canGenerate && suggestedLLM && promptMode === 'text') {
+        statusMessage += ` 🧠 **Suggestion:** This prompt seems optimized for **${suggestedLLM}**.`;
+    }
 
 appOutput.textContent = statusMessage;
 appOutput.className = `mt-4 ${messageType}`; // Update class for styling
@@ -2099,9 +2179,7 @@ document.getElementById('llm_test_button').disabled = false;
 document.getElementById('llm_test_loading_spinner').style.display = 'none';
              // NEW: Remove the refinement button if it exists from a previous cycle
              const existingRefineButton = document.getElementById('refine_button_in_modal');
-             if (existingRefineButton) {
-                 existingRefineButton.remove();
-             }
+             if (existingRefineButton) existingRefineButton.parentNode.remove();
 }
 
 function closeFullContextView() {
@@ -2176,7 +2254,7 @@ llmTestResponseArea.classList.add('error');
 llmResponseMetadata.innerHTML = '';
              // Remove refinement button on error
              const existingRefineButton = document.getElementById('refine_button_in_modal');
-             if (existingRefineButton) existingRefineButton.remove();
+             if (existingRefineButton) existingRefineButton.parentNode.remove();
 return;
 }
 
@@ -2188,7 +2266,7 @@ llmTestLoadingSpinner.style.display = 'block';
 testPromptButton.disabled = true;
              // Remove refinement button when starting new test
              const existingRefineButton = document.getElementById('refine_button_in_modal');
-             if (existingRefineButton) existingRefineButton.remove();
+             if (existingRefineButton) existingRefineButton.parentNode.remove();
 
 try {
 const response = await fetch('/test_llm_response', {
@@ -2356,3 +2434,4 @@ button.disabled = false;
 </script>
 </body>
 </html>
+
