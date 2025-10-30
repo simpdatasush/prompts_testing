@@ -331,13 +331,13 @@
    <div class="main-content-wrapper">
        <div class="jumbotron text-center bg-light p-5 rounded shadow-sm mb-5">
            <h1 class="display-4 text-primary">Welcome to SuperPrompter!</h1>
-           <p class="lead">Your ultimate tool for refining, enhancing, and generating powerful AI prompts.</p>
+           <p class="lead">An intelligent Prompt Engineering Co-Pilot that instantly validates ideas designed to Go Viral.</p>
            <hr class="my-4">
-           <p>Leverage the power of AI to transform your raw ideas into perfectly crafted prompts for large language models.</p>
+           <p>Dynamically optimizes your ideas for peak LLM performance.</p>
            {% if current_user.is_authenticated %}
                <a class="btn btn-primary btn-lg" href="{{ url_for('app_home') }}" role="button">Start Generating Prompts</a>
            {% else %}
-               <p class="text-muted">Please log in or register to start generating prompts.</p>
+               <p class="text-muted">Please log in or register to your Co-Pilot for AI Creation.</p>
                <a class="btn btn-primary btn-lg" href="{{ url_for('login') }}" role="button">Login to Get Started</a>
            {% endif %}
        </div>
