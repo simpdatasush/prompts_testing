@@ -494,9 +494,9 @@ def perform_perplexity_search(query_text: str):
 # --- Gemini API interaction function (Synchronous wrapper for text_model) ---
 # NOTE: This function now requires the specific model_name be passed in from the router.
 def ask_gemini_for_text_prompt(prompt_instruction, model_name, max_output_tokens=8192):
-    
+
     # Model is instantiated dynamically based on model_name passed from router
-    model = genai.GenerativeModel(model_name) 
+    model = genai.GenerativeModel(model_name)
 
     try:
         generation_config = {
@@ -511,16 +511,17 @@ def ask_gemini_for_text_prompt(prompt_instruction, model_name, max_output_tokens
         return raw_gemini_text
     except google_api_exceptions.GoogleAPICallError as e:
         app.logger.error(f"DEBUG: Google API Call Error ({model_name}): {e}", exc_info=True)
-        return f"Error communicating with Gemini API: {str(e)}"
+        # --- FIX: Pass the raw error string through the filter before returning ---
+        return filter_gemini_response(f"Error communicating with Gemini API: {str(e)}")
     except Exception as e:
         app.logger.error(f"DEBUG: Unexpected Error calling Gemini API ({model_name}): {e}", exc_info=True)
-        return f"An unexpected error occurred: {str(e)}"
+        return filter_gemini_response(f"An unexpected error occurred: {str(e)}")
 
 # --- Gemini API interaction function (Synchronous wrapper for structured_gen_model) ---
 def ask_gemini_for_structured_prompt(prompt_instruction, generation_config=None, max_output_tokens=8192):
-    
+
     # We enforce Gemini 2.5 Flash for all structured/multimedia tasks for reliability.
-    model_name = 'gemini-2.5-flash' 
+    model_name = 'gemini-2.5-flash'
     model = genai.GenerativeModel(model_name)
 
     try:
@@ -540,10 +541,11 @@ def ask_gemini_for_structured_prompt(prompt_instruction, generation_config=None,
         return raw_gemini_text
     except google_api_exceptions.GoogleAPICallError as e:
         app.logger.error(f"DEBUG: Google API Call Error (structured_gen_model - {model_name}): {e}", exc_info=True)
-        return f"Error communicating with Gemini API: {str(e)}"
+        # --- FIX: Pass the raw error string through the filter before returning ---
+        return filter_gemini_response(f"Error communicating with Gemini API: {str(e)}")
     except Exception as e:
         app.logger.error(f"DEBUG: Unexpected Error calling Gemini API (structured_gen_model - {model_name}): {e}", exc_info=True)
-        return f"An unexpected error occurred: {str(e)}"
+        return filter_gemini_response(f"An unexpected error occurred: {str(e)}")
 
 
 # --- NEW: Gemini API for Image Understanding (Synchronous wrapper for vision_model) ---
@@ -566,10 +568,11 @@ def ask_gemini_for_image_text(image_data_bytes):
         return extracted_text # Return raw text for further processing/filtering
     except google_api_exceptions.GoogleAPICallError as e:
         app.logger.error(f"Error calling Gemini API for image text extraction: {e}", exc_info=True)
-        return f"Error extracting text from image: {str(e)}"
+        # --- FIX: Pass the raw error string through the filter before returning ---
+        return filter_gemini_response(f"Error extracting text from image: {str(e)}")
     except Exception as e:
         app.logger.error(f"Unexpected Error calling Gemini API for image text extraction: {e}", exc_info=True)
-        return f"An unexpected error occurred during image text extraction: {str(e)}"
+        return filter_gemini_response(f"An unexpected error occurred during image text extraction: {str(e)}")
 
 # Helper function to remove nulls recursively
 def remove_null_values(obj):
