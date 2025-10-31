@@ -892,7 +892,7 @@ Note: For Image and Video Creation modes, the sample response will be a short te
 <div id="llm_test_response_area" class="mt-2">
 <p>Click "Test Prompt" to generate a sample response.</p>
 </div>
-<div class="llm-metadata" id="llm_response_metadata"></div> <div class="text-center mt-3">
+<div class="text-center mt-3">
 <div class="btn-group" role="group" aria-label="Prompt Actions">
 <button id="llm_test_button" class="btn btn-primary">Test LLM</button>
 <button id="perplexitySearchButton" class="btn btn-secondary"><i class="fas fa-search"></i> Web Search</button>
@@ -1168,7 +1168,7 @@ const CATEGORIES_AND_SUBCATEGORIES = {
 const CATEGORY_PERSONAS = {
 "General Writing & Editing": ["Author", "Editor", "Copywriter", "Content Creator", "Blogger", "Other"],
 "Programming & Code": ["Software Developer", "Frontend Engineer", "Backend Engineer", "Data Scientist", "DevOps Engineer", "Other"],
-"Business & Finance": ["Entrepreneur", "Business Analyst", "Financial Advisor", "Investor", "Startup Founder", "Other"],
+"Business & Finance": ["Entrepreneur", "Business Analyst", "Financial Advisor", "Investor", "Startup Founder", "Director", "CEO", "Other"],
 "Education & Learning": ["Student", "Teacher", "Tutor", "Curriculum Designer", "Lifelong Learner", "Other"],
 "Technical Writing & Explanation": ["Technical Writer", "System Architect", "Engineer", "Product Manager", "Compliance Officer", "Other"],
 "Customer Support": ["Support Agent", "Customer Success Manager", "Helpdesk Analyst", "Call Center Manager", "Chatbot Designer", "Other"],
@@ -1432,130 +1432,130 @@ updateAllButtonStates(); // Re-check status to re-enable buttons
 
 // --- LLM Niche Map (Based on Screenshot 2025-10-29) ---
 const LLM_NICHE_MAP = [
-    { name: "ChatGPT", keywords: ["mathematical", "math", "multi-step", "reasoning", "haiku", "algebra"], categories: ["Programming & Code", "Education & Learning"], persona: [] },
-    { name: "Claude", keywords: ["coding", "ethical", "document analysis", "agentic", "structured"], categories: ["Programming & Code", "Technical Writing & Explanation", "Legal & Compliance"], persona: ["Compliance Officer", "Lawyer", "Software Developer"] },
-    { name: "Mistral", keywords: ["multilingual", "translation", "speed", "resource-constrained", "edge"], categories: ["Multilingual & Translation"], persona: [] },
-    { name: "Gemini", keywords: ["multimodal", "image", "video", "adaptive reasoning", "puzzles", "visual design"], categories: ["Image Generation & Visual Design", "Data Analysis & Interpretation", "UX/UI & Product Design"], persona: [] },
-    { name: "Grok", keywords: ["exploratory reasoning", "scientific", "logic puzzles", "unfiltered", "x.ai"], categories: ["Research & Information Retrieval", "Education & Learning", "Spirituality & Self-Reflection"], persona: ["Scientist", "Researcher", "Philosopher"] },
-    { name: "Perplexity", keywords: ["research-oriented", "fact-checked", "multi-source", "verifiable", "citations", "web"], categories: ["Research & Information Retrieval", "News & Current Affairs", "Data Analysis & Interpretation"], persona: ["Researcher", "Journalist", "Academic"] },
-    { name: "DeepSeek", keywords: ["algorithmic", "financial modeling", "math", "tool use", "banking"], categories: ["Business & Finance", "Programming & Code"], persona: ["Financial Advisor", "Business Analyst"] },
+{ name: "ChatGPT", keywords: ["mathematical", "math", "multi-step", "reasoning", "haiku", "algebra"], categories: ["Programming & Code", "Education & Learning"], persona: [] },
+{ name: "Claude", keywords: ["coding", "ethical", "document analysis", "agentic", "structured"], categories: ["Programming & Code", "Technical Writing & Explanation", "Legal & Compliance"], persona: ["Compliance Officer", "Lawyer", "Software Developer"] },
+{ name: "Mistral", keywords: ["multilingual", "translation", "speed", "resource-constrained", "edge"], categories: ["Multilingual & Translation"], persona: [] },
+{ name: "Gemini", keywords: ["multimodal", "image", "video", "adaptive reasoning", "puzzles", "visual design"], categories: ["Image Generation & Visual Design", "Data Analysis & Interpretation", "UX/UI & Product Design"], persona: [] },
+{ name: "Grok", keywords: ["exploratory reasoning", "scientific", "logic puzzles", "unfiltered", "x.ai"], categories: ["Research & Information Retrieval", "Education & Learning", "Spirituality & Self-Reflection"], persona: ["Scientist", "Researcher", "Philosopher"] },
+{ name: "Perplexity", keywords: ["research-oriented", "fact-checked", "multi-source", "verifiable", "citations", "web"], categories: ["Research & Information Retrieval", "News & Current Affairs", "Data Analysis & Interpretation"], persona: ["Researcher", "Journalist", "Academic"] },
+{ name: "DeepSeek", keywords: ["algorithmic", "financial modeling", "math", "tool use", "banking"], categories: ["Business & Finance", "Programming & Code"], persona: ["Financial Advisor", "Business Analyst"] },
 ];
 
 /**
- * Suggests the best LLM based on user input, category, and persona.
- * @param {string} promptInput The raw input text.
- * @param {string} category The selected category.
- * @param {string} persona The selected persona.
- * @returns {string} The name of the suggested LLM, or null.
- */
+* Suggests the best LLM based on user input, category, and persona.
+* @param {string} promptInput The raw input text.
+* @param {string} category The selected category.
+* @param {string} persona The selected persona.
+* @returns {string} The name of the suggested LLM, or null.
+*/
 function suggestBestLLM(promptInput, category, persona) {
-    if (!promptInput) return null; // No suggestion if no input
+if (!promptInput) return null; // No suggestion if no input
 
-    const text = (promptInput + ' ' + (category || '') + ' ' + (persona || '')).toLowerCase();
+const text = (promptInput + ' ' + (category || '') + ' ' + (persona || '')).toLowerCase();
 
-    // Tally scores based on keyword and category/persona match
-    let scores = {};
-    let maxScore = -1;
-    let bestLLM = null;
+// Tally scores based on keyword and category/persona match
+let scores = {};
+let maxScore = -1;
+let bestLLM = null;
 
-    LLM_NICHE_MAP.forEach(llm => {
-        let score = 0;
-        
-        // Score for direct keyword matches (Strength/Niche)
-        llm.keywords.forEach(keyword => {
-            if (text.includes(keyword.toLowerCase())) {
-                score += 2; // Strong match weight
-            }
-        });
+LLM_NICHE_MAP.forEach(llm => {
+let score = 0;
 
-        // Score for category match
-        if (category && llm.categories.includes(category)) {
-            score += 1;
-        }
+// Score for direct keyword matches (Strength/Niche)
+llm.keywords.forEach(keyword => {
+if (text.includes(keyword.toLowerCase())) {
+score += 2; // Strong match weight
+}
+});
 
-        // Score for persona match
-        if (persona && llm.persona.includes(persona)) {
-            score += 1;
-        }
-        
-        scores[llm.name] = score;
+// Score for category match
+if (category && llm.categories.includes(category)) {
+score += 1;
+}
 
-        // Determine the highest score
-        if (score > maxScore) {
-            maxScore = score;
-            bestLLM = llm.name;
-        } else if (score === maxScore && score > 0) {
-            // Tie-breaker: keep the existing bestLLM.
-        }
-    });
+// Score for persona match
+if (persona && llm.persona.includes(persona)) {
+score += 1;
+}
 
-    // Only return a suggestion if a strong match (score > 0) was found
-    return maxScore > 0 ? bestLLM : null;
+scores[llm.name] = score;
+
+// Determine the highest score
+if (score > maxScore) {
+maxScore = score;
+bestLLM = llm.name;
+} else if (score === maxScore && score > 0) {
+// Tie-breaker: keep the existing bestLLM.
+}
+});
+
+// Only return a suggestion if a strong match (score > 0) was found
+return maxScore > 0 ? bestLLM : null;
 }
 
 
 // Function to enable/disable LLM website buttons
 function setLLMWebsiteButtonsDisabled(isDisabled, mode = 'text') {
-    // List of buttons that are enabled/disabled
-    const textButtons = [chatGPTBtn, claudeBtn, mistralBtn, geminiBtn, grokBtn, perplexityBtn, deepSeekBtn];
-    const imageVideoButtons = [midjourneyBtn, dalle3Btn, sdxlBtn, soraBtn, veo3Btn];
+// List of buttons that are enabled/disabled
+const textButtons = [chatGPTBtn, claudeBtn, mistralBtn, geminiBtn, grokBtn, perplexityBtn, deepSeekBtn];
+const imageVideoButtons = [midjourneyBtn, dalle3Btn, sdxlBtn, soraBtn, veo3Btn];
 
-    // List of text-based LLMs the user requested to keep enabled in image mode
-    const textLLMsForImageMode = ['chatgpt', 'claude', 'mistral', 'gemini', 'grok', 'perplexity', 'deepseek'];
-    const imageGenLLMs = ['midjourney', 'dalle3', 'sdxl']; // Tools capable of image generation
-    const videoGenLLMs = ['sora', 'veo3']; // Tools capable of video generation
-    
-    // First, disable everything if isDisabled is true (no output)
-    if (isDisabled) {
-        [...textButtons, ...imageVideoButtons].forEach(btn => {
-            if (btn) btn.disabled = true;
-        });
-        return;
-    }
+// List of text-based LLMs the user requested to keep enabled in image mode
+const textLLMsForImageMode = ['chatgpt', 'claude', 'mistral', 'gemini', 'grok', 'perplexity', 'deepseek'];
+const imageGenLLMs = ['midjourney', 'dalle3', 'sdxl']; // Tools capable of image generation
+const videoGenLLMs = ['sora', 'veo3']; // Tools capable of video generation
 
-    // Secondary filtering based on mode (if output is present)
-    textButtons.forEach(btn => {
-        const btnId = btn.id.replace('_llm_btn', '');
-        let shouldDisable = true;
+// First, disable everything if isDisabled is true (no output)
+if (isDisabled) {
+[...textButtons, ...imageVideoButtons].forEach(btn => {
+if (btn) btn.disabled = true;
+});
+return;
+}
 
-        if (mode === 'text') {
-            shouldDisable = false; // Enable all text buttons
-        } else if (mode === 'image_gen') {
-            // Enable the specific list of text LLMs provided by the user
-            if (textLLMsForImageMode.includes(btnId)) {
-                shouldDisable = false;
-            }
-        } else if (mode === 'video_gen') {
-            // In video mode, assume text LLMs are generally irrelevant
-            shouldDisable = true; 
-        }
+// Secondary filtering based on mode (if output is present)
+textButtons.forEach(btn => {
+const btnId = btn.id.replace('_llm_btn', '');
+let shouldDisable = true;
 
-        if (btn) btn.disabled = shouldDisable;
-    });
+if (mode === 'text') {
+shouldDisable = false; // Enable all text buttons
+} else if (mode === 'image_gen') {
+// Enable the specific list of text LLMs provided by the user
+if (textLLMsForImageMode.includes(btnId)) {
+shouldDisable = false;
+}
+} else if (mode === 'video_gen') {
+// In video mode, assume text LLMs are generally irrelevant
+shouldDisable = true;
+}
 
-    imageVideoButtons.forEach(btn => {
-        const btnId = btn.id.replace('_llm_btn', '');
-        let shouldDisable = true;
+if (btn) btn.disabled = shouldDisable;
+});
 
-        if (mode === 'image_gen') {
-            // Enable image tools + Gemini/Dalle3/etc. (the text LLMs were handled above)
-            if (imageGenLLMs.includes(btnId) || (btnId === 'dalle3')) { 
-                shouldDisable = false;
-            } else {
-                // Disable video tools
-                shouldDisable = true;
-            }
-        } else if (mode === 'video_gen') {
-            // Enable video tools
-            if (videoGenLLMs.includes(btnId)) {
-                shouldDisable = false;
-            }
-        } else { // mode === 'text'
-            shouldDisable = true;
-        }
+imageVideoButtons.forEach(btn => {
+const btnId = btn.id.replace('_llm_btn', '');
+let shouldDisable = true;
 
-        if (btn) btn.disabled = shouldDisable;
-    });
+if (mode === 'image_gen') {
+// Enable image tools + Gemini/Dalle3/etc. (the text LLMs were handled above)
+if (imageGenLLMs.includes(btnId) || (btnId === 'dalle3')) {
+shouldDisable = false;
+} else {
+// Disable video tools
+shouldDisable = true;
+}
+} else if (mode === 'video_gen') {
+// Enable video tools
+if (videoGenLLMs.includes(btnId)) {
+shouldDisable = false;
+}
+} else { // mode === 'text'
+shouldDisable = true;
+}
+
+if (btn) btn.disabled = shouldDisable;
+});
 }
 
 // Function to enable/disable save/download buttons
@@ -1569,9 +1569,9 @@ async function updateAllButtonStates() {
 const promptInput = document.getElementById('prompt_input').value.trim();
 const selectedLanguage = document.getElementById('lang_select').value;
 const promptMode = document.getElementById('prompt_mode_select').value; // Get current prompt mode
-    const selectedCategory = document.getElementById('category_select').value;
-    const selectedPersona = document.getElementById('persona_select').value;
-    const suggestedLLM = suggestBestLLM(promptInput, selectedCategory, selectedPersona); // NEW: Get LLM suggestion
+const selectedCategory = document.getElementById('category_select').value;
+const selectedPersona = document.getElementById('persona_select').value;
+const suggestedLLM = suggestBestLLM(promptInput, selectedCategory, selectedPersona); // NEW: Get LLM suggestion
 
 
 try {
@@ -1581,8 +1581,8 @@ const data = await response.json();
 let canGenerate = true;
 let messageType = 'info';
 let statusMessage = getMessage("application_ready", selectedLanguage);
-    
-    let originalAlertMessage = ""; // NEW: Variable to capture the primary alert message
+
+let originalAlertMessage = ""; // NEW: Variable to capture the primary alert message
 
 if (data.cooldown_active) {
 canGenerate = false;
@@ -1593,7 +1593,8 @@ startCooldownTimer(data.remaining_time); // Start/continue timer
 } else if (data.daily_limit_reached) {
 canGenerate = false;
 messageType = 'danger';
-originalAlertMessage = `Daily limit reached: You have used ${data.daily_count}/${data.user_daily_limit} generations today. If you want to generate more please subscribe.`; // Capture dynamic part
+originalAlertMessage = `Daily limit reached: You have used ${data.daily_count}/${data.user_daily_limit} generations today. If you want to generate more please subscribe.`;
+// Capture dynamic part
 statusMessage = originalAlertMessage; // Set initial status
 cooldownTimerDisplay.style.display = 'none'; // Ensure timer is hidden
 } else {
@@ -1605,22 +1606,22 @@ cooldownTimerDisplay.style.display = 'none'; // Ensure timer is hidden
 statusMessage = statusMessage; // Keep the ready message
 }
 
-    // MODIFIED: LLM Suggestion Logic - Use the originalAlertMessage/statusMessage and append clearly.
-    if (suggestedLLM && promptMode === 'text') {
-        if (data.cooldown_active) {
-            // Combine Cooldown message AND Suggestion
-            statusMessage = originalAlertMessage + 
-                            ` Consider visiting the suggested LLM now: **${suggestedLLM}**.`;
-            messageType = 'warning'; // Keep original color
-        } else if (data.daily_limit_reached) {
-            // Combine Daily Limit message AND Suggestion
-            statusMessage = originalAlertMessage + ` In the meantime, the suggested LLM for your prompt is **${suggestedLLM}**.`;
-            messageType = 'danger'; // Keep danger class for the limit message
-        } else if (canGenerate) {
-            // Append suggestion if generation is possible
-            statusMessage += ` 🧠 **Suggestion:** This prompt seems optimized for **${suggestedLLM}**.`;
-        }
-    }
+// MODIFIED: LLM Suggestion Logic - Use the originalAlertMessage/statusMessage and append clearly.
+if (suggestedLLM && promptMode === 'text') {
+if (data.cooldown_active) {
+// Combine Cooldown message AND Suggestion
+statusMessage = originalAlertMessage +
+` Consider visiting the suggested LLM now: **${suggestedLLM}**.`;
+messageType = 'warning'; // Keep original color
+} else if (data.daily_limit_reached) {
+// Combine Daily Limit message AND Suggestion
+statusMessage = originalAlertMessage + ` In the meantime, the suggested LLM for your prompt is **${suggestedLLM}**.`;
+messageType = 'danger'; // Keep danger class for the limit message
+} else if (canGenerate) {
+// Append suggestion if generation is possible
+statusMessage += ` 🧠 **Suggestion:** This prompt seems optimized for **${suggestedLLM}**.`;
+}
+}
 
 appOutput.textContent = statusMessage;
 appOutput.className = `mt-4 ${messageType}`; // Update class for styling
@@ -1760,20 +1761,20 @@ appOutput.textContent = getMessage("api_error", selectedLanguage, {error: data.e
 appOutput.className = 'mt-4 danger';
 console.error("Backend error reported:", data.error);
 } else {
-    
-    // MODIFIED BLOCK START (for multimedia output correction)
+
+// MODIFIED BLOCK START (for multimedia output correction)
 if (promptMode === 'image_gen' || promptMode === 'video_gen') {
-             // For multimedia, the core JSON is in 'creative' (as per app.py logic)
-             document.getElementById('polished_output').textContent = '';
-             document.getElementById('creative_output').textContent = data.creative || data.polished || data.technical || '';
-             document.getElementById('technical_output').textContent = '';
-         } else {
-             // For text mode, use all three distinct variants as intended.
-    document.getElementById('polished_output').textContent = data.polished;
-    document.getElementById('creative_output').textContent = data.creative;
-    document.getElementById('technical_output').textContent = data.technical;
-         }
-    // MODIFIED BLOCK END
+// For multimedia, the core JSON is in 'creative' (as per app.py logic)
+document.getElementById('polished_output').textContent = '';
+document.getElementById('creative_output').textContent = data.creative || data.polished || data.technical || '';
+document.getElementById('technical_output').textContent = '';
+} else {
+// For text mode, use all three distinct variants as intended.
+document.getElementById('polished_output').textContent = data.polished;
+document.getElementById('creative_output').textContent = data.creative;
+document.getElementById('technical_output').textContent = data.technical;
+}
+// MODIFIED BLOCK END
 
 // Update token counts (using character count as a proxy)
 document.getElementById('polished_token_count').textContent = `${document.getElementById('polished_output').textContent.length} chars`;
@@ -2187,37 +2188,37 @@ console.error(`Unknown LLM key: ${llmKey}`);
 
 // --- NEW FUNCTION: Refinement Loop Logic ---
 /**
- * Copies the text from the LLM test response area to the main prompt input,
- * closes the modal, and automatically triggers the main Generate button,
- * thus starting a new refinement cycle (Click 2, Click 3, etc. in the loop).
- */
+* Copies the text from the LLM test response area to the main prompt input,
+* closes the modal, and automatically triggers the main Generate button,
+* thus starting a new refinement cycle (Click 2, Click 3, etc. in the loop).
+*/
 function refineWithResponse() {
-    const responseText = document.getElementById('llm_test_response_area').querySelector('pre')?.textContent.trim() || document.getElementById('llm_test_response_area').textContent.trim();
-    const promptInputTextarea = document.getElementById('prompt_input');
-    const generateButton = document.getElementById('generate_prompts_btn');
-    const selectedLanguage = document.getElementById('lang_select').value;
-    const appOutput = document.getElementById('app_output');
+const responseText = document.getElementById('llm_test_response_area').querySelector('pre')?.textContent.trim() || document.getElementById('llm_test_response_area').textContent.trim();
+const promptInputTextarea = document.getElementById('prompt_input');
+const generateButton = document.getElementById('generate_prompts_btn');
+const selectedLanguage = document.getElementById('lang_select').value;
+const appOutput = document.getElementById('app_output');
 
-    // Check for valid response text
-    if (!responseText || responseText.includes("Click \"Test Prompt\"") || responseText.includes("Error:") || responseText.includes("Search Results:")) {
-        appOutput.textContent = "❗ Cannot refine. Please generate a valid LLM Sample Response first.";
-        appOutput.className = 'mt-4 warning';
-        closeFullContextView();
-        return;
-    }
-    
-    // Copy the LLM response to the main input field
-    promptInputTextarea.value = responseText;
-    
-    // Close the modal
-    closeFullContextView();
+// Check for valid response text
+if (!responseText || responseText.includes("Click \"Test Prompt\"") || responseText.includes("Error:") || responseText.includes("Search Results:")) {
+appOutput.textContent = "❗ Cannot refine. Please generate a valid LLM Sample Response first.";
+appOutput.className = 'mt-4 warning';
+closeFullContextView();
+return;
+}
 
-    // Notify the user of the next step
-    appOutput.textContent = `✅ Previous LLM response copied to input. Automatically starting **Refinement Generation** (Click 2/3...).`;
-    appOutput.className = 'mt-4 info';
+// Copy the LLM response to the main input field
+promptInputTextarea.value = responseText;
 
-    // Automatically trigger the main generate button click
-    generateButton.click();
+// Close the modal
+closeFullContextView();
+
+// Notify the user of the next step
+appOutput.textContent = `✅ Previous LLM response copied to input. Automatically starting **Refinement Generation** (Click 2/3...).`;
+appOutput.className = 'mt-4 info';
+
+// Automatically trigger the main generate button click
+generateButton.click();
 }
 // --- END NEW FUNCTION ---
 
@@ -2234,15 +2235,15 @@ modalOverlay.classList.add('show');
 
 // NEW: Reset and clear previous test response when modal opens
 const llmTestResponseArea = document.getElementById('llm_test_response_area');
-const llmResponseMetadata = document.getElementById('llm_response_metadata');
+// const llmResponseMetadata = document.getElementById('llm_response_metadata'); // REMOVED
 llmTestResponseArea.innerHTML = '<p>Click "Test Prompt" to generate a sample response.</p>';
-llmResponseMetadata.innerHTML = ''; // Clear metadata
+// llmResponseMetadata.innerHTML = ''; // REMOVED
 llmTestResponseArea.classList.remove('loading', 'error');
 document.getElementById('llm_test_button').disabled = false;
 document.getElementById('llm_test_loading_spinner').style.display = 'none';
-             // NEW: Remove the refinement button if it exists from a previous cycle
-             const existingRefineButton = document.getElementById('refine_button_in_modal');
-             if (existingRefineButton) existingRefineButton.parentNode.remove();
+// NEW: Remove the refinement button if it exists from a previous cycle
+const existingRefineButton = document.getElementById('refine_button_in_modal');
+if (existingRefineButton) existingRefineButton.parentNode.remove();
 }
 
 function closeFullContextView() {
@@ -2300,7 +2301,7 @@ document.getElementById('llm_test_button').addEventListener('click', async funct
 const promptText = document.getElementById('fullContextModalText').textContent.trim();
 const selectedLanguage = document.getElementById('lang_select').value;
 const llmTestResponseArea = document.getElementById('llm_test_response_area');
-const llmResponseMetadata = document.getElementById('llm_response_metadata');
+// const llmResponseMetadata = document.getElementById('llm_response_metadata'); // REMOVED
 const llmTestLoadingSpinner = document.getElementById('llm_test_loading_spinner');
 const testPromptButton = this;
 // Get current mode/category/persona from global variables if they exist,
@@ -2314,22 +2315,22 @@ const currentPersona = document.getElementById('persona_select') ? document.getE
 if (!promptText) {
 llmTestResponseArea.innerHTML = '<p class="text-danger">No prompt text available to test.</p>';
 llmTestResponseArea.classList.add('error');
-llmResponseMetadata.innerHTML = '';
-             // Remove refinement button on error
-             const existingRefineButton = document.getElementById('refine_button_in_modal');
-             if (existingRefineButton) existingRefineButton.parentNode.remove();
+// llmResponseMetadata.innerHTML = ''; // REMOVED
+// Remove refinement button on error
+const existingRefineButton = document.getElementById('refine_button_in_modal');
+if (existingRefineButton) existingRefineButton.parentNode.remove();
 return;
 }
 
 llmTestResponseArea.innerHTML = '<p><i class="fas fa-microchip"></i> Generating sample response...</p>';
-llmResponseMetadata.innerHTML = ''; // Clear metadata during loading
+// llmResponseMetadata.innerHTML = ''; // Clear metadata during loading // REMOVED
 llmTestResponseArea.classList.remove('error');
 llmTestResponseArea.classList.add('loading');
 llmTestLoadingSpinner.style.display = 'block';
 testPromptButton.disabled = true;
-             // Remove refinement button when starting new test
-             const existingRefineButton = document.getElementById('refine_button_in_modal');
-             if (existingRefineButton) existingRefineButton.parentNode.remove();
+// Remove refinement button when starting new test
+const existingRefineButton = document.getElementById('refine_button_in_modal');
+if (existingRefineButton) existingRefineButton.parentNode.remove();
 
 try {
 const response = await fetch('/test_llm_response', {
@@ -2374,30 +2375,30 @@ const data = await response.json();
 if (data.sample_response) {
 llmTestResponseArea.innerHTML = `<pre>${data.sample_response}</pre>`;
 llmTestResponseArea.classList.remove('error');
-// COMMENTED OUT: llmResponseMetadata.innerHTML = `Model: ${data.model_name || 'N/A'}, Temp: ${data.temperature || 'N/A'}`;
+// llmResponseMetadata.innerHTML = ''; // REMOVED
 } else {
 llmTestResponseArea.innerHTML = '<p class="text-warning">No sample response received.</p>';
 llmTestResponseArea.classList.add('error');
-llmResponseMetadata.innerHTML = '';
+// llmResponseMetadata.innerHTML = ''; // REMOVED
 }
 
-             // NEW: Add the Refinement button after a successful sample generation
-             if (data.sample_response) {
-                 const refineButtonHTML = `
-                     <div class="mt-3" id="refine_button_wrapper">
-                         <button id="refine_button_in_modal" class="btn btn-warning btn-block" onclick="refineWithResponse()">
-                             <i class="fas fa-magic"></i> Use Sample Response for Refinement
-                         </button>
-                     </div>
-                 `;
-                 // Insert after the llm_test_response_area
-                 document.getElementById('llm_test_response_area').insertAdjacentHTML('afterend', refineButtonHTML);
-             }
+// NEW: Add the Refinement button after a successful sample generation
+if (data.sample_response) {
+const refineButtonHTML = `
+<div class="mt-3" id="refine_button_wrapper">
+<button id="refine_button_in_modal" class="btn btn-warning btn-block" onclick="refineWithResponse()">
+<i class="fas fa-magic"></i> Use Sample Response for Refinement
+</button>
+</div>
+`;
+// Insert after the llm_test_response_area
+document.getElementById('llm_test_response_area').insertAdjacentHTML('afterend', refineButtonHTML);
+}
 
 } catch (error) {
 llmTestResponseArea.innerHTML = `<p class="text-danger">Network error: ${error.message}</p>`;
 llmTestResponseArea.classList.add('error');
-llmResponseMetadata.innerHTML = '';
+// llmResponseMetadata.innerHTML = ''; // REMOVED
 console.error('Error testing prompt:', error);
 } finally {
 llmTestResponseArea.classList.remove('loading');
@@ -2417,13 +2418,13 @@ const button = this;
 // The prompt text is retrieved from the full context modal text area
 const promptTextElement = document.getElementById('fullContextModalText');
 const llmTestResponseArea = document.getElementById('llm_test_response_area');
+// const llmResponseMetadata = document.getElementById('llm_response_metadata'); // REMOVED
 const llmTestLoadingSpinner = document.getElementById('llm_test_loading_spinner');
-const llmResponseMetadata = document.getElementById('llm_response_metadata');
 
 if (!promptTextElement) {
 llmTestResponseArea.innerHTML = '<p class="text-danger">Error: Could not find the prompt text to search.</p>';
 llmTestResponseArea.classList.add('error');
-llmResponseMetadata.innerHTML = '';
+// llmResponseMetadata.innerHTML = ''; // REMOVED
 return;
 }
 
@@ -2435,7 +2436,7 @@ llmTestResponseArea.classList.add('loading');
 llmTestResponseArea.classList.remove('error');
 llmTestResponseArea.innerHTML = '<p class="text-secondary"><i class="fas fa-spinner fa-spin"></i> Searching the internet via Perplexity...</p>';
 llmTestLoadingSpinner.style.display = 'block';
-llmResponseMetadata.innerHTML = ''; // Clear metadata
+// llmResponseMetadata.innerHTML = ''; // Clear metadata // REMOVED
 
 try {
 // 2. Send the request to the new backend route
