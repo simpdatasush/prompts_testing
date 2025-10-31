@@ -2019,6 +2019,10 @@ def generate_unique_username_suggestions(base_username, num_suggestions=3):
     return suggestions
 
 
+# app.py
+
+# ... (Lines 3935 - 3949: Existing code)
+
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if current_user.is_authenticated:
@@ -2037,7 +2041,9 @@ def login():
             return redirect(url_for('app_home')) # Redirect to app home after login
         else:
             flash('Login Unsuccessful. Please check username and password.', 'danger')
-            return render_template('login.html')
+            return render_template('login.html') # <<< CORRECTION: Added missing return statement
+
+    return render_template('login.html') # Initial GET request, loads the template
 
 @app.route('/logout')
 @login_required # Only logged-in users can log out
