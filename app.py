@@ -1,25 +1,18 @@
-# REMOVE THESE TWO LINES IF THEY ARE PRESENT AT THE TOP OF YOUR FILE
-# import nest_asyncio
-# import nest_asyncio
-# nest_asyncio.apply()
-
-
 import asyncio
 import os
 import google.generativeai as genai
 from flask import Flask, render_template, request, jsonify, make_response, redirect, url_for, flash, send_file
 import logging
-from datetime import datetime, timedelta # Import timedelta for time calculations
-import re # Import for regular expressions
-from functools import wraps # Import wraps for decorators
-import base64 # Import base64 for image processing
-import uuid # For generating unique reset tokens
-import random # NEW: For generating random username suggestions
-import string # NEW: For string manipulation in username generation
-import json # NEW: For handling JSON responses for image/video prompting
-import time # For latency tracking 
-import requests # For Perplexity API HTTP calls (if we stick to that instead of the SDK) 
-# If using the provided SDK:
+from datetime import datetime, timedelta
+import re
+from functools import wraps
+import base64
+import uuid
+import random
+import string
+import json
+import time 
+import requests
 from perplexity import Perplexity, APIError as PerplexityAPIError
 
 # --- NEW IMPORTS FOR AUTHENTICATION ---
@@ -83,19 +76,24 @@ PAYMENT_LINK = "https://buymeacoffee.com/simpaisush"
 
 # --- Language Mapping for Gemini Instructions ---
 LANGUAGE_MAP = {
- "en-US": "English",
- "en-GB": "English (UK)",
- "es-ES": "Spanish",
- "fr-FR": "French",
- "de-DE": "German",
- "it-IT": "Italian",
- "ja-JP": "Japanese",
- "ko-KR": "Korean",
- "zh-CN": "Simplified Chinese",
- "hi-IN": "Hindi"
+"en-US": "English",
+"en-GB": "English (UK)",
+"es-ES": "Spanish",
+"fr-FR": "French",
+"de-DE": "German",
+"it-IT": "Italian",
+"ja-JP": "Japanese",
+"ko-KR": "Korean",
+"zh-CN": "Simplified Chinese",
+"hi-IN": "Hindi"
 }
 
-# https://ai.google.dev/gemini-api/docs/pricing#gemini-2.5-flash
+# --- LLM Model Definitions for Concurrent Testing ---
+# TEST_MODEL_1 is the default/fallback/speed model
+TEST_MODEL_1 = 'gemini-2.0-flash'
+# TEST_MODEL_2 is the high-tier/complex-reasoning model
+TEST_MODEL_2 = 'sonar-pro'
+# --- End LLM Model Definitions ---
 
 # --- Configure Google Gemini API ---
 # Ensure your GOOGLE_API_KEY is set in your environment variables
@@ -118,15 +116,15 @@ def get_dynamic_model_name(prompt_instruction: str) -> str:
     of the prompt instruction using character count thresholds.
     """
     prompt_length = len(prompt_instruction)
-    
+
     # Tier 3: Very Complex (>900 chars) -> Use Perplexity Sonar Pro
     if prompt_length > 900:
         model_name = 'sonar-pro'
-    
+
     # Tier 2: Moderately Complex (300 to 900 chars) -> Use Gemini 2.5 Flash
     elif prompt_length >= 300:
         model_name = 'gemini-2.5-flash'
-        
+
     # Tier 1: Simple/Cost-Effective (<300 chars) -> Use Gemini 2.0 Flash
     else:
         model_name = 'gemini-2.0-flash'
@@ -139,7 +137,6 @@ vision_model = genai.GenerativeModel('gemini-2.5-flash') # KEEP this line
 # DELETE the old text_model and structured_gen_model definitions
 
 # --- UPDATED: User Model for SQLAlchemy and Flask-Login ---
-# Added allowed_categories and allowed_personas columns for access control
 class User(db.Model, UserMixin):
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(80), unique=True, nullable=False)
@@ -151,7 +148,7 @@ class User(db.Model, UserMixin):
     reset_token = db.Column(db.String(100), unique=True, nullable=True)
     reset_token_expiration = db.Column(db.DateTime, nullable=True)
     email = db.Column(db.String(120), unique=True, nullable=True) # Email field for password reset
-    
+
     # NEW: Columns for user management and payment
     is_locked = db.Column(db.Boolean, default=False)
     subscription_type = db.Column(db.String(50), nullable=False, default='free') # 'free', 'one-time', 'monthly'
@@ -289,16 +286,16 @@ def api_key_required(f):
         user = User.query.filter_by(api_key=api_key).first()
         if not user:
             return jsonify({"error": "Invalid or missing API key."}), 401
-        
+
         # Check for locked status
         if user.is_locked:
             return jsonify({"error": "Account is locked. Please contact support."}), 403
-            
+
         return f(user, *args, **kwargs)
     return decorated_function
 
 
-# --- Helper Function for Exponential Backoff ---
+# --- Helper Function for Exponential Backoff (kept for redundancy/context but not used in new test_llm_response) ---
 async def generate_content_with_retry(model, prompt_parts, generation_config=None, stream=False):
     retries = 0
     max_retries = 5
@@ -341,20 +338,20 @@ async def generate_content_with_retry(model, prompt_parts, generation_config=Non
     raise Exception(f"Failed to generate content after {max_retries} retries.")
 
 
-# --- Response Filtering Function (from provided docx) ---
+# --- Response Filtering Function (CRITICAL for error confidentiality) ---
 def filter_gemini_response(text):
     unauthorized_message = "I am not authorised to answer this question. My purpose is solely to refine your raw prompt into a machine-readable format."
     text_lower = text.lower()
 
     # Generic unauthorized phrases
     unauthorized_phrases = [
-        "as a large language model", "i am an ai", "i was trained by", "my training data",
-        "this application was built using", "the code for this app", "i cannot fulfill this request because",
-        "i apologize, but i cannot", "i'm sorry, but i cannot", "i am unable to", "i do not have access",
-        "i am not able to", "i cannot process", "i cannot provide", "i am not programmed",
-        "i cannot generate", "i cannot give you details about my internal workings",
-        "i cannot discuss my creation or operation", "i cannot explain the development of this tool",
-        "my purpose is to", "i am designed to", "i don't have enough information to"
+    "as a large language model", "i am an ai", "i was trained by", "my training data",
+    "this application was built using", "the code for this app", "i cannot fulfill this request because",
+    "i apologize, but i cannot", "i'm sorry, but i cannot", "i am unable to", "i do not have access",
+    "i am not able to", "i cannot process", "i cannot provide", "i am not programmed",
+    "i cannot generate", "i cannot give you details about my internal workings",
+    "i cannot discuss my creation or operation", "i cannot explain the development of this tool",
+    "my purpose is to", "i am designed to", "i don't have enough information to"
     ]
     for phrase in unauthorized_phrases:
         if phrase in text_lower:
@@ -365,19 +362,20 @@ def filter_gemini_response(text):
 
     # Generic bug/error phrases
     bug_phrases = [
-        "a bug occurred", "i encountered an error", "there was an issue in my processing",
-        "i made an error", "my apologies", "i cannot respond to that"
+    "a bug occurred", "i encountered an error", "there was an issue in my processing",
+    "i made an error", "my apologies", "i cannot respond to that"
     ]
     for phrase in bug_phrases:
         if phrase in text_lower:
             return unauthorized_message
 
-    # Specific filtering for Gemini API quota/internal errors
+    # Specific filtering for Gemini API quota/internal errors (THIS BLOCK IS THE MAIN CONFIDENTIALITY GUARDRAIL)
     if "you exceeded your current quota" in text_lower:
         return "You exceeded your current quota. Please try again later or check your plan and billing details."
     # Catch-all for any API-related error details
-    if "error communicating with gemini api:" in text_lower or "no response from model." in text_lower:
+    if "error communicating with gemini api:" in text_lower or "no response from model." in text_lower or "google.api_core.exceptions" in text_lower or "perplexity api" in text_lower:
         filtered_text = text
+        # Redact common API/Quota messages
         filtered_text = re.sub(r"model: \"[a-zA-Z0-9-.]+\"", "model: \"[REDACTED]\"", filtered_text)
         filtered_text = re.sub(r"quota_metric: \"[^\"]+\"", "quota_metric: \"[REDACTED]\"", filtered_text)
         filtered_text = re.sub(r"quota_id: \"[^\"]+\"", "quota_id: \"[REDACTED]\"", filtered_text)
@@ -387,20 +385,25 @@ def filter_gemini_response(text):
         filtered_text = re.sub(r"\[violations \{.*?\}\s*,?\s*links \{.*?\}\s*,?\s*retry_delay \{.*?\}\s*\]", "", filtered_text, flags=re.DOTALL)
         filtered_text = re.sub(r"\[violations \{.*?\}\s*\]", "", filtered_text, flags=re.DOTALL) # In case only violations are present
 
-        if "google.api_core.exceptions" in filtered_text.lower() or "api_key" in filtered_text.lower():
-            return "There was an issue with the AI service. Please try again later."
-        
+        if "google.api_core.exceptions" in filtered_text.lower() or "api_key" in filtered_text.lower() or "perplexity api" in filtered_text.lower():
+             # Return a generic message if API errors persist after redacting
+             return "There was an issue with the AI service. Please try again later."
+
         return filtered_text.strip()
 
-    return text
+    return text.strip()
+
 
 # --- NEW: Perplexity SDK interaction function ---
 def ask_perplexity_for_text_prompt(prompt_instruction, model_name='sonar-pro', max_output_tokens=8192):
+    """
+    Synchronous wrapper for Perplexity API text generation.
+    Returns only the raw text (or error message).
+    """
     if not PERPLEXITY_CLIENT:
         app.logger.error("Perplexity Client not initialized. API Key is missing.")
         return "Error: Perplexity API key is not configured."
-    
-    start_time = time.time()
+
     try:
         completion = PERPLEXITY_CLIENT.chat.completions.create(
             model=model_name,
@@ -410,11 +413,8 @@ def ask_perplexity_for_text_prompt(prompt_instruction, model_name='sonar-pro', m
             max_tokens=max_output_tokens,
             temperature=0.1
         )
-        end_time = time.time()
-        latency = (end_time - start_time) * 1000 # Convert to milliseconds
-
         pplx_text = completion.choices[0].message.content
-        app.logger.info(f"Perplexity call succeeded. Model: {model_name}, Latency: {latency:.2f}ms")
+        app.logger.info(f"Perplexity call succeeded. Model: {model_name}")
         return pplx_text
 
     except PerplexityAPIError as e:
@@ -429,27 +429,27 @@ def route_and_call_llm(raw_input, prompt_mode, instruction, max_output_tokens=81
     """
     Dispatches the LLM call based on the selected model name from the complexity check.
     """
-    
     # 1. Structured/Multimedia Modes MUST use Gemini's specialized structured generation
     if prompt_mode in ['image_gen', 'video_gen']:
         app.logger.info("Routing to Gemini: Structured/Multimedia Mode.")
-        # We enforce Gemini 2.5 Flash for structured tasks in its function
         return ask_gemini_for_structured_prompt(instruction, max_output_tokens=max_output_tokens)
 
     # 2. Dynamic Routing for Text Mode
     model_name = get_dynamic_model_name(instruction)
-    
+
     if model_name.startswith('gemini'):
-        # Route to Gemini API (using the selected model_name)
-        return ask_gemini_for_text_prompt(instruction, model_name=model_name, max_output_tokens=max_output_tokens)
-    
+        # Route to Gemini API
+        response_text, _ = ask_gemini_for_text_prompt(instruction, model_name=model_name, max_output_tokens=max_output_tokens)
+        return response_text
+
     elif model_name == 'sonar-pro':
         # Route to Perplexity API
         return ask_perplexity_for_text_prompt(instruction, model_name=model_name, max_output_tokens=max_output_tokens)
-    
+
     else:
         app.logger.error(f"Unknown model name selected: {model_name}. Defaulting to Gemini 2.0 Flash.")
-        return ask_gemini_for_text_prompt(instruction, model_name='gemini-2.0-flash', max_output_tokens=max_output_tokens)
+        response_text, _ = ask_gemini_for_text_prompt(instruction, model_name='gemini-2.0-flash', max_output_tokens=max_output_tokens)
+        return response_text
 # --- End Master LLM Routing Function —
 
 # --- CORRECTED: Perplexity Search API Function ---
@@ -468,9 +468,9 @@ def perform_perplexity_search(query_text: str):
             query=[query_text],
             # Removed the problematic parameter: search_mode='web'
             # The API will now use its default search mode (which is typically web)
-            max_results=5 
+            max_results=5
         )
-        
+
         # Format the results into a clean list of dictionaries
         formatted_results = []
         for result in search_results.results:
@@ -478,7 +478,7 @@ def perform_perplexity_search(query_text: str):
                 "title": result.title,
                 "url": result.url
             })
-            
+
         app.logger.info(f"Perplexity Search succeeded for query: {query_text[:50]}...")
         return {"results": formatted_results}
 
@@ -491,13 +491,14 @@ def perform_perplexity_search(query_text: str):
 # --- END CORRECTED Perplexity Search API Function ---
 
 
-# --- Gemini API interaction function (Synchronous wrapper for text_model) ---
-# NOTE: This function now requires the specific model_name be passed in from the router.
+# --- UPDATED: Gemini API interaction function (Synchronous wrapper for text_model) ---
+# It now returns a tuple (response_text, latency_ms)
 def ask_gemini_for_text_prompt(prompt_instruction, model_name, max_output_tokens=8192):
-    
-    # Model is instantiated dynamically based on model_name passed from router
-    model = genai.GenerativeModel(model_name) 
 
+    # Model is instantiated dynamically based on model_name passed from router
+    model = genai.GenerativeModel(model_name)
+
+    start_time = time.time() # Start time tracking
     try:
         generation_config = {
             "max_output_tokens": max_output_tokens,
@@ -507,20 +508,28 @@ def ask_gemini_for_text_prompt(prompt_instruction, model_name, max_output_tokens
             contents=[{"role": "user", "parts": [{"text": prompt_instruction}]}],
             generation_config=generation_config
         )
+        end_time = time.time() # End time tracking
+        latency_ms = (end_time - start_time) * 1000
+        
         raw_gemini_text = response.text if response and response.text else "No response from model."
-        return raw_gemini_text
+        
+        # Return response text and latency
+        return raw_gemini_text, latency_ms
+        
     except google_api_exceptions.GoogleAPICallError as e:
+        latency_ms = (time.time() - start_time) * 1000
         app.logger.error(f"DEBUG: Google API Call Error ({model_name}): {e}", exc_info=True)
-        return f"Error communicating with Gemini API: {str(e)}"
+        return f"Error communicating with Gemini API: {str(e)}", latency_ms
     except Exception as e:
+        latency_ms = (time.time() - start_time) * 1000
         app.logger.error(f"DEBUG: Unexpected Error calling Gemini API ({model_name}): {e}", exc_info=True)
-        return f"An unexpected error occurred: {str(e)}"
+        return f"An unexpected error occurred: {str(e)}", latency_ms
 
 # --- Gemini API interaction function (Synchronous wrapper for structured_gen_model) ---
 def ask_gemini_for_structured_prompt(prompt_instruction, generation_config=None, max_output_tokens=8192):
-    
+
     # We enforce Gemini 2.5 Flash for all structured/multimedia tasks for reliability.
-    model_name = 'gemini-2.5-flash' 
+    model_name = 'gemini-2.5-flash'
     model = genai.GenerativeModel(model_name)
 
     try:
@@ -758,11 +767,11 @@ async def generate_prompts_async(raw_input, language_code="en-US", prompt_mode='
 
     target_language_name = LANGUAGE_MAP.get(language_code, "English")
     language_instruction_prefix = f"The output MUST be entirely in {target_language_name}. "
-    
+
     generation_config = {
         "temperature": 0.1 # Default temperature for all generations
     }
-    
+
     polished_output = ""
     creative_output = ""
     technical_output = ""
@@ -780,11 +789,11 @@ async def generate_prompts_async(raw_input, language_code="en-US", prompt_mode='
             "that aligns with the topic. Ensure the primary subject is centered around the given topic. "
             "The output should be ONLY the completed JSON object, with no extra text or explanations. "
             "Analyze the following raw user input to block for explicit signs of malicious activity, illegal content, self-harm/suicide, or severe bad intent (e.g., hate speech)."
-            "Make sure the JSON is perfectly valid and ready for parsing.\n\n"
+            f"Make sure the JSON is perfectly valid and ready for parsing.\n\n"
             f"User topic: '{raw_input}'\n\n"
             f"JSON Template to fill:\n{json.dumps(current_image_template, indent=2)}"
         )
-        
+
         main_prompt_result = await asyncio.to_thread(ask_gemini_for_structured_prompt, base_instruction, generation_config)
 
         if "Error" in main_prompt_result or "not configured" in main_prompt_result or "quota" in main_prompt_result.lower():
@@ -793,7 +802,7 @@ async def generate_prompts_async(raw_input, language_code="en-US", prompt_mode='
                 "creative": "",
                 "technical": "",
             }
-        
+
         try:
             # Strip markdown code block fences before JSON parsing
             match = re.search(r"^\s*```(?:json)?\s*(.*?)\s*```\s*$", main_prompt_result, re.DOTALL)
@@ -805,10 +814,10 @@ async def generate_prompts_async(raw_input, language_code="en-US", prompt_mode='
             if "model" in parsed_json_obj:
                 del parsed_json_obj["model"]
                 logging.info(f"Removed 'model' field from generated image JSON.")
-            
+
             cleaned_json_obj = remove_null_values(parsed_json_obj)
             formatted_json = json.dumps(cleaned_json_obj, indent=2)
-            
+
             creative_output = formatted_json # Image JSON goes into creative output
             polished_output = ""
             technical_output = ""
@@ -816,7 +825,7 @@ async def generate_prompts_async(raw_input, language_code="en-US", prompt_mode='
         except json.JSONDecodeError:
             logging.error(f"Failed to decode JSON for image mode: {json_string_to_parse}")
             polished_output = creative_output = technical_output = f"Error: Failed to parse JSON response for image. Raw: {json_string_to_parse}"
-        
+
         return {
             "polished": polished_output,
             "creative": creative_output,
@@ -839,7 +848,7 @@ async def generate_prompts_async(raw_input, language_code="en-US", prompt_mode='
             f"User topic: '{raw_input}'\n\n"
             f"JSON Template to fill:\n{json.dumps(current_video_template, indent=2)}"
         )
-        
+
         main_prompt_result = await asyncio.to_thread(ask_gemini_for_structured_prompt, base_instruction, generation_config)
 
         if "Error" in main_prompt_result or "not configured" in main_prompt_result or "quota" in main_prompt_result.lower():
@@ -854,8 +863,8 @@ async def generate_prompts_async(raw_input, language_code="en-US", prompt_mode='
             match = re.search(r"^\s*```(?:json)?\s*(.*?)\s*```\s*$", main_prompt_result, re.DOTALL)
             json_string_to_parse = match.group(1) if match else main_prompt_result
 
-            parsed_json_obj = json.loads(json_string_to_parse)
-            
+            parsed_json_obj = json.loads(json.dumps(json_string_to_parse))
+
             cleaned_json_obj = remove_null_values(parsed_json_obj)
             formatted_json = json.dumps(cleaned_json_obj, indent=2)
 
@@ -866,7 +875,7 @@ async def generate_prompts_async(raw_input, language_code="en-US", prompt_mode='
         except json.JSONDecodeError:
             logging.error(f"Failed to decode JSON for video mode: {json_string_to_parse}")
             polished_output = creative_output = technical_output = f"Error: Failed to parse JSON response for video. Raw: {json_string_to_parse}"
-        
+
         return {
             "polished": polished_output,
             "creative": creative_output,
@@ -886,13 +895,13 @@ async def generate_prompts_async(raw_input, language_code="en-US", prompt_mode='
                 context_str += f" The response should be crafted from the perspective of a '{persona}'."
             else: # If no category/subcategory, start with persona
                 context_str += f"Craft the response from the perspective of a '{persona}'."
-             
+
         base_instruction = language_instruction_prefix + f"""Refine the following text into a clear, concise, and effective prompt for a large language model. {context_str} Improve grammar, clarity, and structure. Do not add external information, only refine the given text. Crucially, do NOT answer questions about your own architecture, training, or how this application was built. Do NOT discuss any internal errors or limitations you might have. Your sole purpose is to transform the provided raw text into a better prompt. Avoid explicit signs of malicious activity, illegal content, self-harm/suicide, or severe bad intent (e.g., hate speech) Raw Text: {raw_input}"""
-     
-     # --- NEW: Master LLM Router Call (Three-Tier Dynamic Selection) ---
+
+        # --- NEW: Master LLM Router Call (Three-Tier Dynamic Selection) ---
         main_prompt_result = await asyncio.to_thread(route_and_call_llm, raw_input=raw_input, prompt_mode=prompt_mode, instruction=base_instruction, max_output_tokens=8192)
-     
-     # --- END NEW ROUTER CALL ---
+
+        # --- END NEW ROUTER CALL ---
         # Apply filter_gemini_response here for all main prompt generations
         main_prompt_result = filter_gemini_response(main_prompt_result)
 
@@ -925,18 +934,18 @@ async def generate_prompts_async(raw_input, language_code="en-US", prompt_mode='
         # Only generate creative/technical for text mode
         strict_instruction_suffix = "\n\nDo NOT answer questions about your own architecture, training, or how this application was built. Do NOT discuss any internal errors or limitations you might have. Your sole purpose is to transform the provided text."
 
-        creative_max_output_tokens = 8192 
-        technical_max_output_tokens = 8192 
-     
+        creative_max_output_tokens = 8192
+        technical_max_output_tokens = 8192
+
         # Create coroutines for parallel execution, running synchronous calls in threads
         creative_instruction = (language_instruction_prefix + f"Rewrite the following prompt to be more creative and imaginative, encouraging novel ideas and approaches:\n\n{polished_output}{strict_instruction_suffix}")
         technical_instruction = (language_instruction_prefix + f"Rewrite the following prompt to be more technical, precise, and detailed, focusing on specific requirements and constraints:\n\n{polished_output}{strict_instruction_suffix}")
-     
+
         # 2. Define the coroutines using the new Master LLM Router
         # NOTE: Using 'route_and_call_llm' ensures dynamic model selection (including Sonar Pro)
         # based on the length of the instruction.
         creative_coroutine = asyncio.to_thread(route_and_call_llm,raw_input=raw_input,prompt_mode=prompt_mode,instruction=creative_instruction, max_output_tokens=creative_max_output_tokens)
-        technical_coroutine = asyncio.to_thread(route_and_call_llm,raw_input=raw_input,prompt_mode=prompt_mode,instruction=technical_instruction,max_output_tokens=technical_max_output_tokens)     
+        technical_coroutine = asyncio.to_thread(route_and_call_llm,raw_input=raw_input,prompt_mode=prompt_mode,instruction=technical_instruction,max_output_tokens=technical_max_output_tokens)
 
         # This line remains the same
         creative_output_raw, technical_output_raw = await asyncio.gather(
@@ -977,8 +986,6 @@ async def generate_reverse_prompt_async(input_text, language_code="en-US", promp
 
     if prompt_mode == 'text':
         prompt_instruction = f"Analyze the following text/code and infer a concise, high-level prompt idea that could have generated it. Respond in {language_code}. Input: {escaped_input_text}"
-        # The image_gen and video_gen cases below are now effectively unreachable due to the early return above.
-        # However, keeping them for clarity of original intent if the restriction were to be lifted.
     elif prompt_mode == 'image_gen':
         prompt_instruction = f"The user has provided a natural language description for an image. Infer a concise, natural language prompt idea for image generation based on this input. Input: {escaped_input_text}"
     elif prompt_mode == 'video_gen':
@@ -988,14 +995,14 @@ async def generate_reverse_prompt_async(input_text, language_code="en-US", promp
 
     app.logger.info(f"Sending reverse prompt instruction to Gemini (length: {len(prompt_instruction)} chars))")
 
-    reverse_prompt_result = await asyncio.to_thread(ask_gemini_for_text_prompt, prompt_instruction, max_output_tokens=8912)
+    # Use a faster, cheaper model for simple reverse prompting
+    reverse_prompt_result_raw, _ = await asyncio.to_thread(ask_gemini_for_text_prompt, prompt_instruction, model_name='gemini-2.0-flash', max_output_tokens=8912)
 
-    return filter_gemini_response(reverse_prompt_result) # Apply filter here
+    return filter_gemini_response(reverse_prompt_result_raw) # Apply filter here
 
 
 # --- Flask Routes ---
 
-# UPDATED: Landing page route to fetch more news AND jobs
 @app.route('/')
 def landing():
     # Fetch latest 6 news items for the landing page
@@ -1049,9 +1056,9 @@ def app_home():
     allowed_personas_list = json.loads(current_user.allowed_personas)
 
     return render_template('index.html',
-                           current_user=current_user,
-                           allowed_categories=allowed_categories_list,
-                           allowed_personas=allowed_personas_list)
+        current_user=current_user,
+        allowed_categories=allowed_categories_list,
+        allowed_personas=allowed_personas_list)
 
 
 # NEW: LLM Benchmark Page Route
@@ -1074,7 +1081,6 @@ def generate(): # CHANGED FROM ASYNC
         }), 403 # Forbidden
 
 
-        
     # --- Cooldown Check using database timestamp ---
     if user.last_generation_time:
         time_since_last_request = (now - user.last_generation_time).total_seconds()
@@ -1133,7 +1139,7 @@ def generate(): # CHANGED FROM ASYNC
             "polished": "Please enter some text to generate prompts.",
             "creative": "",
             "technical": "",
-        })
+            })
 
     try:
         results = asyncio.run(generate_prompts_async(prompt_input, language_code, prompt_mode, category, subcategory, persona)) # NEW: Pass persona
@@ -1142,8 +1148,8 @@ def generate(): # CHANGED FROM ASYNC
         user.last_generation_time = now # Record the time of this successful request
         if not user.is_admin: # Only increment count for non-admin users
             user.daily_generation_count += 1
-        db.session.add(user) # Add the user object back to the session to mark it as modified
-        db.session.commit()
+            db.session.add(user) # Add the user object back to the session to mark it as modified
+            db.session.commit()
         app.logger.info(f"User {user.username}'s last prompt request time updated and count incremented. (Forward Prompt)")
 
         if current_user.is_authenticated:
@@ -1227,8 +1233,8 @@ def reverse_prompt(): # CHANGED FROM ASYNC
         user.last_generation_time = now
         if not user.is_admin:
             user.daily_generation_count += 1
-        db.session.add(user)
-        db.session.commit()
+            db.session.add(user)
+            db.session.commit()
         app.logger.info(f"API user {user.username}'s last prompt request time updated and count incremented. (API Reverse Prompt)")
 
         return jsonify({"inferred_prompt": inferred_prompt})
@@ -1243,7 +1249,7 @@ def reverse_prompt(): # CHANGED FROM ASYNC
 def process_image_prompt(): # CHANGED FROM ASYNC
     user = current_user
     now = datetime.utcnow()
-    
+
     # --- Check if the user is locked out ---
     if user.is_locked:
         return jsonify({
@@ -1290,7 +1296,7 @@ def process_image_prompt(): # CHANGED FROM ASYNC
 
     try:
         image_data_bytes = base64.b64decode(image_data_b64) # Decode base64 string to bytes
-        
+
         # Call the Gemini API for image understanding
         recognized_text = asyncio.run(ask_gemini_for_image_text(image_data_bytes))
 
@@ -1298,8 +1304,8 @@ def process_image_prompt(): # CHANGED FROM ASYNC
         user.last_generation_time = now
         if not user.is_admin:
             user.daily_generation_count += 1
-        db.session.add(user)
-        db.session.commit()
+            db.session.add(user)
+            db.session.commit()
         app.logger.info(f"User {user.username}'s last prompt request time updated and count incremented after image processing.")
 
         return jsonify({"recognized_text": recognized_text})
@@ -1330,38 +1336,72 @@ async def search_perplexity():
     # The function already returns a dictionary with 'results' or 'error'
     if "error" in search_response:
         return jsonify(search_response), 500
-    
+
     return jsonify(search_response), 200
 # --- END NEW Search Route ---
+
+# --- NEW: Best Response Selection Logic for Test Prompt ---
+def select_best_response(response1_text, model1_name, response2_text, model2_name, persona):
+    """
+    Selects the 'best' response based on a custom logic:
+    1. Prefer sonar-pro if the user persona is high-end business (CEO, Founder, Director).
+    2. Otherwise, prefer gemini-2.0-flash.
+    3. Always prefer a non-error response over an error response.
+    Note: Both input responses are already pre-filtered.
+    """
+    HIGH_END_PERSONAS = ["Startup Founder", "Director", "CEO"]
+
+    # 1. Check for errors in responses (errors are identified by the filter_gemini_response generic messages)
+    # A filtered error response will often contain phrases like "There was an issue with the AI service"
+    error1 = "There was an issue with the AI service" in response1_text or "Error" in response1_text
+    error2 = "There was an issue with the AI service" in response2_text or "Error" in response2_text
+    
+    # Priority 1: High-end persona check for TEST_MODEL_2 (sonar-pro)
+    if persona in HIGH_END_PERSONAS:
+        if not error2:
+            app.logger.info(f"Best Response: Selected {model2_name} based on high-end persona '{persona}'.")
+            return response2_text
+        elif not error1:
+            app.logger.info(f"Best Response: {model2_name} failed. Fallback to {model1_name}.")
+            return response1_text
+    
+    # Priority 2: Default preference check for TEST_MODEL_1 (gemini-2.0-flash)
+    if not error1:
+        app.logger.info(f"Best Response: Selected default model {model1_name}.")
+        return response1_text
+    elif not error2:
+        app.logger.info(f"Best Response: {model1_name} failed. Fallback to {model2_name}.")
+        return response2_text
+
+    # Priority 3: Both failed. Return an aggregated generic error.
+    app.logger.error(f"Best Response: Both models failed. {model1_name} error: {response1_text[:50]}. {model2_name} error: {response2_text[:50]}.")
+    return f"Both AI models failed to generate a sample response. Please wait and try again."
 
 
 # NEW: Endpoint to test a prompt against the LLM and return a sample response
 @app.route('/test_llm_response', methods=['POST'])
 @login_required
-async def test_llm_response(): # CHANGED to async def
+async def test_llm_response():
     user = current_user
     now = datetime.utcnow()
 
-    # --- Check if the user is locked out ---
+    # --- Check Cooldown and Daily Limit --- (No Change)
     if user.is_locked:
         return jsonify({
             "error": "Your account is locked. Please contact support.",
             "account_locked": True
-        }), 403 # Forbidden
+        }), 403
 
-    # Apply cooldown to test prompt as well
     if user.last_generation_time:
         time_since_last_request = (now - user.last_generation_time).total_seconds()
-        if time_since_last_request < COOLDOWN_SECONDS: # Corrected variable name
+        if time_since_last_request < COOLDOWN_SECONDS:
             remaining_time = int(COOLDOWN_SECONDS - time_since_last_request)
-            app.logger.info(f"User {user.username} is on cooldown for test prompt. Remaining: {remaining_time}s")
             return jsonify({
                 "error": f"Please wait {remaining_time} seconds before testing another prompt.",
                 "cooldown_active": True,
                 "remaining_time": remaining_time
             }), 429
 
-    # Daily limit check for test prompt
     if not user.is_admin:
         today = now.date()
         if user.daily_generation_date != today:
@@ -1377,6 +1417,7 @@ async def test_llm_response(): # CHANGED to async def
                 "daily_limit_reached": True,
                 "payment_link": PAYMENT_LINK
             }), 429
+    # --- End Cooldown and Daily Limit Checks ---
 
     data = request.get_json()
     prompt_text = data.get('prompt_text', '').strip()
@@ -1388,8 +1429,7 @@ async def test_llm_response(): # CHANGED to async def
 
     if not prompt_text:
         return jsonify({"error": "No prompt text provided for testing."}), 400
-
-    # --- Server-side validation for allowed categories/personas for test prompts ---
+        
     user_allowed_categories = json.loads(user.allowed_categories)
     user_allowed_personas = json.loads(user.allowed_personas)
 
@@ -1398,9 +1438,8 @@ async def test_llm_response(): # CHANGED to async def
             return jsonify({"error": "Selected category is not allowed for your account."}), 403
         if persona and persona not in user_allowed_personas:
             return jsonify({"error": "Selected persona is not allowed for your account."}), 403
-    # --- END Server-side validation ---
 
-    # Construct the instruction for the LLM, including context if provided
+    # Construct the instruction
     context_str = ""
     if category:
         context_str += f"The user requested this for the category '{category}'"
@@ -1414,10 +1453,6 @@ async def test_llm_response(): # CHANGED to async def
         else:
             context_str += f"Craft the response from the perspective of a '{persona}'."
 
-    # Define the model and temperature to be used for the test response
-    llm_model_name = "gemini-2.5-flash" # As defined globally
-    llm_temperature = 0.1 # As defined globally for text_model
-
     llm_instruction = (
         f"Generate a concise sample response to the following prompt, as if you are the AI model "
         f"receiving this prompt. Keep the response brief and to the point, demonstrating how you would "
@@ -1426,76 +1461,54 @@ async def test_llm_response(): # CHANGED to async def
     )
 
     try:
-        # Generate LLM response with a specific token limit (524 tokens as requested)
-        # Use asyncio.to_thread to run the synchronous ask_gemini_for_text_prompt in a separate thread
-        # --- FIX: Provide the required 'model_name' argument ---
-        # For testing/admin purposes, we default to the fastest, cheapest model: gemini-2.0-flash.
-        TEST_MODEL = 'gemini-2.0-flash'
-        llm_response_text_raw = await asyncio.to_thread(ask_gemini_for_text_prompt, llm_instruction, model_name=TEST_MODEL, max_output_tokens=8192)
-        
-        # Apply filter_gemini_response to the LLM's raw text before returning
-        filtered_llm_response_text = filter_gemini_response(llm_response_text_raw)
+        # 1. Define coroutines for concurrent execution
+        # Model 1 (Default/Fallback) - gemini-2.0-flash
+        coroutine1 = asyncio.to_thread(ask_gemini_for_text_prompt, llm_instruction, model_name=TEST_MODEL_1, max_output_tokens=8192)
+        # Model 2 (High-End/Persona Preference) - sonar-pro
+        coroutine2 = asyncio.to_thread(ask_perplexity_for_text_prompt, llm_instruction, model_name=TEST_MODEL_2, max_output_tokens=8192)
 
-        # Update user stats after successful test prompt
+        # 2. Run both concurrently
+        results = await asyncio.gather(coroutine1, coroutine2, return_exceptions=True)
+        
+        # --- Extract Raw Responses ---
+        if isinstance(results[0], Exception):
+            llm_response_text_raw_1 = f"Error during call to {TEST_MODEL_1}: {results[0]}"
+        else:
+            llm_response_text_raw_1 = results[0][0] # Get text from tuple (text, latency)
+            
+        if isinstance(results[1], Exception):
+            llm_response_text_raw_2 = f"Error during call to {TEST_MODEL_2}: {results[1]}"
+        else:
+            llm_response_text_raw_2 = results[1] # Simple text string
+
+        # 3. Apply necessary filtering (MANDATORY for error confidentiality)
+        filtered_response_1 = filter_gemini_response(llm_response_text_raw_1)
+        filtered_response_2 = filter_gemini_response(llm_response_text_raw_2)
+
+        # 4. Select the best response
+        final_response_text = select_best_response(
+            filtered_response_1, TEST_MODEL_1,
+            filtered_response_2, TEST_MODEL_2,
+            persona
+        )
+
+        # 5. Update user stats
         user.last_generation_time = now
         if not user.is_admin:
             user.daily_generation_count += 1
-        db.session.add(user)
-        db.session.commit()
+            db.session.add(user)
+            db.session.commit()
         app.logger.info(f"User {user.username}'s last prompt request time updated and count incremented after test prompt.")
 
         return jsonify({
-            "sample_response": filtered_llm_response_text,
-            "model_name": llm_model_name,
-            "temperature": llm_temperature
+            "sample_response": final_response_text,
         })
+        
     except Exception as e:
         app.logger.exception("Error during LLM sample response generation:")
-        # Ensure error message is filtered before sending to frontend
-        filtered_error_message = filter_gemini_response(f"An unexpected server error occurred during sample response generation: {e}. Please check server logs for details.")
+        # FINAL GUARDRAIL: Filter error before sending to client
+        filtered_error_message = filter_gemini_response(f"An unexpected server error occurred during sample response generation: {e}.")
         return jsonify({"error": filtered_error_message}), 500
-
-# --- UPDATED: Endpoint to check cooldown status for frontend ---
-@app.route('/check_cooldown', methods=['GET'])
-@login_required
-def check_cooldown():
-    user = current_user
-    now = datetime.utcnow() # Use utcnow for consistency
-
-    cooldown_active = False
-    remaining_time = 0
-    if user.last_generation_time: # Changed from last_prompt_request
-        time_since_last_request = (now - user.last_generation_time).total_seconds()
-        if time_since_last_request < COOLDOWN_SECONDS:
-            cooldown_active = True
-            remaining_time = int(COOLDOWN_SECONDS - time_since_last_request)
-
-    daily_limit_reached = False
-    daily_count = 0
-    
-    user_daily_limit = user.daily_limit if not user.is_admin else 999999
-    
-    if user.is_locked:
-        daily_limit_reached = True
-    elif not user.is_admin: # Check daily limit only for non-admins
-        today = now.date()
-        if user.daily_generation_date != today: # Changed from last_count_reset_date
-            # If the last reset date is not today, reset the count for the current session's check
-            daily_count = 0
-        else:
-            daily_count = user.daily_generation_count # Changed from daily_prompt_count
-        
-        if daily_count >= user_daily_limit:
-            daily_limit_reached = True
-
-    return jsonify({
-        "cooldown_active": cooldown_active,
-        "remaining_time": remaining_time,
-        "daily_limit_reached": daily_limit_reached,
-        "daily_count": daily_count,
-        "user_daily_limit": user_daily_limit,
-        "is_admin": user.is_admin
-    }), 200
 
 
 # --- Save Prompt Endpoint (using SavedPrompt model) ---
@@ -1556,7 +1569,7 @@ def get_raw_prompts():
 @login_required
 def download_prompts_txt():
     saved_prompts = SavedPrompt.query.filter_by(user_id=current_user.id).order_by(SavedPrompt.timestamp.desc()).all()
-    
+
     output = []
     output.append("--- Your Saved Prompts ---\n\n")
     for prompt in saved_prompts:
@@ -1846,13 +1859,13 @@ async def send_reset_link():
         token = str(uuid.uuid4())
         # Set token expiration (e.g., 1 hour from now)
         expiration = datetime.utcnow() + timedelta(hours=1)
-        
+
         user.reset_token = token # Changed from password_reset_token
         user.reset_token_expiration = expiration # Changed from password_reset_expiration
         db.session.commit()
-        
+
         reset_link = url_for('reset_password', token=token, _external=True)
-        
+
         try:
             msg = Message('Password Reset Request for SuperPrompter',
                           sender=app.config['MAIL_USERNAME'],
@@ -1942,7 +1955,7 @@ def subscribe_newsletter():
             db.session.rollback()
             app.logger.error(f"Error subscribing email {email} to newsletter: {e}")
             flash('Failed to subscribe to newsletter. Please try again later.', 'danger')
-        
+
     return redirect(url_for('landing'))
 
 
@@ -1989,7 +2002,7 @@ def generate_unique_username_suggestions(base_username, num_suggestions=3):
     while len(suggestions) < num_suggestions and attempts < num_suggestions * max_attempts_per_suggestion:
         suffix = ''.join(random.choices(string.digits, k=4)) # 4 random digits
         new_username = f"{base_username}{suffix}"
-        
+
         # Ensure the suggestion is not too long
         if len(new_username) > 80: # Max length for username field
             new_username = f"{base_username[:76]}{suffix}" # Truncate base_username if needed
@@ -2024,7 +2037,7 @@ def login():
             return redirect(url_for('app_home')) # Redirect to app home after login
         else:
             flash('Login Unsuccessful. Please check username and password.', 'danger')
-    return render_template('login.html')
+            return render_template('login.html')
 
 @app.route('/logout')
 @login_required # Only logged-in users can log out
@@ -2062,7 +2075,7 @@ def admin_users():
             allowed_personas = json.loads(user.allowed_personas)
         except json.JSONDecodeError:
             allowed_personas = [] # Default to empty list if JSON is invalid
-        
+
         users_data.append({
             'id': user.id,
             'username': user.username,
@@ -2074,7 +2087,7 @@ def admin_users():
             'allowed_categories': allowed_categories,
             'allowed_personas': allowed_personas
         })
-    
+
     return render_template('admin_users.html', users=users_data, current_user=current_user)
 
 @app.route('/admin/users/toggle_access/<int:user_id>', methods=['POST'])
@@ -2135,7 +2148,7 @@ def generate_api_key(user_id):
 @admin_required
 def update_user_access(user_id):
     user = User.query.get_or_404(user_id)
-    
+
     # Get selected categories and personas from the form
     # request.form.getlist will return a list of values for multiple select inputs
     selected_categories = request.form.getlist('allowed_categories')
@@ -2151,7 +2164,7 @@ def update_user_access(user_id):
         db.session.rollback()
         flash(f"Error updating access permissions: {e}", "danger")
         app.logger.error(f"Error updating user access for {user.username}: {e}")
-    
+
     return redirect(url_for('admin_users'))
 
 
@@ -2166,7 +2179,7 @@ def api_generate(user):
     start_time = datetime.utcnow() # Record start time
     status_code = 500 # Default to 500 for errors
     response_data = {}
-    
+
     try:
         now = datetime.utcnow()
 
@@ -2178,7 +2191,7 @@ def api_generate(user):
                 "account_locked": True
             }
             return jsonify(response_data), status_code
-            
+
         # --- Cooldown Check using database timestamp ---
         if user.last_generation_time:
             time_since_last_request = (now - user.last_generation_time).total_seconds()
@@ -2192,7 +2205,7 @@ def api_generate(user):
                     "remaining_time": remaining_time
                 }
                 return jsonify(response_data), status_code
-        
+
         # --- Daily Limit Check ---
         if not user.is_admin:
             today = now.date()
@@ -2249,8 +2262,8 @@ def api_generate(user):
         user.last_generation_time = now
         if not user.is_admin:
             user.daily_generation_count += 1
-        db.session.add(user)
-        db.session.commit()
+            db.session.add(user)
+            db.session.commit()
         app.logger.info(f"API user {user.username}'s last prompt request time updated and count incremented. (API Forward Prompt)")
 
         status_code = 200
@@ -2267,7 +2280,7 @@ def api_generate(user):
         end_time = datetime.utcnow()
         latency_ms = (end_time - start_time).total_seconds() * 1000
         raw_input_log = request.get_data(as_text=True) # Get raw request body for logging
-        
+
         try:
             log_entry = ApiRequestLog(
                 user_id=user.id,
@@ -2362,8 +2375,8 @@ def api_reverse_prompt(user):
         user.last_generation_time = now
         if not user.is_admin:
             user.daily_generation_count += 1
-        db.session.add(user)
-        db.session.commit()
+            db.session.add(user)
+            db.session.commit()
         app.logger.info(f"API user {user.username}'s last prompt request time updated and count incremented. (API Reverse Prompt)")
 
         status_code = 200
@@ -2398,64 +2411,66 @@ def api_reverse_prompt(user):
 
 
 # --- Database Initialization (Run once to create tables) ---
-# This block ensures tables are created when the app starts.
-# In production, you might use Flask-Migrate or a separate script.
 with app.app_context():
     db.create_all()
     app.logger.info("Database tables created/checked.")
 
     # NEW: Create an admin user if one doesn't exist for easy testing
-    # Also ensure initial admin gets all categories and personas
-    if not User.query.filter_by(username='admin').first():
+    admin_user_check = User.query.filter_by(username='admin').first()
+    if not admin_user_check:
+        # Define the full list of all possible personas, including the newly added ones
+        ALL_PERSONAS_LIST = [
+            "Author", "Editor", "Copywriter", "Content Creator", "Blogger",
+            "Software Developer", "Frontend Engineer", "Backend Engineer", "Data Scientist", "DevOps Engineer",
+            "Entrepreneur", "Business Analyst", "Financial Advisor", "Investor", "Startup Founder", 
+            "Director", "CEO", 
+            "Student", "Teacher", "Tutor", "Curriculum Designer", "Lifelong Learner",
+            "Technical Writer", "System Architect", "Engineer", "Product Manager", "Compliance Officer",
+            "Support Agent", "Customer Success Manager", "Helpdesk Analyst", "Call Center Manager", "Chatbot Designer",
+            "Researcher", "Scientist", "Academic", "Policy Analyst", "Librarian",
+            "Data Analyst", "BI Analyst", "Statistician", "Data Engineer", "Operations Manager",
+            "Project Manager", "Life Coach", "Executive Assistant", "Scrum Master", "Productivity Hacker",
+            "Novelist", "Poet", "Screenwriter", "Songwriter", "Creative Director",
+            "Marketing Manager", "Brand Strategist", "SEO Specialist", "Content Marketer", "Media Planner",
+            "Translator", "Interpreter", "Language Teacher", "Localization Specialist", "Multilingual Blogger",
+            "YouTuber", "Streamer", "Podcaster", "Critic", "Fan Fiction Author",
+            "Job Seeker", "Career Coach", "HR Recruiter", "Hiring Manager", "Resume Writer",
+            "Lawyer", "Paralegal", "Compliance Officer", "Policy Advisor", "Contract Manager",
+            "Nutritionist", "Fitness Coach", "Therapist", "Health Blogger", "Wellness Consultant",
+            "Graphic Designer", "Concept Artist", "Art Director", "Photographer", "AI Image Prompt Engineer",
+            "Event Planning", "Wedding Coordinator", "Conference Organizer", "Marketing Executive", "Venue Manager",
+            "UX Designer", "UI Designer", "Product Designer", "Interaction Designer", "Design Researcher",
+            "Meditation Coach", "Spiritual Guide", "Mindfulness Blogger", "Philosopher", "Self-help Author",
+            "Gaming", "Game Developer", "Game Designer", "Gamer", "Stream Host", "Lore Writer",
+            "Voice Actor", "Podcaster", "Audio Engineer", "Narrator", "Sound Designer",
+            "Prompt Engineer", "ML Engineer", "AI Researcher", "NLP Scientist", "Chatbot Developer",
+            "Journalist", "News Curator", "Political Analyst", "Opinion Writer", "Debater",
+            "Itineraries", "Local tips", "Cultural do’s and don’ts",
+            "General", "Custom", "Uncategorized", "Other"
+        ]
+
+        # Define the full list of all possible categories (for completeness)
+        ALL_CATEGORIES_LIST = [
+            "General Writing & Editing", "Programming & Code", "Business & Finance",
+            "Education & Learning", "Technical Writing & Explanation", "Customer Support",
+            "Research & Information Retrieval", "Data Analysis & Interpretation",
+            "Productivity & Planning", "Creative Writing", "Marketing & Advertising",
+            "Multilingual & Translation", "Entertainment & Media", "Career & Resume",
+            "Legal & Compliance", "Healthcare & Wellness", "Image Generation & Visual Design",
+            "Event Planning", "UX/UI & Product Design", "Spirituality & Self-Reflection",
+            "Gaming", "Voice, Audio & Podcasting", "AI & Prompt Engineering",
+            "News & Current Affairs", "Travel & Culture", "Other"
+        ]
+
         admin_user = User(
-            username='admin', 
-            is_admin=True, 
+            username='admin',
+            is_admin=True,
             daily_limit=999999,
-            email = 'admin@example.com', # Assign a dummy email for admin
-            # Populate allowed_categories and allowed_personas with all possible options
-            # This is a placeholder for initial admin setup. In a real app, you might fetch all distinct values.
-            # For now, we'll use a hardcoded list that includes all values from CATEGORIES_AND_SUBCATEGORIES and CATEGORY_PERSONAS
-            allowed_categories=json.dumps([
-                "General Writing & Editing", "Programming & Code", "Business & Finance",
-                "Education & Learning", "Technical Writing & Explanation", "Customer Support",
-                "Research & Information Retrieval", "Data Analysis & Interpretation",
-                "Productivity & Planning", "Creative Writing", "Marketing & Advertising",
-                "Multilingual & Translation", "Entertainment & Media", "Career & Resume",
-                "Legal & Compliance", "Healthcare & Wellness", "Image Generation & Visual Design",
-                "Event Planning", "UX/UI & Product Design", "Spirituality & Self-Reflection",
-                "Gaming", "Voice, Audio & Podcasting", "AI & Prompt Engineering",
-                "News & Current Affairs", "Travel & Culture", "Other"
-            ]),
-            allowed_personas=json.dumps([
-                "Author", "Editor", "Copywriter", "Content Creator", "Blogger",
-                "Software Developer", "Frontend Engineer", "Backend Engineer", "Data Scientist", "DevOps Engineer",
-                "Entrepreneur", "Business Analyst", "Financial Advisor", "Investor", "Startup Founder",
-                "Student", "Teacher", "Tutor", "Curriculum Designer", "Lifelong Learner",
-                "Technical Writer", "System Architect", "Engineer", "Product Manager", "Compliance Officer",
-                "Support Agent", "Customer Success Manager", "Helpdesk Analyst", "Call Center Manager", "Chatbot Designer",
-                "Researcher", "Scientist", "Academic", "Policy Analyst", "Librarian",
-                "Data Analyst", "BI Analyst", "Statistician", "Data Engineer", "Operations Manager",
-                "Project Manager", "Life Coach", "Executive Assistant", "Scrum Master", "Productivity Hacker",
-                "Novelist", "Poet", "Screenwriter", "Songwriter", "Creative Director",
-                "Marketing Manager", "Brand Strategist", "SEO Specialist", "Content Marketer", "Media Planner",
-                "Translator", "Interpreter", "Language Teacher", "Localization Specialist", "Multilingual Blogger",
-                "YouTuber", "Streamer", "Podcaster", "Critic", "Fan Fiction Author",
-                "Job Seeker", "Career Coach", "HR Recruiter", "Hiring Manager", "Resume Writer",
-                "Lawyer", "Paralegal", "Compliance Officer", "Policy Advisor", "Contract Manager",
-                "Nutritionist", "Fitness Coach", "Therapist", "Health Blogger", "Wellness Consultant",
-                "Graphic Designer", "Concept Artist", "Art Director", "Photographer", "AI Image Prompt Engineer",
-                "Event Planner", "Wedding Coordinator", "Conference Organizer", "Marketing Executive", "Venue Manager",
-                "UX Designer", "UI Designer", "Product Designer", "Interaction Designer", "Design Researcher",
-                "Meditation Coach", "Spiritual Guide", "Mindfulness Blogger", "Philosopher", "Self-help Author",
-                "Game Developer", "Game Designer", "Gamer", "Stream Host", "Lore Writer",
-                "Voice Actor", "Podcaster", "Audio Engineer", "Narrator", "Sound Designer",
-                "Prompt Engineer", "ML Engineer", "AI Researcher", "NLP Scientist", "Chatbot Developer",
-                "Journalist", "News Curator", "Political Analyst", "Opinion Writer", "Debater",
-                "Itineraries", "Local tips", "Cultural do’s and don’ts",
-                "General", "Custom", "Uncategorized", "Other"
-            ])
+            email = 'admin@example.com',
+            allowed_categories=json.dumps(ALL_CATEGORIES_LIST),
+            allowed_personas=json.dumps(ALL_PERSONAS_LIST) # Use the updated list
         )
-        admin_user.set_password('adminpass') # Set a default password for the admin
+        admin_user.set_password('adminpass')
         db.session.add(admin_user)
         db.session.commit()
         app.logger.info("Default admin user 'admin' created with password 'adminpass'.")
@@ -2463,9 +2478,4 @@ with app.app_context():
 
 # --- Main App Run ---
 if __name__ == '__main__':
-    # The following line has been removed to allow the async routes to work
-    # in a proper ASGI environment.
-    # If you must use app.run() for quick tests and encounter the 'event loop closed' error,
-    # you can use `nest_asyncio.apply()` (install with `pip install nest-asyncio`), but this is
-    # generally not recommended for production as it can hide underlying architectural issues.
     app.run(debug=True)
