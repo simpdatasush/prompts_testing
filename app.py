@@ -509,9 +509,13 @@ def ask_gemini_for_text_prompt(prompt_instruction, model_name, max_output_tokens
         )
         raw_gemini_text = response.text if response and response.text else "No response from model."
         return raw_gemini_text
+    except ValueError as e: # <--- CATCH THE VALUE ERROR HERE
+        app.logger.error(f"DEBUG: Unexpected ValueError from Gemini API ({model_name}): {e}", exc_info=True)
+        # Pass the raw error string through the filter before returning
+        return filter_gemini_response(f"AI response failed due to an issue: {str(e)}")
     except google_api_exceptions.GoogleAPICallError as e:
         app.logger.error(f"DEBUG: Google API Call Error ({model_name}): {e}", exc_info=True)
-        # --- FIX: Pass the raw error string through the filter before returning ---
+        # Apply filter to the exception message
         return filter_gemini_response(f"Error communicating with Gemini API: {str(e)}")
     except Exception as e:
         app.logger.error(f"DEBUG: Unexpected Error calling Gemini API ({model_name}): {e}", exc_info=True)
@@ -525,23 +529,18 @@ def ask_gemini_for_structured_prompt(prompt_instruction, generation_config=None,
     model = genai.GenerativeModel(model_name)
 
     try:
-        # We explicitly set response_mime_type to 'application/json' for structured output
-        current_generation_config = generation_config.copy() if generation_config else {}
-        if "max_output_tokens" not in current_generation_config:
-            current_generation_config["max_output_tokens"] = max_output_tokens
-
-        # Ensure response_mime_type is set for structured output
-        current_generation_config["response_mime_type"] = "application/json"
-
+        # ... (API call setup) ...
         response = model.generate_content(
             contents=[{"role": "user", "parts": [{"text": prompt_instruction}]}],
             generation_config=current_generation_config
         )
         raw_gemini_text = response.text if response and response.text else "No response from model."
         return raw_gemini_text
+    except ValueError as e: # <--- CATCH THE VALUE ERROR HERE
+        app.logger.error(f"DEBUG: Unexpected ValueError from Gemini API (structured_gen_model - {model_name}): {e}", exc_info=True)
+        return filter_gemini_response(f"AI structured generation failed due to an issue: {str(e)}")
     except google_api_exceptions.GoogleAPICallError as e:
         app.logger.error(f"DEBUG: Google API Call Error (structured_gen_model - {model_name}): {e}", exc_info=True)
-        # --- FIX: Pass the raw error string through the filter before returning ---
         return filter_gemini_response(f"Error communicating with Gemini API: {str(e)}")
     except Exception as e:
         app.logger.error(f"DEBUG: Unexpected Error calling Gemini API (structured_gen_model - {model_name}): {e}", exc_info=True)
@@ -551,24 +550,14 @@ def ask_gemini_for_structured_prompt(prompt_instruction, generation_config=None,
 # --- NEW: Gemini API for Image Understanding (Synchronous wrapper for vision_model) ---
 def ask_gemini_for_image_text(image_data_bytes):
     try:
-        # Prepare the image for the Gemini API
-        image_part = {
-            "mime_type": "image/jpeg", # Assuming JPEG for simplicity, can be dynamic
-            "data": image_data_bytes
-        }
-
-        # Instruction for the model to extract text
-        prompt_parts = [
-            image_part,
-            "Extract all text from this image, including handwritten text. Provide only the extracted text, without any additional commentary or formatting."
-        ]
-
         response = vision_model.generate_content(prompt_parts)
         extracted_text = response.text if response and response.text else ""
         return extracted_text # Return raw text for further processing/filtering
+    except ValueError as e: # <--- CATCH THE VALUE ERROR HERE
+        app.logger.error(f"DEBUG: Unexpected ValueError from Gemini API (vision_model): {e}", exc_info=True)
+        return filter_gemini_response(f"AI image text extraction failed due to an issue: {str(e)}")
     except google_api_exceptions.GoogleAPICallError as e:
         app.logger.error(f"Error calling Gemini API for image text extraction: {e}", exc_info=True)
-        # --- FIX: Pass the raw error string through the filter before returning ---
         return filter_gemini_response(f"Error extracting text from image: {str(e)}")
     except Exception as e:
         app.logger.error(f"Unexpected Error calling Gemini API for image text extraction: {e}", exc_info=True)
