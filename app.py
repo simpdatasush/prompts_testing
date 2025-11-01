@@ -527,16 +527,30 @@ def ask_gemini_for_structured_prompt(prompt_instruction, generation_config=None,
     # We enforce Gemini 2.5 Flash for all structured/multimedia tasks for reliability.
     model_name = 'gemini-2.5-flash'
     model = genai.GenerativeModel(model_name)
+    
+    # --- FIX: Initialize current_generation_config to ensure it's defined in scope ---
+    current_generation_config = {} 
+    # --- END FIX ---
 
     try:
-        # ... (API call setup) ...
+        # We explicitly set response_mime_type to 'application/json' for structured output
+        
+        # REFINED LOGIC: Use a copy of the passed config, or an empty dict if None
+        current_generation_config = generation_config.copy() if generation_config else {}
+        
+        if "max_output_tokens" not in current_generation_config:
+            current_generation_config["max_output_tokens"] = max_output_tokens
+
+        # Ensure response_mime_type is set for structured output
+        current_generation_config["response_mime_type"] = "application/json"
+
         response = model.generate_content(
             contents=[{"role": "user", "parts": [{"text": prompt_instruction}]}],
             generation_config=current_generation_config
         )
         raw_gemini_text = response.text if response and response.text else "No response from model."
         return raw_gemini_text
-    except ValueError as e: # <--- CATCH THE VALUE ERROR HERE
+    except ValueError as e: 
         app.logger.error(f"DEBUG: Unexpected ValueError from Gemini API (structured_gen_model - {model_name}): {e}", exc_info=True)
         return filter_gemini_response(f"AI structured generation failed due to an issue: {str(e)}")
     except google_api_exceptions.GoogleAPICallError as e:
