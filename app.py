@@ -1570,14 +1570,12 @@ def check_cooldown():
         "is_admin": user.is_admin
     }), 200
 
-
-# --- Save Prompt Endpoint (using SavedPrompt model) ---
 @app.route('/save_prompt', methods=['POST'])
 @login_required
 def save_prompt():
     data = request.get_json()
     prompt_text = data.get('prompt_text')
-    prompt_type = data.get('prompt_type') # 'polished', 'creative', 'technical'
+    prompt_type = data.get('prompt_type')
 
     if not prompt_text or not prompt_type:
         return jsonify({'success': False, 'message': 'Missing prompt text or type.'}), 400
@@ -1590,20 +1588,21 @@ def save_prompt():
             timestamp=datetime.utcnow()
         )
         db.session.add(new_saved_prompt)
-            # --- GAMIFICATION: Award points for saving ---
-            points_awarded = 10
-            current_user.total_points += points_awarded
-            db.session.add(current_user) # Ensure user object is marked for update
-            app.logger.info(f"User {current_user.username} awarded {points_awarded} points for saving. Total: {current_user.total_points}")
-            # --- END GAMIFICATION ---
-     
+
+        # --- GAMIFICATION: Award points for saving (CORRECTLY INDENTED) ---
+        points_awarded = 10
+        current_user.total_points += points_awarded
+        db.session.add(current_user)
+        app.logger.info(f"User {current_user.username} awarded {points_awarded} points for saving. Total: {current_user.total_points}")
+        # --- END GAMIFICATION ---
+
         db.session.commit()
         return jsonify({'success': True, 'message': 'Prompt saved successfully!', 'new_points': points_awarded, 'total_points': current_user.total_points})
     except Exception as e:
         logging.error(f"Error saving prompt: {e}")
+        db.session.rollback()
         return jsonify({'success': False, 'message': f'Database error: {e}'}), 500
 
-# app.py (New endpoint added around line 2040)
 
 # --- NEW: Endpoint for Social Sharing Points (Gamification) ---
 @app.route('/award_share_points', methods=['POST'])
