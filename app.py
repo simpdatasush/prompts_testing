@@ -159,9 +159,6 @@ class User(db.Model, UserMixin):
     daily_limit = db.Column(db.Integer, default=FREE_DAILY_LIMIT) # NEW: Per-user daily limit
     api_key = db.Column(db.String(100), unique=True, nullable=True) # NEW: API Key for each user
 
-    # NEW: Column for Gamification Points
-    total_points = db.Column(db.Integer, default=0)
-
     # NEW: Columns for category and persona access control (stored as JSON strings)
     # Default to empty JSON list to indicate no specific restrictions initially
     allowed_categories = db.Column(db.Text, nullable=False, default='[]')
@@ -1147,16 +1144,6 @@ def generate(): # CHANGED FROM ASYNC
     try:
         results = asyncio.run(generate_prompts_async(prompt_input, language_code, prompt_mode, category, subcategory, persona)) # NEW: Pass persona
 
-        # --- GAMIFICATION: Award points for complexity and settings ---
-        points_awarded = calculate_generation_points(prompt_input, prompt_mode, language_code, category, persona)
-        
-        # --- GAMIFICATION: Award refinement points ---
-        points_awarded += award_refinement_points(prompt_input)
-        
-        user.total_points += points_awarded
-        app.logger.info(f"User {user.username} awarded {points_awarded} points for generation. Total: {user.total_points}")
-        # --- END GAMIFICATION ---
-
         # --- Update last_generation_time in database and Save raw_input ---
         user.last_generation_time = now # Record the time of this successful request
         if not user.is_admin: # Only increment count for non-admin users
@@ -1181,51 +1168,6 @@ def generate(): # CHANGED FROM ASYNC
         app.logger.exception("Error during prompt generation in endpoint:")
         return jsonify({"error": f"An unexpected server error occurred: {e}. Please check server logs for details."}), 500
 
-# app.py (New function added around line 3219, before /reverse_prompt)
-# ...
-def calculate_generation_points(raw_input, prompt_mode, language_code, category, persona):
-    """Calculates points based on complexity and settings usage."""
-    points = 0
-    raw_length = len(raw_input)
-    
-    # 1. Complexity-Based Points
-    if raw_length < 300:
-        points += 50    # Tier 1
-    elif raw_length <= 900:
-        points += 100   # Tier 2 (Adjusted to 100 for better scaling)
-    else:
-        points += 150   # Tier 3 (Adjusted to 150 for better scaling)
-
-    # 2. Settings Utilization Points
-    
-    # Prompt Mode Select (5 Points - awarded if not 'text')
-    if prompt_mode in ['image_gen', 'video_gen']:
-        points += 5
-        
-    # Language Select (5 Points - awarded if not 'en-US')
-    if language_code != 'en-US':
-        points += 5
-        
-    # Category Select (10 Points - awarded if selected)
-    if category:
-        points += 10
-        
-    # Persona Select (15 Points - awarded if selected)
-    if persona:
-        points += 15
-        
-    return points
-
-
-def award_refinement_points(raw_input):
-    """Awards 25 points if the input appears to be a previous AI response (refinement)."""
-    # Simple heuristic: look for <pre> tags or common AI output phrases 
-    # (this check is safer on the backend than the more direct frontend check)
-    if raw_input.startswith(('<pre>', 'As an AI', 'Based on your prompt', '{')) or \
-       re.search(r'\n{2,}', raw_input): # Multiple line breaks might suggest a previous response
-        return 25
-    return 0
-# ...
 
 # --- NEW: Reverse Prompt Endpoint ---
 @app.route('/reverse_prompt', methods=['POST'])
@@ -1286,12 +1228,6 @@ def reverse_prompt(): # CHANGED FROM ASYNC
 
     try:
         inferred_prompt = asyncio.run(generate_reverse_prompt_async(input_text, language_code, prompt_mode))
-
-        # --- GAMIFICATION: Award points for reverse prompt ---
-        points_awarded = 75 # Flat rate for reverse prompting
-        user.total_points += points_awarded
-        app.logger.info(f"User {user.username} awarded {points_awarded} points for reverse prompt. Total: {user.total_points}")
-        # --- END GAMIFICATION ---
 
         # Update user stats after successful reverse prompt
         user.last_generation_time = now
@@ -1587,16 +1523,8 @@ def save_prompt():
             timestamp=datetime.utcnow()
         )
         db.session.add(new_saved_prompt)
-
-        # --- GAMIFICATION: Award points for saving ---
-        points_awarded = 10
-        current_user.total_points += points_awarded
-        db.session.add(current_user) # Add user back to session to save points
-        app.logger.info(f"User {current_user.username} awarded {points_awarded} points for saving. Total: {current_user.total_points}")
-        # --- END GAMIFICATION ---
-     
         db.session.commit()
-        return jsonify({'success': True, 'message': 'Prompt saved successfully!', 'new_points': points_awarded, 'total_points': current_user.total_points})
+        return jsonify({'success': True, 'message': 'Prompt saved successfully!'})
     except Exception as e:
         logging.error(f"Error saving prompt: {e}")
         return jsonify({'success': False, 'message': f'Database error: {e}'}), 500
@@ -2474,23 +2402,6 @@ def api_reverse_prompt(user):
             app.logger.error(f"Error saving API request log for /api/v1/reverse: {log_e}")
             db.session.rollback()
 
-# app.py (New endpoint added around line 4276)
-# NEW: API endpoint for social sharing points
-@app.route('/award_share_points', methods=['POST'])
-@login_required
-def award_share_points():
-    points_awarded = 15
-    try:
-        current_user.total_points += points_awarded
-        db.session.commit()
-        app.logger.info(f"User {current_user.username} awarded {points_awarded} points for sharing. Total: {current_user.total_points}")
-        return jsonify({'success': True, 'new_points': points_awarded, 'total_points': current_user.total_points})
-    except Exception as e:
-        db.session.rollback()
-        app.logger.error(f"Error awarding share points: {e}")
-        return jsonify({'success': False, 'message': 'Failed to award points.'}), 500
-
-# ... (Database initialization follows)
 
 # --- Database Initialization (Run once to create tables) ---
 # This block ensures tables are created when the app starts.
