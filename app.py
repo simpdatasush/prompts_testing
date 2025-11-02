@@ -1382,10 +1382,13 @@ def process_image_prompt(): # CHANGED FROM ASYNC
 
 
 # --- NEW: Route to Handle Perplexity Search Request from Frontend ---
+# app.py (Modified /search_perplexity route)
+
 @app.route('/search_perplexity', methods=['POST'])
 @login_required
 async def search_perplexity():
     # Expects JSON data: {"prompt_text": "the published prompt content"}
+    user = current_user # Get current user object
     data = request.get_json()
     prompt_text = data.get('prompt_text', '').strip()
 
@@ -1393,17 +1396,33 @@ async def search_perplexity():
         return jsonify({"error": "No prompt text provided for search."}), 400
 
     # Execute the synchronous search function in a separate thread
-    # Note: We must use asyncio.to_thread because the Perplexity SDK is synchronous
-    # and the route is asynchronous (async def)
     search_response = await asyncio.to_thread(perform_perplexity_search, prompt_text)
-
-    # Log the search activity (optional, but good practice)
-    app.logger.info(f"User {current_user.id} performed Perplexity search: {prompt_text[:50]}...")
 
     # The function already returns a dictionary with 'results' or 'error'
     if "error" in search_response:
+        app.logger.error(f"Perplexity search failed for user {user.id}: {search_response['error']}")
         return jsonify(search_response), 500
     
+    # --- GAMIFICATION: Award points for successful search ---
+    # Points awarded: +20
+    points_awarded = 20
+    user.total_points += points_awarded
+    db.session.add(user)
+    
+    try:
+        # Commit the point change to the database
+        db.session.commit()
+        app.logger.info(f"User {user.username} awarded {points_awarded} points for Web Search. Total: {user.total_points}")
+    except Exception as e:
+        db.session.rollback()
+        app.logger.error(f"Error awarding points to user {user.id} after Perplexity search: {e}")
+        # Continue execution even if point commit fails
+    # --- END GAMIFICATION ---
+
+    # Log the search activity (optional, but good practice)
+    app.logger.info(f"User {user.id} performed Perplexity search: {prompt_text[:50]}...")
+    
+    # Return the successful search results
     return jsonify(search_response), 200
 # --- END NEW Search Route ---
 
@@ -1508,6 +1527,12 @@ async def test_llm_response(): # CHANGED to async def
         
         # Apply filter_gemini_response to the LLM's raw text before returning
         filtered_llm_response_text = filter_gemini_response(llm_response_text_raw)
+
+        # --- GAMIFICATION: Award points for successful test ---
+        points_awarded = 10
+        user.total_points += points_awarded
+        app.logger.info(f"User {user.username} awarded {points_awarded} points for Test LLM. Total: {user.total_points}")
+        # --- END GAMIFICATION ---
 
         # Update user stats after successful test prompt
         user.last_generation_time = now
