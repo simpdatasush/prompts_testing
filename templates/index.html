@@ -352,6 +352,20 @@ background-color: #218838;
 border-color: #218838;
 }
 
+/* NEW CSS for Points Display (Highly Recommended but kept outside main blocks for minimum disruption) */
+.prompt-mode-selector .points-display {
+    margin-left: auto; 
+    display: flex; 
+    align-items: center; 
+    font-size: 1.2rem; 
+    font-weight: bold; 
+    color: #3f51b5;
+}
+.prompt-mode-selector .points-display i {
+    color: gold; 
+    margin-right: 5px;
+}
+
 /* Image Input Specific Styles */
 .image-input-section {
 background-color: #e0f7fa; /* Light cyan background */
@@ -628,6 +642,7 @@ color: #6c757d;
 margin-top: 5px;
 text-align: right; /* Align metadata to the right */
 }
+
 </style>
 </head>
 <body>
@@ -678,6 +693,13 @@ text-align: right; /* Align metadata to the right */
 <option value="image_gen">Image Creation</option>
 <option value="video_gen">Video Creation</option>
 </select>
+
+    {% if current_user.is_authenticated %}
+    <div id="user_points_display" class="points-display">
+        <i class="fas fa-star" title="Total Points"></i>
+        <span>Points: </span><span id="total_points_value">{{ current_user.total_points | default(0) }}</span>
+    </div>
+    {% endif %}
 </div>
 
 <div class="settings-section">
@@ -699,19 +721,6 @@ text-align: right; /* Align metadata to the right */
 <option value="ko-KR"> 한국어 (대한민국) </option>
 <option value="zh-CN"> 中文 (普通话, 简体) </option>
 <option value="hi-IN"> हिन्दी (भारत) </option>
-</select>
-</div>
-<div id="text-category-selectors" class="row">
-<div class="col-md-6 mb-3">
-<label for="category_select" class="form-label">Category:</label>
-<select id="category_select" class="form-control">
-<option value="">Select a category</option>
-</select>
-</div>
-<div class="col-md-6 mb-3">
-<label for="subcategory_select" class="form-label">Subcategory:</label>
-<select id="subcategory_select" class="form-control" disabled>
-<option value="">Select a subcategory</option>
 </select>
 </div>
 <div id="text-persona-selector" class="col-md-6 mb-3">
@@ -761,7 +770,7 @@ Upload an image containing handwritten text. The AI will attempt to recognize it
 </div>
 <div id="app_output" class="mt-4 info">Application messages will appear here.</div>
 </div>
-</div>
+</div>    
 
 <div class="prompt-output-grid">
 <div class="col">
@@ -824,7 +833,7 @@ Upload an image containing handwritten text. The AI will attempt to recognize it
 </div>
 </div>
 </div>
-</div>
+</div>   
 
 <div class="llm-buttons-section">
 <h3>Open Prompt in LLM</h3>
@@ -924,6 +933,8 @@ Note: For Image and Video Creation modes, the sample response will be a short te
 <script src="https://cdn.jsdelivr.net/npm/popper.js@1.16.1/dist/umd/popper.min.js"></script>
 <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
 <script>
+
+
 // --- Message Translations ---
 const MESSAGES = {
 "en-US": {
@@ -1429,6 +1440,176 @@ updateAllButtonStates(); // Re-check status to re-enable buttons
 }
 }, 1000);
 }
+
+// Event listeners for save buttons
+document.querySelectorAll('.save-button').forEach(button => {
+button.addEventListener('click', async function() {
+const promptType = this.dataset.promptType;
+const promptElementId = `${promptType}_output`;
+const promptText = document.getElementById(promptElementId).textContent.trim();
+const selectedLanguage = document.getElementById('lang_select').value;
+const appOutput = document.getElementById('app_output');
+
+if (!promptText) {
+appOutput.textContent = getMessage("no_prompt_to_save", selectedLanguage, {type: "selected"});
+appOutput.className = 'mt-4 warning';
+return;
+}
+
+try {
+const response = await fetch('/save_prompt', {
+method: 'POST',
+headers: {
+'Content-Type': 'application/json'
+},
+body: JSON.stringify({
+prompt_text: promptText,
+prompt_type: promptType
+})
+});
+
+if (!response.ok) {
+if (response.status === 302) {
+window.location.href = response.url;
+return;
+}
+const errorData = await response.json();
+throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
+}
+
+const data = await response.json();
+if (data.success) {
+        // --- MODIFIED for GAMIFICATION ---
+        if (data.total_points) {
+            updatePointsDisplay(data.total_points);
+            appOutput.textContent = getMessage("prompt_saved", selectedLanguage) + ` (+${data.new_points} points!)`;
+        } else {
+            appOutput.textContent = getMessage("prompt_saved", selectedLanguage);
+        }
+        // --- END MODIFIED ---
+appOutput.className = 'mt-4 success';
+fetchAndDisplaySavedPrompts();
+} else {
+appOutput.textContent = getMessage("save_failed", selectedLanguage) + ` ${data.message}`;
+appOutput.className = 'mt-4 danger';
+console.error("Save error:", data.message);
+}
+} catch (error) {
+appOutput.textContent = getMessage("network_error_save", selectedLanguage) + ` ${error.message}`;
+appOutput.className = 'mt-4 danger';
+console.error("Network error saving prompt:", error);
+}
+});
+});
+
+
+// --- NEW GAMIFICATION HELPER FUNCTION ---
+/**
+ * Updates the displayed points value on the frontend.
+ * @param {number} newTotal The new cumulative total points.
+ */
+function updatePointsDisplay(newTotal) {
+    const totalPointsValueElement = document.getElementById('total_points_value');
+    if (totalPointsValueElement) {
+        totalPointsValueElement.textContent = newTotal;
+    }
+}
+
+// NEW: Function to award points via API after successful share window open
+async function awardSharePoints(platform) {
+    const selectedLanguage = document.getElementById('lang_select').value;
+    const appOutput = document.getElementById('app_output');
+    
+    try {
+        const response = await fetch('/award_share_points', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' }
+        });
+        
+        if (response.ok) {
+            const data = await response.json();
+            if (data.success) {
+                updatePointsDisplay(data.total_points);
+                const platformName = platform === 'x' ? 'X' : 'LinkedIn';
+                // Provide merged feedback to the user
+                appOutput.textContent = `✅ Prompt opened for sharing on ${platformName}! (+${data.new_points} points!)`;
+                appOutput.className = 'mt-4 success';
+            } else {
+                appOutput.textContent = `Error awarding share points: ${data.message}`;
+                appOutput.className = 'mt-4 danger';
+            }
+        } else {
+            appOutput.textContent = `Network error awarding share points.`;
+            appOutput.className = 'mt-4 danger';
+        }
+    } catch (error) {
+        console.error("Error awarding share points:", error);
+        appOutput.textContent = `Network error awarding share points.`;
+        appOutput.className = 'mt-4 danger';
+    }
+}
+// --- END NEW GAMIFICATION HELPER FUNCTION ---
+
+
+// --- MODIFIED: Social Media Share Functions (Calls New API) ---
+function sharePromptToSocial(platform, promptText) {
+const appName = "Creative AI Prompt Generator";
+// Use a truncated text for the URL to ensure it fits the limits, but keep it informative
+const truncatedPrompt = promptText.length > 200 ? promptText.substring(0, 200) + '...' : promptText;
+const shareText = `🔥 Just generated this awesome prompt using the ${appName}: \n\n"${truncatedPrompt}"\n\n#AIPrompt #GenerativeAI #PromptEngineering`;
+
+let url = '';
+
+if (platform === 'x') {
+// X (Twitter) share URL
+url = `https://twitter.com/intent/tweet?text=${encodeURIComponent(shareText)}`;
+} else if (platform === 'linkedin') {
+// LinkedIn share URL for a new post
+const appUrl = window.location.origin;
+// The URL parameter is mandatory and creates the link preview.
+// We rely on the user to paste the generated text manually for maximum effect.
+url = `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(appUrl)}`;
+} else {
+return;
+}
+
+window.open(url, '_blank', 'width=600,height=400');
+    // Call the new API to award points after opening the share window
+    awardSharePoints(platform);
+}
+// --- END MODIFIED: Social Media Share Functions ---
+
+
+document.addEventListener('DOMContentLoaded', () => {
+fetchAndDisplaySavedPrompts();
+fetchAndDisplayRawPrompts();
+updateAllButtonStates();
+handlePromptModeChange();
+settingsContent.classList.remove('show');
+settingsToggleIcon.classList.remove('fa-chevron-down');
+settingsToggleIcon.classList.add('fa-chevron-up');
+
+// NEW: Event listener for all Share buttons
+document.querySelectorAll('.share-button').forEach(button => {
+button.addEventListener('click', function() {
+const platform = this.dataset.llmShare;
+const elementId = this.dataset.promptElementId;
+const promptText = document.getElementById(elementId).textContent.trim();
+const selectedLanguage = document.getElementById('lang_select').value;
+const appOutput = document.getElementById('app_output');
+
+if (!promptText) {
+appOutput.textContent = getMessage("no_prompt_to_save", selectedLanguage, {type: "selected"});
+appOutput.className = 'mt-4 warning';
+return;
+}
+
+sharePromptToSocial(platform, promptText);
+
+// The feedback and points update is now handled inside awardSharePoints
+});
+});
+});
 
 // --- LLM Niche Map (Based on Screenshot 2025-10-29) ---
 const LLM_NICHE_MAP = [
