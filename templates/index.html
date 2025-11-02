@@ -175,6 +175,19 @@ color: #155724; /* Dark green text */
 border-color: #c3e6cb;
 }
 
+/* NEW CSS for Points Display: Pushes to the right and sets colors */
+.points-display {
+    margin-left: auto; /* Pushes the element to the far right */
+    display: flex; 
+    align-items: center; 
+    font-size: 1.2rem; 
+    font-weight: bold; 
+    color: #3f51b5;
+}
+.points-display i {
+    color: gold; 
+    margin-right: 5px;
+}    
 
 /* Prompt Output Grid */
 .prompt-output-grid {
@@ -678,6 +691,12 @@ text-align: right; /* Align metadata to the right */
 <option value="image_gen">Image Creation</option>
 <option value="video_gen">Video Creation</option>
 </select>
+    {% if current_user.is_authenticated %}
+    <div id="user_points_display" class="points-display">
+        <i class="fas fa-star" title="Total Points"></i>
+        <span>Points: </span><span id="total_points_value">{{ current_user.total_points | default(0) }}</span>
+    </div>
+    {% endif %}
 </div>
 
 <div class="settings-section">
@@ -1116,6 +1135,56 @@ pastRawRequestsListElement.innerHTML = '<li class="list-group-item">Error loadin
 }
 }
 
+// --- NEW GAMIFICATION HELPER FUNCTIONS ---
+/**
+ * Updates the displayed points value on the frontend.
+ * @param {number} newTotal The new cumulative total points.
+ */
+function updatePointsDisplay(newTotal) {
+    const totalPointsValueElement = document.getElementById('total_points_value');
+    if (totalPointsValueElement) {
+        totalPointsValueElement.textContent = newTotal;
+    }
+}
+
+// NEW: Function to award points via API after successful share window open
+async function awardSharePoints(platform) {
+    const selectedLanguage = document.getElementById('lang_select').value;
+    const appOutput = document.getElementById('app_output');
+    
+    // Check if the user is logged in before attempting to award points
+    if (!document.getElementById('total_points_value')) return; 
+
+    try {
+        const response = await fetch('/award_share_points', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' }
+        });
+        
+        if (response.ok) {
+            const data = await response.json();
+            if (data.success) {
+                updatePointsDisplay(data.total_points);
+                const platformName = platform === 'x' ? 'X' : 'LinkedIn';
+                // Provide merged feedback to the user
+                appOutput.textContent = `✅ Prompt opened for sharing on ${platformName}! (+${data.new_points} points!)`;
+                appOutput.className = 'mt-4 success';
+            } else {
+                appOutput.textContent = `Error awarding share points: ${data.message}`;
+                appOutput.className = 'mt-4 danger';
+            }
+        } else {
+            appOutput.textContent = `Network error awarding share points.`;
+            appOutput.className = 'mt-4 danger';
+        }
+    } catch (error) {
+        console.error("Error awarding share points:", error);
+        appOutput.textContent = `Network error awarding share points.`;
+        appOutput.className = 'mt-4 danger';
+    }
+}
+
+// --- END NEW GAMIFICATION HELPER FUNCTIONS ---
 
 const promptModeSelect = document.getElementById('prompt_mode_select');
 const categorySelect = document.getElementById('category_select');
@@ -1944,12 +2013,22 @@ const errorData = await response.json();
 throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
 }
 
+// index.html (Around line 6013 - Inside save button click listener)
+
 const data = await response.json();
 if (data.success) {
-appOutput.textContent = getMessage("prompt_saved", selectedLanguage);
+    // --- MODIFIED for GAMIFICATION ---
+    if (data.total_points) {
+        updatePointsDisplay(data.total_points);
+        appOutput.textContent = getMessage("prompt_saved", selectedLanguage) + ` (+${data.new_points} points!)`;
+    } else {
+        appOutput.textContent = getMessage("prompt_saved", selectedLanguage);
+    }
+    // --- END MODIFIED ---
 appOutput.className = 'mt-4 success';
 fetchAndDisplaySavedPrompts();
 } else {
+// ... (error logic retained) ...
 appOutput.textContent = getMessage("save_failed", selectedLanguage) + ` ${data.message}`;
 appOutput.className = 'mt-4 danger';
 console.error("Save error:", data.message);
@@ -1985,9 +2064,10 @@ return;
 }
 
 window.open(url, '_blank', 'width=600,height=400');
+    // Call the new API to award points after opening the share window
+    awardSharePoints(platform);
 }
-// --- END NEW: Social Media Share Functions ---
-
+// --- END MODIFIED: Social Media Share Functions ---
 
 document.addEventListener('DOMContentLoaded', () => {
 fetchAndDisplaySavedPrompts();
