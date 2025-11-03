@@ -512,14 +512,17 @@ def ask_gemini_for_text_prompt(prompt_instruction, model_name, max_output_tokens
         )
         raw_gemini_text = response.text if response and response.text else "No response from model."
         return raw_gemini_text
-    except ValueError as e: # <--- CATCH THE VALUE ERROR HERE
+    except ValueError as e: 
         app.logger.error(f"DEBUG: Unexpected ValueError from Gemini API ({model_name}): {e}", exc_info=True)
-        # Pass the raw error string through the filter before returning
         return filter_gemini_response(f"AI response failed due to an issue: {str(e)}")
+    except google_api_exceptions.ResourceExhausted as e: # Explicitly catch 429 ResourceExhausted
+        app.logger.error(f"DEBUG: Gemini API ResourceExhausted error: {e}", exc_info=True)
+        # Custom friendly message for the user
+        return f"Error communicating with SuperPrompter AI, please try after sometime."
     except google_api_exceptions.GoogleAPICallError as e:
         app.logger.error(f"DEBUG: Google API Call Error ({model_name}): {e}", exc_info=True)
-        # Apply filter to the exception message
-        return filter_gemini_response(f"Error communicating with Gemini API: {str(e)}")
+        # Apply filter, but for low-level connection/generic API errors, use the filter's output
+        return filter_gemini_response(f"Error communicating with SuperPrompter AI, please try after sometime.")
     except Exception as e:
         app.logger.error(f"DEBUG: Unexpected Error calling Gemini API ({model_name}): {e}", exc_info=True)
         return filter_gemini_response(f"An unexpected error occurred: {str(e)}")
@@ -553,12 +556,16 @@ def ask_gemini_for_structured_prompt(prompt_instruction, generation_config=None,
         )
         raw_gemini_text = response.text if response and response.text else "No response from model."
         return raw_gemini_text
-    except ValueError as e: 
+    except ValueError as e:
         app.logger.error(f"DEBUG: Unexpected ValueError from Gemini API (structured_gen_model - {model_name}): {e}", exc_info=True)
         return filter_gemini_response(f"AI structured generation failed due to an issue: {str(e)}")
+    except google_api_exceptions.ResourceExhausted as e: # Explicitly catch 429 ResourceExhausted
+        app.logger.error(f"DEBUG: Gemini API ResourceExhausted error: {e}", exc_info=True)
+        # Custom friendly message for the user
+        return f"Error communicating with SuperPrompter AI, please try after sometime."
     except google_api_exceptions.GoogleAPICallError as e:
         app.logger.error(f"DEBUG: Google API Call Error (structured_gen_model - {model_name}): {e}", exc_info=True)
-        return filter_gemini_response(f"Error communicating with Gemini API: {str(e)}")
+        return filter_gemini_response(f"Error communicating with SuperPrompter AI, please try after sometime.")
     except Exception as e:
         app.logger.error(f"DEBUG: Unexpected Error calling Gemini API (structured_gen_model - {model_name}): {e}", exc_info=True)
         return filter_gemini_response(f"An unexpected error occurred: {str(e)}")
