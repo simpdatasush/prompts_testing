@@ -7,18 +7,30 @@
 <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css">
 <style>
+:root {
+    --color-background-body: #f0f2f5;
+    --color-background-main: #ffffff;
+    --color-text-primary: #333;
+    --color-card-background: #ffffff;
+    --color-card-border: #e0e0e0;
+    --color-header-background: #343a40;
+    --color-alert-info: #e9ecef;
+}
+
+/* 2. Apply variables to default elements */
 body {
 font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    /* Use variables for primary colors */
+    background-color: var(--color-background-body); 
+    color: var(--color-text-primary);
 margin: 0;
-padding: 0; /* Remove body padding as main-content-wrapper will handle it */
-background-color: #f0f2f5; /* Consistent background */
-color: #333;
+padding: 0;
 line-height: 1.6;
 }
 
 /* New Header Styles */
 .app-header {
-background-color: #343a40;
+background-color: var(--color-header-background); /* Use variable */
 color: #ffffff;
 padding: 15px 30px;
 display: flex;
@@ -69,7 +81,7 @@ text-decoration: underline;
 .main-content-wrapper {
 max-width: 1200px; /* Wider container */
 margin: 30px auto;
-background-color: #ffffff;
+    background-color: var(--color-background-main); /* Use variable */
 padding: 30px;
 border-radius: 10px;
 box-shadow: 0 6px 20px rgba(0, 0, 0, 0.1);
@@ -88,7 +100,7 @@ margin-bottom: 30px;
 }
 
 .prompt-input-section .card-body {
-padding: 25px;
+border: 1px solid var(--color-card-border); /* Use variable */
 }
 
 .prompt-input-section label {
@@ -156,8 +168,47 @@ overflow-y: auto;
 }
 /* Specific styles for app_output messages */
 #app_output.info {
-background-color: #e9ecef;
-color: #555;
+background-color: var(--color-alert-info); /* Use variable */
+color: var(--color-text-primary); /* Use variable */
+}
+
+/* 3. Dark Mode Overrides */
+body.dark-mode {
+    --color-background-body: #121212;
+    --color-background-main: #1e1e1e;
+    --color-text-primary: #f0f0f0;
+    --color-card-background: #2b2b2b;
+    --color-card-border: #444;
+    --color-header-background: #000000;
+    --color-alert-info: #2b2b2b;
+}
+body.dark-mode .app-header {
+    box-shadow: 0 0 10px rgba(255, 255, 255, 0.1);
+}
+body.dark-mode .prompt-input-section textarea,
+body.dark-mode .form-control {
+    background-color: #383838;
+    color: var(--color-text-primary);
+    border-color: #555;
+    box-shadow: none !important;
+}
+body.dark-mode .history-sections .list-group-item,
+body.dark-mode .prompt-output-grid .card,
+body.dark-mode .modal-content-custom {
+    background-color: var(--color-card-background);
+    color: var(--color-text-primary);
+}
+body.dark-mode .prompt-output-grid pre {
+    background-color: #383838;
+    border-color: #555;
+}
+body.dark-mode .token-count {
+    background-color: #383838;
+    color: #bbb;
+}
+body.dark-mode .settings-header h5 {
+    color: var(--color-text-primary);
+}
 }
 #app_output.warning {
 background-color: #fff3cd; /* Light yellow */
@@ -647,7 +698,7 @@ text-align: right; /* Align metadata to the right */
 <header class="app-header">
 <div class="logo-section">
 <img src="https://placehold.co/40x40/007bff/ffffff?text=AI" alt="Creative AI Logo" class="app-logo">
-<h1>SuperPrompter AI</h1>
+<h1>SuperPrompter</h1>
 </div>
 <div class="auth-section">
 {% if current_user.is_authenticated and current_user.is_admin %}
@@ -660,11 +711,17 @@ text-align: right; /* Align metadata to the right */
 <span class="navbar-text mr-2">Logged in as: <strong>{{ current_user.username }}</strong></span>
 <a href="{{ url_for('logout') }}" class="btn btn-outline-light btn-sm">Logout</a>
 {% elif current_user.is_authenticated %}
+    <button id="theme_switcher_btn" class="btn btn-outline-light btn-sm mr-2" onclick="toggleTheme()">
+        <i class="fas fa-sun"></i> <span>Light Mode</span>
+    </button>
 <a href="{{ url_for('llm_benchmark') }}" class="btn btn-outline-light btn-sm mr-2">LLM Benchmarks</a>
 <a href="https://buymeacoffee.com/simpaisush" target="_blank" class="subscribe-btn mr-2">Subscribe</a>
 <span class="navbar-text mr-2">Welcome, <strong class="username">{{ current_user.username }}</strong>!</span>
 <a href="{{ url_for('logout') }}" class="btn btn-outline-light btn-sm">Logout</a>
 {% else %}
+    <button id="theme_switcher_btn_guest" class="btn btn-outline-light btn-sm mr-2" onclick="toggleTheme()">
+        <i class="fas fa-sun"></i> <span>Light Mode</span>
+    </button>
 <a href="{{ url_for('llm_benchmark') }}" class="btn btn-outline-light btn-sm mr-2">LLM Benchmarks</a>
 <a href="{{ url_for('login') }}" class="btn btn-outline-light btn-sm mr-2">Login</a>
 <a href="{{ url_for('register') }}" class="btn btn-light btn-sm">Register</a>
@@ -1425,9 +1482,53 @@ processImageButton.disabled = true;
 setLLMWebsiteButtonsDisabled(false, selectedMode);
 }
 
+// index.html (Before DOMContentLoaded)
 
+// --- NEW: Theme Switcher Logic ---
+
+/**
+ * Toggles the 'dark-mode' class on the body and saves the preference.
+ */
+function toggleTheme() {
+    const isDarkMode = document.body.classList.toggle('dark-mode');
+    const themeBtn = document.getElementById('theme_switcher_btn') || document.getElementById('theme_switcher_btn_guest');
+
+    if (isDarkMode) {
+        localStorage.setItem('theme', 'dark');
+        if (themeBtn) {
+            themeBtn.innerHTML = '<i class="fas fa-moon"></i> <span>Dark Mode</span>';
+        }
+    } else {
+        localStorage.setItem('theme', 'default');
+        if (themeBtn) {
+            themeBtn.innerHTML = '<i class="fas fa-sun"></i> <span>Light Mode</span>';
+        }
+    }
+}
+
+/**
+ * Checks local storage on load and applies the saved theme.
+ */
+function initializeTheme() {
+    const savedTheme = localStorage.getItem('theme');
+    const themeBtn = document.getElementById('theme_switcher_btn') || document.getElementById('theme_switcher_btn_guest');
+    
+    if (savedTheme === 'dark') {
+        document.body.classList.add('dark-mode');
+        if (themeBtn) {
+            themeBtn.innerHTML = '<i class="fas fa-moon"></i> <span>Dark Mode</span>';
+        }
+    } else {
+        // Ensure default styling and text if no theme is saved or if it's 'default'
+        if (themeBtn) {
+            themeBtn.innerHTML = '<i class="fas fa-sun"></i> <span>Light Mode</span>';
+        }
+    }
+}
+
+// index.html (Inside DOMContentLoaded listener)
 document.addEventListener('DOMContentLoaded', () => {
-fetchAndDisplaySavedPrompts();
+    initializeTheme(); // Call theme initializer first!
 fetchAndDisplayRawPrompts();
 updateAllButtonStates(); // Initial check and update of all button states
 handlePromptModeChange(); // Set initial state for buttons based on default mode
