@@ -3,11 +3,141 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Admin - Manage Gifts</title>
+<title>Admin - Manage Gifts (Prizes)</title>
 <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css">
 <style>
-/* --- Retain all existing CSS from admin_news.docx (lines 10-133) --- */
+/* --- CSS copied directly from admin_news.html to ensure consistency --- */
+body {
+font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+background-color: #f0f2f5;
+color: #333;
+line-height: 1.6;
+display: flex;
+flex-direction: column;
+min-height: 100vh;
+}
+/* Consistent Header Style */
+.app-header {
+background-color: #343a40;
+color: #ffffff;
+padding: 15px 30px;
+display: flex;
+justify-content: space-between;
+align-items: center;
+box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08); /* Adjusted for consistency */
+}
+
+.app-header .logo-section {
+display: flex;
+align-items: center;
+}
+
+.app-header .app-logo {
+height: 40px;
+margin-right: 15px;
+border-radius: 5px;
+}
+
+.app-header h1.header-title {
+margin: 0;
+font-size: 1.8rem;
+color: #ffffff;
+text-align: left;
+}
+
+.app-header .auth-section a,
+.app-header .auth-section span {
+color: #ffffff;
+margin-left: 20px;
+font-weight: normal;
+text-decoration: none;
+transition: color 0.2s ease;
+}
+
+.app-header .auth-section a:hover {
+color: #007bff;
+text-decoration: underline;
+}
+
+.container {
+flex-grow: 1;
+max-width: 900px;
+background-color: #fff;
+padding: 30px;
+border-radius: 8px;
+box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+margin: 50px auto;
+}
+h2 {
+text-align: center;
+color: #2c3e50;
+margin-bottom: 20px;
+}
+.form-group label {
+font-weight: bold;
+}
+.table-responsive {
+margin-top: 30px;
+}
+.table th {
+background-color: #e9ecef;
+color: #343a40;
+font-weight: bold;
+}
+.table td a {
+color: #007bff;
+text-decoration: none;
+}
+.table td a:hover {
+text-decoration: underline;
+}
+.btn-action {
+margin-right: 5px;
+}
+.alert-container {
+margin-bottom: 20px;
+}
+.footer {
+width: 100%;
+padding: 15px;
+text-align: center;
+font-size: 0.8rem;
+color: #777;
+background-color: #e9ecef;
+border-top: 1px solid #dee2e6;
+margin-top: auto;
+}
+.footer-content {
+max-width: 900px;
+margin: 0 auto;
+}
+.footer-content a {
+color: #007bff;
+text-decoration: none;
+}
+.footer-content a:hover {
+text-decoration: underline;
+}
+@media (max-width: 768px) {
+.app-header {
+flex-direction: column;
+padding: 10px 15px;
+}
+.app-header .logo-section {
+margin-bottom: 10px;
+}
+.app-header h1.header-title {
+font-size: 1.5rem;
+}
+.container {
+margin: 20px auto;
+padding: 20px;
+}
+.footer {
+padding: 10px;
+}
+}
 </style>
 </head>
 <body>
@@ -56,7 +186,7 @@
 </div>
 <div class="form-group">
 <label for="points_required">Points Required (Price):</label>
-<input type="number" class="form-control" id="points_required" name="points_required" required min="0">
+<input type="number" class="form-control" id="points_required" name="points_required" required min="0" value="100">
 </div>
 <div class="form-group">
 <label for="description">Description (Optional):</label>
@@ -86,7 +216,7 @@
 <td>{{ gift.id }}</td>
 <td>{{ gift.name }}</td>
 <td>{{ gift.points_required }}</td>
-<td>{{ gift.description | truncate(100) }}</td>
+<td>{{ gift.description | truncate(100) if gift.description else 'N/A' }}</td>
 <td>{{ gift.timestamp.strftime('%Y-%m-%d %H:%M') }}</td>
 <td>
 <form action="{{ url_for('repost_gift', gift_id=gift.id) }}" method="POST" style="display:inline;">
