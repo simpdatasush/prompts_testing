@@ -218,6 +218,21 @@ class NewsItem(db.Model):
     def __repr__(self):
         return f"NewsItem('{self.title}', '{self.published_date}')"
 
+# app.py (New Gift Model added around line 197)
+class Gift(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(200), nullable=False)
+    description = db.Column(db.Text, nullable=True)
+    points_required = db.Column(db.Integer, default=0, nullable=False)
+    is_active = db.Column(db.Boolean, default=True) # Used instead of timestamp for sorting/reposting
+    timestamp = db.Column(db.DateTime, default=datetime.utcnow)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False) # Admin who added it
+
+    def __repr__(self):
+        return f"Gift('{self.name}', '{self.points_required} points')"
+
+# NOTE: The User model already has 'total_points' from the previous steps.
+
 # --- JobListing Model (renamed from Job for consistency) ---
 class JobListing(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -1065,6 +1080,20 @@ def landing():
     # NEW: Fetch latest 3 SamplePrompts for the landing page
     sample_prompts = SamplePrompt.query.order_by(SamplePrompt.timestamp.desc()).limit(3).all()
 
+    # 1. Fetch Top 5 Users for Leaderboard
+    top_users = User.query.with_entities(User.username, User.total_points).order_by(User.total_points.desc()).limit(5).all()
+
+    leaderboard_data = []
+    for rank, (username, points) in enumerate(top_users):
+        leaderboard_data.append({
+            'rank': rank + 1,
+            'username': mask_username(username),
+            'points': points
+        })
+
+    # 2. Fetch all active gifts
+    gifts = Gift.query.filter_by(is_active=True).order_by(Gift.points_required.asc()).all()
+
     # Process sample_prompts to include the selected display_type's content
     display_prompts = []
     for prompt in sample_prompts:
@@ -1077,7 +1106,13 @@ def landing():
             'timestamp': prompt.timestamp
         })
 
-    return render_template('landing.html', news_items=news_items, job_listings=job_listings, sample_prompts=display_prompts, current_user=current_user)
+    return render_template('landing.html', 
+                           news_items=news_items, 
+                           job_listings=job_listings, 
+                           sample_prompts=display_prompts, 
+                           leaderboard_data=leaderboard_data, # NEW
+                           gifts=gifts, # NEW
+                           current_user=current_user)
 
 
 # UPDATED: Route to view a specific news item (using NewsItem model)
@@ -1112,7 +1147,7 @@ def app_home():
                            current_user=current_user,
                            allowed_categories=allowed_categories_list,
                            allowed_personas=allowed_personas_list)
-
+# The link needs to be updated in index.html (not app.py route itself)
 
 # NEW: LLM Benchmark Page Route
 @app.route('/llm_benchmark')
@@ -1960,6 +1995,75 @@ def change_password():
 
     return render_template('change_password.html', current_user=current_user)
 
+# app.py (New Admin Gift Management Routes)
+
+@app.route('/admin/gifts', methods=['GET'])
+@admin_required
+def admin_gifts():
+    gifts = Gift.query.order_by(Gift.timestamp.desc()).all()
+    return render_template('admin_gifts.html', gifts=gifts, current_user=current_user)
+
+@app.route('/admin/gifts/add', methods=['POST'])
+@admin_required
+def add_gift():
+    name = request.form.get('name')
+    description = request.form.get('description')
+    points_required_str = request.form.get('points_required')
+    
+    try:
+        points_required = int(points_required_str) if points_required_str else 0
+        if points_required < 0: raise ValueError
+    except ValueError:
+        flash('Points Required must be a non-negative integer.', 'danger')
+        return redirect(url_for('admin_gifts'))
+
+    if not name:
+        flash('Gift Name is required.', 'danger')
+        return redirect(url_for('admin_gifts'))
+
+    try:
+        new_gift = Gift(
+            name=name,
+            description=description,
+            points_required=points_required,
+            user_id=current_user.id
+        )
+        db.session.add(new_gift)
+        db.session.commit()
+        flash('Gift added successfully!', 'success')
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Error adding gift: {e}', 'danger')
+        app.logger.error(f"Error adding gift: {e}")
+    return redirect(url_for('admin_gifts'))
+
+@app.route('/admin/gifts/delete/<int:gift_id>', methods=['POST'])
+@admin_required
+def delete_gift(gift_id):
+    gift = Gift.query.get_or_404(gift_id)
+    try:
+        db.session.delete(gift)
+        db.session.commit()
+        flash('Gift deleted successfully!', 'success')
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Error deleting gift: {e}', 'danger')
+    return redirect(url_for('admin_gifts'))
+
+@app.route('/admin/gifts/repost/<int:gift_id>', methods=['POST'])
+@admin_required
+def repost_gift(gift_id):
+    gift = Gift.query.get_or_404(gift_id)
+    try:
+        # Repost logic updates the timestamp and ensures it is active
+        gift.timestamp = datetime.utcnow()
+        gift.is_active = True
+        db.session.commit()
+        flash('Gift reposted successfully (timestamp updated)!', 'success')
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Error reposting gift: {e}', 'danger')
+    return redirect(url_for('admin_gifts'))
 
 # --- Forgot Password Routes ---
 @app.route('/forgot_password', methods=['GET'])
