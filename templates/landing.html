@@ -1,441 +1,472 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-   <meta charset="UTF-8">
-   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-   <title>SuperPrompter - AI Prompt Generator</title>
-   <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
-   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css">
-   <style>
-       /* --- Custom Pinkish-Blue Theme Variables --- */
-       :root {
-           --color-primary: #C3497C; /* Pinkish Red / Mauve */
-           --color-secondary: #5CA0DC; /* Soft Bright Blue */
-           --color-dark-bg: #311B92; /* Deep Purple Blue */
-           --color-text-dark: #2c3e50;
-           --color-text-muted: #777;
-       }
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SuperPrompter - AI Prompt Generator</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css">
+    <style>
+        /* --- Custom Pinkish-Blue Theme Variables --- */
+        :root {
+            --color-primary: #C3497C; /* Pinkish Red / Mauve */
+            --color-secondary: #5CA0DC; /* Soft Bright Blue */
+            --color-dark-bg: #311B92; /* Deep Purple Blue */
+            --color-text-dark: #2c3e50;
+            --color-text-muted: #777;
+        }
 
-       body {
-           font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-           margin: 0;
-           padding: 0;
-           background-color: #f8f9fa; /* Lighter background */
-           color: var(--color-text-dark);
-           line-height: 1.6;
-           display: flex;
-           flex-direction: column;
-           min-height: 100vh;
-       }
-
-
-       /* New Header Styles */
-       .app-header {
-           background-color: var(--color-dark-bg); /* Deep Purple Blue */
-           color: #ffffff;
-           padding: 15px 30px;
-           display: flex;
-           justify-content: space-between;
-           align-items: center;
-           box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
-           position: sticky;
-           top: 0;
-           z-index: 1000;
-       }
-
-       .app-header .logo-section {
-           display: flex;
-           align-items: center;
-       }
-
-       .app-header .app-logo {
-           height: 40px;
-           margin-right: 15px;
-           border-radius: 5px;
-       }
-
-       .app-header h1.header-title {
-           margin: 0;
-           font-size: 1.8rem;
-           color: #ffffff;
-           text-align: left;
-       }
-
-       .app-header .auth-section a {
-           color: #ffffff;
-           margin-left: 20px;
-           text-decoration: none;
-           transition: color 0.2s ease;
-       }
-
-       .app-header .auth-section a:hover {
-           color: var(--color-secondary);
-           text-decoration: underline;
-       }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f8f9fa; /* Lighter background */
+            color: var(--color-text-dark);
+            line-height: 1.6;
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+        }
 
 
-       /* Main Content Wrapper */
-       .main-content-wrapper {
-           flex-grow: 1;
-           padding: 30px;
-           max-width: 1200px;
-           margin: 20px auto;
-           background-color: #ffffff;
-           border-radius: 12px; /* Slightly more rounded */
-           box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15); /* More prominent shadow */
-       }
-       
-       /* JUMBOTRON / HERO STYLES */
-       .jumbotron {
-           background: linear-gradient(135deg, #f0f8ff, #f3e5f5) !important; /* Soft light gradient */
-           border: 1px solid #e0e0e0;
-       }
-       .jumbotron h1 {
-           color: var(--color-primary) !important; /* Primary Pink Title */
-           font-weight: 700;
-       }
-       .jumbotron .lead {
-           color: var(--color-text-dark);
-       }
+        /* New Header Styles */
+        .app-header {
+            background-color: var(--color-dark-bg); /* Deep Purple Blue */
+            color: #ffffff;
+            padding: 15px 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+        }
+
+        .app-header .logo-section {
+            display: flex;
+            align-items: center;
+        }
+
+        .app-header .app-logo {
+            height: 40px;
+            margin-right: 15px;
+            border-radius: 5px;
+        }
+
+        .app-header h1.header-title {
+            margin: 0;
+            font-size: 1.8rem;
+            color: #ffffff;
+            text-align: left;
+        }
+
+        .app-header .auth-section a {
+            color: #ffffff;
+            margin-left: 20px;
+            text-decoration: none;
+            transition: color 0.2s ease;
+        }
+
+        .app-header .auth-section a:hover {
+            color: var(--color-secondary);
+            text-decoration: underline;
+        }
 
 
-       h2.section-title {
-           color: var(--color-secondary); /* Soft Blue Title */
-           margin-bottom: 25px;
-           font-weight: 700;
-           text-align: center;
-           position: relative;
-           padding-bottom: 10px;
-       }
-
-       h2.section-title::after {
-           content: '';
-           position: absolute;
-           left: 50%;
-           bottom: 0;
-           transform: translateX(-50%);
-           height: 4px; /* Thicker line */
-           width: 100px; /* Wider line */
-           background-color: var(--color-primary); /* Pink Underline */
-           border-radius: 5px;
-       }
-
-
-       /* CARD STYLES */
-       .card {
-           border: 1px solid #f0f0f0;
-           border-radius: 10px;
-           margin-bottom: 25px;
-           box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08); /* Better shadow */
-       }
-
-       .card:hover {
-           transform: translateY(-3px);
-           box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
-       }
-
-       .card-header {
-           background-color: #f3f3f3;
-           font-weight: 600;
-           color: var(--color-text-dark);
-           padding: 15px;
-           border-bottom: 1px solid #e0e0e0;
-       }
-
-       .card-title {
-           font-size: 1.35rem;
-           color: var(--color-secondary); /* Soft Blue Title */
-           font-weight: 600;
-           margin-bottom: 10px;
-       }
-
-       .card-text {
-           font-size: 0.95rem;
-           color: #555;
-           margin-bottom: 15px;
-       }
-
-       .card-link {
-           color: var(--color-primary); /* Pink Link */
-           font-weight: 600;
-           text-decoration: none;
-           transition: color 0.2s ease;
-       }
-
-       .card-link:hover {
-           color: var(--color-dark-bg);
-           text-decoration: underline;
-       }
-
-       .meta-info {
-           font-size: 0.8rem;
-           color: var(--color-text-muted);
-           margin-top: 10px;
-       }
-
-       /* Button Customization */
-       .btn-primary {
-           background-color: var(--color-primary);
-           border-color: var(--color-primary);
-           font-weight: bold;
-           transition: all 0.3s ease;
-           padding: 10px 25px;
-           border-radius: 6px;
-       }
-       .btn-primary:hover, .btn-primary:focus {
-           background-color: #A33A64 !important; /* Slightly darker pink for hover */
-           border-color: #A33A64 !important;
-           box-shadow: 0 4px 8px rgba(195, 73, 124, 0.4);
-       }
+        /* Main Content Wrapper */
+        .main-content-wrapper {
+            flex-grow: 1;
+            padding: 30px;
+            max-width: 1200px;
+            margin: 20px auto;
+            background-color: #ffffff;
+            border-radius: 12px; /* Slightly more rounded */
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15); /* More prominent shadow */
+        }
+        
+        /* JUMBOTRON / HERO STYLES */
+        .jumbotron {
+            background: linear-gradient(135deg, #f0f8ff, #f3e5f5) !important; /* Soft light gradient */
+            border: 1px solid #e0e0e0;
+        }
+        .jumbotron h1 {
+            color: var(--color-primary) !important; /* Primary Pink Title */
+            font-weight: 700;
+        }
+        .jumbotron .lead {
+            color: var(--color-text-dark);
+        }
 
 
-       /* Newsletter Section */
-       .newsletter-section {
-           background-color: #f7f7f7;
-           border: 1px solid #e0e0e0;
-           padding: 40px 20px;
-           border-radius: 10px;
-           text-align: center;
-           margin-top: 40px;
-       }
-       .newsletter-section h2 {
-           font-size: 2rem;
-           margin-bottom: 15px;
-           color: var(--color-primary); /* Pink Heading */
-       }
-       .newsletter-section p {
-           font-size: 1.1rem;
-           margin-bottom: 25px;
-           color: #555;
-       }
-       .newsletter-form {
-           max-width: 500px;
-           margin: 0 auto;
-           display: flex;
-           justify-content: center;
-           gap: 10px;
-       }
-       /* Newsletter button inherits .btn-primary styles */
-      
-       .card-prompt-group {
-           border-top: 1px solid #e0e0e0;
-           padding-top: 15px;
-           margin-top: 15px;
-       }
-       .card-prompt-group strong {
-           display: block;
-           margin-bottom: 5px;
-           font-size: 0.9rem;
-           color: var(--color-dark-bg); /* Dark blue/purple accent */
-       }
-       .card-prompt-group pre {
-           font-size: 0.85rem;
-           color: #555;
-           background-color: #f8f9fa;
-           border-left: 3px solid var(--color-secondary); /* Soft Blue accent line */
-           padding: 10px;
-           overflow: auto;
-           max-height: 100px;
-           white-space: pre-wrap;
-           word-wrap: break-word;
-       }
+        h2.section-title {
+            color: var(--color-secondary); /* Soft Blue Title */
+            margin-bottom: 25px;
+            font-weight: 700;
+            text-align: center;
+            position: relative;
+            padding-bottom: 10px;
+        }
+
+        h2.section-title::after {
+            content: '';
+            position: absolute;
+            left: 50%;
+            bottom: 0;
+            transform: translateX(-50%);
+            height: 4px; /* Thicker line */
+            width: 100px; /* Wider line */
+            background-color: var(--color-primary); /* Pink Underline */
+            border-radius: 5px;
+        }
 
 
-       /* Footer Styles */
-       .footer {
-           width: 100%;
-           padding: 20px;
-           text-align: center;
-           font-size: 0.85rem;
-           color: var(--color-text-muted);
-           background-color: #e9ecef;
-           border-top: 1px solid #dee2e6;
-           margin-top: auto;
-       }
+        /* CARD STYLES */
+        .card {
+            border: 1px solid #f0f0f0;
+            border-radius: 10px;
+            margin-bottom: 25px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08); /* Better shadow */
+        }
 
-       .footer-content {
-           max-width: 900px;
-           margin: 0 auto;
-       }
+        .card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
+        }
 
-       .footer-content a {
-           color: var(--color-primary); /* Pink Link */
-           text-decoration: none;
-       }
+        .card-header {
+            background-color: #f3f3f3;
+            font-weight: 600;
+            color: var(--color-text-dark);
+            padding: 15px;
+            border-bottom: 1px solid #e0e0e0;
+        }
 
-       .footer-content a:hover {
-           text-decoration: underline;
-           color: var(--color-dark-bg);
-       }
+        .card-title {
+            font-size: 1.35rem;
+            color: var(--color-secondary); /* Soft Blue Title */
+            font-weight: 600;
+            margin-bottom: 10px;
+        }
+
+        .card-text {
+            font-size: 0.95rem;
+            color: #555;
+            margin-bottom: 15px;
+        }
+
+        .card-link {
+            color: var(--color-primary); /* Pink Link */
+            font-weight: 600;
+            text-decoration: none;
+            transition: color 0.2s ease;
+        }
+
+        .card-link:hover {
+            color: var(--color-dark-bg);
+            text-decoration: underline;
+        }
+
+        .meta-info {
+            font-size: 0.8rem;
+            color: var(--color-text-muted);
+            margin-top: 10px;
+        }
+
+        /* Button Customization */
+        .btn-primary {
+            background-color: var(--color-primary);
+            border-color: var(--color-primary);
+            font-weight: bold;
+            transition: all 0.3s ease;
+            padding: 10px 25px;
+            border-radius: 6px;
+        }
+        .btn-primary:hover, .btn-primary:focus {
+            background-color: #A33A64 !important; /* Slightly darker pink for hover */
+            border-color: #A33A64 !important;
+            box-shadow: 0 4px 8px rgba(195, 73, 124, 0.4);
+        }
 
 
-       /* Responsive adjustments */
-       @media (max-width: 768px) {
-           .app-header {
-               flex-direction: column;
-               padding: 10px 15px;
-           }
-           .app-header .logo-section {
-               margin-bottom: 10px;
-           }
-           .app-header h1.header-title {
-               font-size: 1.5rem;
-           }
-           .main-content-wrapper {
-               padding: 15px;
-               margin: 15px auto;
-           }
-           h2.section-title {
-               font-size: 1.8rem;
-           }
-           .newsletter-form {
-               flex-direction: column;
-               gap: 15px;
-           }
-           .newsletter-form .form-control,
-           .newsletter-form .btn-primary {
-               width: 100%;
-           }
-           .footer {
-               padding: 10px;
-           }
-       }
-   </style>
+        /* Newsletter Section */
+        .newsletter-section {
+            background-color: #f7f7f7;
+            border: 1px solid #e0e0e0;
+            padding: 40px 20px;
+            border-radius: 10px;
+            text-align: center;
+            margin-top: 40px;
+        }
+        .newsletter-section h2 {
+            font-size: 2rem;
+            margin-bottom: 15px;
+            color: var(--color-primary); /* Pink Heading */
+        }
+        .newsletter-section p {
+            font-size: 1.1rem;
+            margin-bottom: 25px;
+            color: #555;
+        }
+        .newsletter-form {
+            max-width: 500px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+        }
+        /* Newsletter button inherits .btn-primary styles */
+        
+        .card-prompt-group {
+            border-top: 1px solid #e0e0e0;
+            padding-top: 15px;
+            margin-top: 15px;
+        }
+        .card-prompt-group strong {
+            display: block;
+            margin-bottom: 5px;
+            font-size: 0.9rem;
+            color: var(--color-dark-bg); /* Dark blue/purple accent */
+        }
+        .card-prompt-group pre {
+            font-size: 0.85rem;
+            color: #555;
+            background-color: #f8f9fa;
+            border-left: 3px solid var(--color-secondary); /* Soft Blue accent line */
+            padding: 10px;
+            overflow: auto;
+            max-height: 100px;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+
+
+        /* Footer Styles */
+        .footer {
+            width: 100%;
+            padding: 20px;
+            text-align: center;
+            font-size: 0.85rem;
+            color: var(--color-text-muted);
+            background-color: #e9ecef;
+            border-top: 1px solid #dee2e6;
+            margin-top: auto;
+        }
+
+        .footer-content {
+            max-width: 900px;
+            margin: 0 auto;
+        }
+
+        .footer-content a {
+            color: var(--color-primary); /* Pink Link */
+            text-decoration: none;
+        }
+
+        .footer-content a:hover {
+            text-decoration: underline;
+            color: var(--color-dark-bg);
+        }
+
+
+        /* Responsive adjustments */
+        @media (max-width: 768px) {
+            .app-header {
+                flex-direction: column;
+                padding: 10px 15px;
+            }
+            .app-header .logo-section {
+                margin-bottom: 10px;
+            }
+            .app-header h1.header-title {
+                font-size: 1.5rem;
+            }
+            .main-content-wrapper {
+                padding: 15px;
+                margin: 15px auto;
+            }
+            h2.section-title {
+                font-size: 1.8rem;
+            }
+            .newsletter-form {
+                flex-direction: column;
+                gap: 15px;
+            }
+            .newsletter-form .form-control,
+            .newsletter-form .btn-primary {
+                width: 100%;
+            }
+            .footer {
+                padding: 10px;
+            }
+        }
+    </style>
 </head>
 <body>
-   <header class="app-header">
-       <div class="logo-section">
-           <img src="https://placehold.co/40x40/C3497C/ffffff?text=AI" alt="SuperPrompter Logo" class="app-logo">
-           <h1 class="header-title">SuperPrompter</h1>
-       </div>
-       <div class="auth-section">
-           {% if current_user.is_authenticated %}
-               <a href="{{ url_for('app_home') }}" class="btn btn-outline-light btn-sm mr-2">App Home</a>
-               <a href="{{ url_for('llm_benchmark') }}" class="btn btn-outline-light btn-sm mr-2">LLM Benchmarks</a>
-               {% if current_user.is_admin %}
-                   <a href="{{ url_for('admin_prompts') }}" class="btn btn-outline-light btn-sm mr-2">Manage Prompts</a>
-                   <a href="{{ url_for('admin_news') }}" class="btn btn-outline-light btn-sm mr-2">Manage News</a>
-                   <a href="{{ url_for('admin_jobs') }}" class="btn btn-outline-light btn-sm mr-2">Manage Jobs</a>
-               {% endif %}
-               <span class="navbar-text mr-2">Logged in as: <strong>{{ current_user.username }}</strong></span>
-               <a href="{{ url_for('logout') }}" class="btn btn-outline-light btn-sm">Logout</a>
-           {% else %}
-               <a href="{{ url_for('llm_benchmark') }}" class="btn btn-outline-light btn-sm mr-2">LLM Benchmarks</a>
-               <a href="{{ url_for('login') }}" class="btn btn-outline-light btn-sm mr-2">Login</a>
-               <a href="{{ url_for('register') }}" class="btn btn-light btn-sm">Register</a>
-           {% endif %}
-       </div>
-   </header>
+    <header class="app-header">
+        <div class="logo-section">
+            <img src="https://placehold.co/40x40/C3497C/ffffff?text=AI" alt="SuperPrompter Logo" class="app-logo">
+            <h1 class="header-title">SuperPrompter</h1>
+        </div>
+        <div class="auth-section">
+            {% if current_user.is_authenticated %}
+                <a href="{{ url_for('app_home') }}" class="btn btn-outline-light btn-sm mr-2">App Home</a>
+                <a href="{{ url_for('llm_benchmark') }}" class="btn btn-outline-light btn-sm mr-2">LLM Benchmarks</a>
+                {% if current_user.is_admin %}
+                    <a href="{{ url_for('admin_prompts') }}" class="btn btn-outline-light btn-sm mr-2">Manage Prompts</a>
+                    <a href="{{ url_for('admin_news') }}" class="btn btn-outline-light btn-sm mr-2">Manage News</a>
+                    <a href="{{ url_for('admin_jobs') }}" class="btn btn-outline-light btn-sm mr-2">Manage Jobs</a>
+                    <a href="{{ url_for('admin_gifts') }}" class="btn btn-outline-light btn-sm mr-2">Manage Gifts</a>
+                {% endif %}
+                <span class="navbar-text mr-2">Logged in as: <strong>{{ current_user.username }}</strong></span>
+                <a href="{{ url_for('logout') }}" class="btn btn-outline-light btn-sm">Logout</a>
+            {% else %}
+                <a href="{{ url_for('llm_benchmark') }}" class="btn btn-outline-light btn-sm mr-2">LLM Benchmarks</a>
+                <a href="{{ url_for('login') }}" class="btn btn-outline-light btn-sm mr-2">Login</a>
+                <a href="{{ url_for('register') }}" class="btn btn-light btn-sm">Register</a>
+            {% endif %}
+        </div>
+    </header>
 
 
-   <div class="main-content-wrapper">
-       <div class="jumbotron text-center bg-light p-5 rounded shadow-sm mb-5">
-           <h1 class="display-4 text-primary">Welcome to SuperPrompter!</h1>
-           <p class="lead">An intelligent Prompt Engineering Co-Pilot that instantly validates ideas designed to Go Viral.</p>
-           <hr class="my-4">
-           <p>Dynamically optimizes your ideas for peak LLM performance.</p>
-           {% if current_user.is_authenticated %}
-               <a class="btn btn-primary btn-lg" href="{{ url_for('app_home') }}" role="button">Start Generating Prompts</a>
-           {% else %}
-               <p class="text-muted">Please log in or register to your Co-Pilot for AI Creation.</p>
-               <a class="btn btn-primary btn-lg" href="{{ url_for('login') }}" role="button">Login to Get Started</a>
-           {% endif %}
-       </div>
-      
-       <section class="prompts-section mb-5">
-           <h2 class="section-title">Latest Prompts</h2>
-           <div class="row">
-               {% for prompt in sample_prompts %}
-               <div class="col-md-6 col-lg-4">
-                   <div class="card">
-                       <div class="card-body">
-                           <h5 class="card-title">Prompt Example #{{ loop.index }}</h5>
-                           <div class="card-prompt-group">
-                               <strong>Raw Prompt:</strong>
-                               <pre>{{ prompt.raw_prompt | truncate(150) if prompt.raw_prompt else 'N/A' }}</pre>
-                           </div>
-                           <div class="card-prompt-group">
-                               <strong>{{ prompt.display_type.capitalize() }} Prompt:</strong>
-                               <pre>{{ prompt.display_prompt_text | truncate(150) }}</pre>
-                           </div>
-                            <p class="meta-info">Added: {{ prompt.timestamp.strftime('%Y-%m-%d %H:%M') }}</p>
-                       </div>
-                   </div>
-               </div>
-               {% else %}
-               <div class="col-12">
-                   <p class="text-center text-muted">No sample prompts available yet. Check back soon!</p>
-               </div>
-               {% endfor %}
-           </div>
-       </section>
-       <section class="news-section mb-5">
-           <h2 class="section-title">Latest News</h2>
-           <div class="row">
-               {% for item in news_items %}
-               <div class="col-md-6 col-lg-4">
-                   <div class="card">
-                       <div class="card-body">
-                           <h5 class="card-title">{{ item.title }}</h5>
-                           <p class="card-text">{{ item.description | truncate(150) }}</p>
-                           <a href="{{ item.url }}" target="_blank" class="card-link">Read More <i class="fas fa-external-link-alt"></i></a>
-                           <p class="meta-info">Published: {{ item.published_date.strftime('%Y-%m-%d') if item.published_date else 'N/A' }}</p>
-                           <p class="meta-info">Added: {{ item.timestamp.strftime('%Y-%m-%d %H:%M') }}</p>
-                       </div>
-                   </div>
-               </div>
-               {% else %}
-               <div class="col-12">
-                   <p class="text-center text-muted">No news items available yet. Check back soon!</p>
-               </div>
-               {% endfor %}
-           </div>
-       </section>
+    <div class="main-content-wrapper">
+        <div class="jumbotron text-center bg-light p-5 rounded shadow-sm mb-5">
+            <h1 class="display-4 text-primary">Welcome to SuperPrompter!</h1>
+            <p class="lead">An intelligent Prompt Engineering Co-Pilot that instantly validates ideas designed to Go Viral.</p>
+            <hr class="my-4">
+            <p>Dynamically optimizes your ideas for peak LLM performance.</p>
+            {% if current_user.is_authenticated %}
+                <a class="btn btn-primary btn-lg" href="{{ url_for('app_home') }}" role="button">Start Generating Prompts</a>
+            {% else %}
+                <p class="text-muted">Please log in or register to your Co-Pilot for AI Creation.</p>
+                <a class="btn btn-primary btn-lg" href="{{ url_for('login') }}" role="button">Login to Get Started</a>
+            {% endif %}
+        </div>
+
+        <div class="row">
+            <div class="col-md-8">
+                <section class="prompts-section mb-5">
+                    <h2 class="section-title">Latest Prompts</h2>
+                    <div class="row">
+                    {% for prompt in sample_prompts %}
+                    <div class="col-md-6 col-lg-4">
+                    <div class="card">
+                    <div class="card-body">
+                    <h5 class="card-title">Prompt Example #{{ loop.index }}</h5>
+                    <div class="card-prompt-group">
+                    <strong>Raw Prompt:</strong>
+                    <pre>{{ prompt.raw_prompt | truncate(150) if prompt.raw_prompt else 'N/A' }}</pre>
+                    </div>
+                    <div class="card-prompt-group">
+                    <strong>{{ prompt.display_type.capitalize() }} Prompt:</strong>
+                    <pre>{{ prompt.display_prompt_text | truncate(150) }}</pre>
+                    </div>
+                    <p class="meta-info">Added: {{ prompt.timestamp.strftime('%Y-%m-%d %H:%M') }}</p>
+                    </div>
+                    </div>
+                    </div>
+                    {% else %}
+                    <div class="col-12">
+                    <p class="text-center text-muted">No sample prompts available yet. Check back soon!</p>
+                    </div>
+                    {% endfor %}
+                    </div>
+                </section>
+
+                <section class="news-section mb-5">
+                    <h2 class="section-title">Latest News</h2>
+                    <div class="row">
+                    {% for item in news_items %}
+                    <div class="col-md-6 col-lg-4">
+                    <div class="card">
+                    <div class="card-body">
+                    <h5 class="card-title">{{ item.title }}</h5>
+                    <p class="card-text">{{ item.description | truncate(150) }}</p>
+                    <a href="{{ item.url }}" target="_blank" class="card-link">Read More <i class="fas fa-external-link-alt"></i></a>
+                    <p class="meta-info">Published: {{ item.published_date.strftime('%Y-%m-%d') if item.published_date else 'N/A' }}</p>
+                    <p class="meta-info">Added: {{ item.timestamp.strftime('%Y-%m-%d %H:%M') }}</p>
+                    </div>
+                    </div>
+                    </div>
+                    {% else %}
+                    <div class="col-12">
+                    <p class="text-center text-muted">No news items available yet. Check back soon!</p>
+                    </div>
+                    {% endfor %}
+                    </div>
+                </section>
+
+                <section class="jobs-section mb-5">
+                    <h2 class="section-title">Job Listings</h2>
+                    <div class="row">
+                    {% for job in job_listings %}
+                    <div class="col-md-6 col-lg-4">
+                    <div class="card">
+                    <div class="card-body">
+                    <h5 class="card-title">{{ job.title }}</h5>
+                    <h6 class="card-subtitle mb-2 text-muted">{{ job.company }} - {{ job.location if job.location else 'Remote' }}</h6>
+                    <p class="card-text">{{ job.description | truncate(150) }}</p>
+                    <a href="{{ job.url }}" target="_blank" class="card-link">Apply Now <i class="fas fa-external-link-alt"></i></a>
+                    <p class="meta-info">Published: {{ job.published_date.strftime('%Y-%m-%d') if job.published_date else 'N/A' }}</p>
+                    <p class="meta-info">Added: {{ job.timestamp.strftime('%Y-%m-%d %H:%M') }}</p>
+                    </div>
+                    </div>
+                    </div>
+                    {% else %}
+                    <div class="col-12">
+                    <p class="text-center text-muted">No job listings available yet. Check back soon!</p>
+                    </div>
+                    {% endfor %}
+                    </div>
+                </section>
+                
+            </div> <div class="col-md-4">
+                <div class="card mb-4 bg-light p-3">
+                    <h4 class="text-center text-primary mb-3"><i class="fas fa-trophy"></i> Top Prompt Engineers</h4>
+                    <ul class="list-group list-group-flush">
+                        {% for entry in leaderboard_data %}
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            <span class="font-weight-bold">#{{ entry.rank }} {{ entry.username }}</span>
+                            <span class="badge badge-success badge-pill">{{ entry.points }} Points</span>
+                        </li>
+                        {% else %}
+                        <li class="list-group-item text-center text-muted">No leaderboard data available yet.</li>
+                        {% endfor %}
+                    </ul>
+                </div>
+
+                <div class="card bg-light p-3">
+                    <h4 class="text-center text-secondary mb-3"><i class="fas fa-gift"></i> Prizes & Rewards</h4>
+                    <ul class="list-group list-group-flush">
+                        {% for gift in gifts %}
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            <div>
+                                <span class="font-weight-bold text-dark">{{ gift.name }}</span><br>
+                                <small class="text-muted">{{ gift.description | truncate(50) }}</small>
+                            </div>
+                            <span class="badge badge-warning badge-pill">{{ gift.points_required }} Pts</span>
+                        </li>
+                        {% else %}
+                        <li class="list-group-item text-center text-muted">No prizes currently available.</li>
+                        {% endfor %}
+                    </ul>
+                    <p class="meta-info mt-3 text-center">Prizes are redeemable via admin contact.</p>
+                </div>
+            </div> </div> <div class="newsletter-section">
+            <h2>Join Our Newsletter!</h2>
+            <p>Stay updated with the latest AI prompt generation tips, news, and features.</p>
+            <a href="https://flow.cleverreach.com/fl/f1b39182-4b74-4664-9c1d-c175cb3a670c/" target="_blank" class="btn btn-primary">Subscribe Now">Subscribe Now</a>
+        </div>
+
+    </div> <footer class="footer">
+        <div class="footer-content">
+            This is developed by Sushrut Kulkarni &nbsp; Email: <a href="mailto:info@promptsgenerator.ai">info@promptsgenerator.ai</a>
+        </div>
+    </footer>
 
 
-       <section class="jobs-section mb-5">
-           <h2 class="section-title">Job Listings</h2>
-           <div class="row">
-               {% for job in job_listings %}
-               <div class="col-md-6 col-lg-4">
-                   <div class="card">
-                       <div class="card-body">
-                           <h5 class="card-title">{{ job.title }}</h5>
-                           <h6 class="card-subtitle mb-2 text-muted">{{ job.company }} - {{ job.location if job.location else 'Remote' }}</h6>
-                           <p class="card-text">{{ job.description | truncate(150) }}</p>
-                           <a href="{{ job.url }}" target="_blank" class="card-link">Apply Now <i class="fas fa-external-link-alt"></i></a>
-                           <p class="meta-info">Published: {{ job.published_date.strftime('%Y-%m-%d') if job.published_date else 'N/A' }}</p>
-                           <p class="meta-info">Added: {{ job.timestamp.strftime('%Y-%m-%d %H:%M') }}</p>
-                       </div>
-                   </div>
-               </div>
-               {% else %}
-               <div class="col-12">
-                   <p class="text-center text-muted">No job listings available yet. Check back soon!</p>
-               </div>
-               {% endfor %}
-           </div>
-       </section>
-
-
-       <div class="newsletter-section">
-           <h2>Join Our Newsletter!</h2>
-           <p>Stay updated with the latest AI prompt generation tips, news, and features.</p>
-           <a href="https://flow.cleverreach.com/fl/f1b39182-4b74-4664-9c1d-c175cb3a670c/" target="_blank" class="btn btn-primary">Subscribe Now</a>
-       </div>
-       </div>
-
-
-   <footer class="footer">
-     <div class="footer-content">
-         This is developed by Sushrut Kulkarni &nbsp; Email: <a href="mailto:info@promptsgenerator.ai">info@promptsgenerator.ai</a>
-     </div>
-   </footer>
-
-
-   <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
-   <script src="https://cdn.jsdelivr.net/npm/popper.js@1.16.1/dist/umd/popper.min.js"></script>
-   <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+    <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/popper.js@1.16.1/dist/umd/popper.min.js"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
 </body>
 </html>
-
