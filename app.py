@@ -1067,6 +1067,13 @@ async def generate_reverse_prompt_async(input_text, language_code="en-US", promp
 
     return filter_gemini_response(reverse_prompt_result) # Apply filter here
 
+# --- NEW LEADERBOARD HELPER FUNCTION ---
+def mask_username(username):
+    """Masks a username: shows first 3 characters, replaces rest with asterisks."""
+    if len(username) <= 3:
+        return username
+    return username[:3] + '*' * (len(username) - 3)
+# --- END NEW HELPER ---
 
 # --- Flask Routes ---
 
@@ -1087,14 +1094,15 @@ def landing():
     for rank, (username, points) in enumerate(top_users):
         leaderboard_data.append({
             'rank': rank + 1,
-            'username': mask_username(username),
+            'username': mask_username(username), # Now correctly defined
             'points': points
         })
 
     # 2. Fetch all active gifts
     gifts = Gift.query.filter_by(is_active=True).order_by(Gift.points_required.asc()).all()
 
-    # Process sample_prompts to include the selected display_type's content
+    # 3. Process sample_prompts
+    sample_prompts = SamplePrompt.query.order_by(SamplePrompt.timestamp.desc()).limit(3).all()
     display_prompts = []
     for prompt in sample_prompts:
         display_prompt_text = getattr(prompt, prompt.display_type + '_prompt', prompt.polished_prompt)
@@ -1107,13 +1115,12 @@ def landing():
         })
 
     return render_template('landing.html', 
-                           news_items=news_items, 
-                           job_listings=job_listings, 
+                           news_items=NewsItem.query.order_by(NewsItem.timestamp.desc()).limit(6).all(), 
+                           job_listings=JobListing.query.order_by(JobListing.timestamp.desc()).limit(6).all(), 
                            sample_prompts=display_prompts, 
-                           leaderboard_data=leaderboard_data, # NEW
-                           gifts=gifts, # NEW
+                           leaderboard_data=leaderboard_data,
+                           gifts=gifts,
                            current_user=current_user)
-
 
 # UPDATED: Route to view a specific news item (using NewsItem model)
 @app.route('/view_news/<int:news_id>')
