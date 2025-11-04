@@ -1102,7 +1102,6 @@ def landing():
     gifts = Gift.query.filter_by(is_active=True).order_by(Gift.points_required.asc()).all()
 
     # 3. Process sample_prompts
-    sample_prompts = SamplePrompt.query.order_by(SamplePrompt.timestamp.desc()).limit(3).all()
     display_prompts = []
     for prompt in sample_prompts:
         display_prompt_text = getattr(prompt, prompt.display_type + '_prompt', prompt.polished_prompt)
