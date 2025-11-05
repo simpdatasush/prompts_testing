@@ -283,6 +283,35 @@ class ApiRequestLog(db.Model):
     def __repr__(self):
         return f"ApiRequestLog(user_id={self.user_id}, endpoint='{self.endpoint}', status_code={self.status_code})"
 
+# NEW: Model for Comprehensive LLM Response and Error Logging
+class LLMResponseLog(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    timestamp = db.Column(db.DateTime, default=datetime.utcnow)
+    endpoint = db.Column(db.String(100), nullable=False) # e.g., 'generate', 'reverse_prompt', 'test_llm_response'
+    model_name = db.Column(db.String(50), nullable=True)
+    prompt_mode = db.Column(db.String(50), nullable=True)
+    raw_input_summary = db.Column(db.String(250), nullable=True) # Summary of the input
+    full_output = db.Column(db.Text, nullable=False) # The full result (JSON, text, or error message)
+
+    def __repr__(self):
+        return f"LLMResponseLog(user_id={self.user_id}, mode='{self.prompt_mode}', model='{self.model_name}')"
+
+# --- Helper Function to Log LLM Responses/Errors ---
+def log_llm_response(user_id, endpoint, prompt_mode, raw_input, output, model_name='N/A'):
+    try:
+        log_entry = LLMResponseLog(
+            user_id=user_id,
+            endpoint=endpoint,
+            prompt_mode=prompt_mode,
+            model_name=model_name,
+            raw_input_summary=raw_input[:250],
+            full_output=output
+        )
+        db.session.add(log_entry)
+        # NOTE: Commit is handled by the calling endpoint to avoid multiple session commits
+    except Exception as e:
+        app.logger.error(f"Failed to save LLM response log for user {user_id}: {e}")
 
 # --- Flask-Login User Loader ---
 @login_manager.user_loader
@@ -1246,29 +1275,33 @@ def generate(): # CHANGED FROM ASYNC
         user.total_points += points_awarded
         app.logger.info(f"User {user.username} awarded {points_awarded} points for generation. Total: {user.total_points}")
     # --- END GAMIFICATION ---
-
-        # --- Update last_generation_time in database and Save raw_input ---
-        user.last_generation_time = now # Record the time of this successful request
-        if not user.is_admin: # Only increment count for non-admin users
+        # --- PREPARE USER STATS FOR COMMIT ---
+        user.last_generation_time = now
+        if not user.is_admin:
             user.daily_generation_count += 1
-        db.session.add(user) # Add the user object back to the session to mark it as modified
-        db.session.commit()
-        app.logger.info(f"User {user.username}'s last prompt request time updated and count incremented. (Forward Prompt)")
+        db.session.add(user)
 
+        # --- LOGGING SUCCESS (LLM Output) ---
+        log_llm_response(current_user.id, 'generate', prompt_mode, prompt_input, json.dumps(results))
+        # Note: log_llm_response adds the entry to the session.
+
+        # --- PREPARE RAW PROMPT FOR COMMIT ---
         if current_user.is_authenticated:
-            try:
-                new_raw_prompt = RawPrompt(user_id=current_user.id, raw_text=prompt_input)
-                db.session.add(new_raw_prompt)
-                db.session.commit()
-                app.logger.info(f"Raw prompt saved for user {current_user.username}")
-            except Exception as e:
-                app.logger.error(f"Error saving raw prompt for user {current_user.username}: {e}")
-                db.session.rollback() # Rollback in case of error
-        # --- END UPDATED ---
+            new_raw_prompt = RawPrompt(user_id=current_user.id, raw_text=prompt_input)
+            db.session.add(new_raw_prompt)
+
+        # --- FINAL SINGLE COMMIT FOR ALL CHANGES (Stats, Logs, Raw Prompt) ---
+        db.session.commit() # Only ONE commit here
+
+        app.logger.info(f"User {user.username}'s last prompt request time updated and count incremented. (Forward Prompt)")
+        app.logger.info(f"Raw prompt and LLM logs saved for user {current_user.username}")
 
         return jsonify(results)
+
     except Exception as e:
-        app.logger.exception("Error during prompt generation in endpoint:")
+        app.logger.error(f"Error during prompt generation: {e}")
+        db.session.rollback() # Rollback EVERYTHING if any step above failed
+        # ... (logging failure logic would go here if defined)
         return jsonify({"error": f"An unexpected server error occurred: {e}. Please check server logs for details."}), 500
 
 
@@ -1332,24 +1365,54 @@ def reverse_prompt(): # CHANGED FROM ASYNC
     try:
         inferred_prompt = asyncio.run(generate_reverse_prompt_async(input_text, language_code, prompt_mode))
 
-     # --- GAMIFICATION: Award points for reverse prompt ---
+        # --- GAMIFICATION: Award points for reverse prompt ---
         points_awarded = 75 # Flat rate for reverse prompting
         user.total_points += points_awarded
         app.logger.info(f"User {user.username} awarded {points_awarded} points for reverse prompt. Total: {user.total_points}")
-    # --- END GAMIFICATION ---
+        # --- END GAMIFICATION ---
 
-    # Update user stats after successful reverse prompt
+        # --- PREPARE USER STATS & LOGS FOR FINAL COMMIT ---
+
+        # 1. Update user stats 
         user.last_generation_time = now
         if not user.is_admin:
             user.daily_generation_count += 1
         db.session.add(user)
+        
+        # 2. Log the successful LLM output
+        log_llm_response(
+            user.id, 
+            'reverse_prompt', 
+            prompt_mode, 
+            input_text, # raw input
+            inferred_prompt, # full output
+            model_name='gemini-2.0-flash' # Assuming the model name used for the execution
+        )
+
+        # 3. Commit ALL changes (stats, points, log) atomically
         db.session.commit()
-        app.logger.info(f"API user {user.username}'s last prompt request time updated and count incremented. (API Reverse Prompt)")
+        app.logger.info(f"User {user.username}'s stats updated and LLM response logged. (Reverse Prompt)")
 
         return jsonify({"inferred_prompt": inferred_prompt})
+        
     except Exception as e:
         app.logger.exception("Error during reverse prompt generation in endpoint:")
-        return jsonify({"error": f"An unexpected server error occurred: {e}. Please check server logs for details."}), 500
+        db.session.rollback() # Rollback everything if the process failed
+
+        # LOGGING FAILURE: Log the error message
+        error_message = f"An unexpected server error occurred during reverse prompt: {e}"
+        log_llm_response(
+            user.id, 
+            'reverse_prompt', 
+            prompt_mode, 
+            input_text, 
+            error_message, 
+            model_name='gemini-2.0-flash'
+        )
+        db.session.commit() # Commit the failure log (but not the user stats)
+
+        # Ensure error message is filtered before sending to frontend
+        return jsonify({"error": filter_gemini_response(error_message + ". Please check server logs for details.")}), 500
 
 
 # NEW: Image Processing Endpoint ---
@@ -1569,8 +1632,6 @@ async def test_llm_response(): # CHANGED to async def
     try:
         # Generate LLM response with a specific token limit (524 tokens as requested)
         # Use asyncio.to_thread to run the synchronous ask_gemini_for_text_prompt in a separate thread
-        # --- FIX: Provide the required 'model_name' argument ---
-        # For testing/admin purposes, we default to the fastest, cheapest model: gemini-2.0-flash.
         TEST_MODEL = 'gemini-2.0-flash'
         llm_response_text_raw = await asyncio.to_thread(ask_gemini_for_text_prompt, llm_instruction, model_name=TEST_MODEL, max_output_tokens=8192)
         
@@ -1583,13 +1644,28 @@ async def test_llm_response(): # CHANGED to async def
         app.logger.info(f"User {user.username} awarded {points_awarded} points for Test LLM. Total: {user.total_points}")
         # --- END GAMIFICATION ---
 
-        # Update user stats after successful test prompt
+        # --- PREPARE FOR FINAL DATABASE COMMIT ---
+
+        # 1. Update user stats 
         user.last_generation_time = now
         if not user.is_admin:
             user.daily_generation_count += 1
         db.session.add(user)
+        
+        # 2. Log the successful LLM response/answer
+        # NOTE: Assumes log_llm_response adds the entry to the current session (it does not commit)
+        log_llm_response(
+            current_user.id, 
+            'test_llm_response', 
+            prompt_mode, 
+            prompt_text, # raw input
+            filtered_llm_response_text, # full output
+            model_name=TEST_MODEL
+        )
+
+        # 3. Commit ALL changes (stats, points, log) atomically
         db.session.commit()
-        app.logger.info(f"User {user.username}'s last prompt request time updated and count incremented after test prompt.")
+        app.logger.info(f"User {user.username}'s last prompt request time updated, count incremented, and LLM response logged.")
 
         return jsonify({
             "sample_response": filtered_llm_response_text,
@@ -1598,8 +1674,20 @@ async def test_llm_response(): # CHANGED to async def
         })
     except Exception as e:
         app.logger.exception("Error during LLM sample response generation:")
+        
+        # LOGGING FAILURE: Log the error message
+        error_message = f"An unexpected server error occurred during sample response generation: {e}"
+        log_llm_response(
+            current_user.id, 
+            'test_llm_response', 
+            prompt_mode, 
+            prompt_text, # raw input
+            error_message # full output is the error message
+        )
+        db.session.commit() # Commit the failure log (but nothing else)
+
         # Ensure error message is filtered before sending to frontend
-        filtered_error_message = filter_gemini_response(f"An unexpected server error occurred during sample response generation: {e}. Please check server logs for details.")
+        filtered_error_message = filter_gemini_response(error_message + ". Please check server logs for details.")
         return jsonify({"error": filtered_error_message}), 500
 
 # --- UPDATED: Endpoint to check cooldown status for frontend ---
