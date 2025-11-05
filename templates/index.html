@@ -814,16 +814,16 @@ Use the Category filter and either the Subcategory or Persona filter.
 <textarea id="prompt_input" name="prompt_input" class="form-control" rows="8" placeholder="e.g., Write a story about a robot who wants to be a chef."></textarea>
 
 <div class="d-flex justify-content-between align-items-center mt-3 flex-wrap">
-    <div class="input-controls">
-        <button type="button" id="voice_input_button" class="btn btn-outline-secondary mt-2 mt-md-0">🎤 Start Voice Input</button>
-        <input type="file" id="image_input" accept="image/*" class="d-none">
-        <button type="button" id="trigger_image_input" class="btn btn-outline-secondary mt-2 mt-md-0" style="display: none;">📸 Upload Image</button>
-    </div>
-    <div class="d-flex flex-column flex-md-row gap-2 mt-3 mt-md-0">
-        <button type="submit" id="generate_prompts_btn" class="btn btn-primary mb-2 mb-md-0 mr-2">Generate Prompts</button>
-        <button type="button" id="reverse_prompt_btn" class="btn btn-secondary">Reverse Prompt</button>
-    </div>
-    <span id="cooldown_timer"></span>
+<div class="input-controls">
+<button type="button" id="voice_input_button" class="btn btn-outline-secondary mt-2 mt-md-0">🎤 Start Voice Input</button>
+<input type="file" id="image_input" accept="image/*" class="d-none">
+<button type="button" id="trigger_image_input" class="btn btn-outline-secondary mt-2 mt-md-0" style="display: none;">📸 Upload Image</button>
+</div>
+<div class="d-flex flex-column flex-md-row gap-2 mt-3 mt-md-0">
+<button type="submit" id="generate_prompts_btn" class="btn btn-primary mb-2 mb-md-0 mr-2">Generate Prompts</button>
+<button type="button" id="reverse_prompt_btn" class="btn btn-secondary">Reverse Prompt</button>
+</div>
+<span id="cooldown_timer"></span>
 </div>
 </form>
 <div class="image-input-section mt-4">
@@ -1574,38 +1574,30 @@ const processImageButton = document.getElementById('process_image_button');
 const imageLoadingSpinner = document.getElementById('image_loading_spinner');
 
 
-// index.html (Replace the entire startCooldownTimer function)
-
 function startCooldownTimer(remainingTime) {
-    let timeLeft = remainingTime;
-    
-    // Disable all primary buttons
-    generateButton.disabled = true;
-    reversePromptButton.disabled = true;
-    voiceInputButton.disabled = true; 
-    processImageButton.disabled = true; 
-    
-    // Restore the button text to its original state (in case it was partially updated)
-    if (generateButton) generateButton.textContent = originalGenerateText;
-    if (reversePromptButton) reversePromptButton.textContent = originalReverseText;
-    
-    // Display timer in the separate span element
-    cooldownTimerDisplay.style.display = 'inline';
-    cooldownTimerDisplay.textContent = `Cooldown: ${timeLeft}s`;
+let timeLeft = remainingTime;
+generateButton.disabled = true;
+reversePromptButton.disabled = true;
+voiceInputButton.disabled = true; // Disable voice input during cooldown
+// triggerImageInputButton.disabled = true; // No longer needed as button is hidden
+processImageButton.disabled = true; // Disable image processing during cooldown
 
-    if (cooldownTimerInterval) {
-        clearInterval(cooldownTimerInterval);
-    }
 
-    cooldownTimerInterval = setInterval(() => {
-        timeLeft--;
-        cooldownTimerDisplay.textContent = `Cooldown: ${timeLeft}s`;
-        if (timeLeft <= 0) {
-            clearInterval(cooldownTimerInterval);
-            cooldownTimerDisplay.style.display = 'none'; // Hide the span
-            updateAllButtonStates(); // Re-check status to re-enable buttons
-        }
-    }, 1000);
+cooldownTimerDisplay.style.display = 'inline';
+cooldownTimerDisplay.textContent = `Cooldown: ${timeLeft}s`;
+
+if (cooldownTimerInterval) {
+clearInterval(cooldownTimerInterval);
+}
+
+cooldownTimerInterval = setInterval(() => {
+timeLeft--;
+cooldownTimerDisplay.textContent = `Cooldown: ${timeLeft}s`;
+if (timeLeft <= 0) {
+clearInterval(cooldownTimerInterval);
+updateAllButtonStates(); // Re-check status to re-enable buttons
+}
+}, 1000);
 }
 
 // --- LLM Niche Map (Based on Screenshot 2025-10-29) ---
