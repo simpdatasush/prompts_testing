@@ -814,16 +814,15 @@ Use the Category filter and either the Subcategory or Persona filter.
 <textarea id="prompt_input" name="prompt_input" class="form-control" rows="8" placeholder="e.g., Write a story about a robot who wants to be a chef."></textarea>
 
 <div class="d-flex justify-content-between align-items-center mt-3 flex-wrap">
-<div class="input-controls">
-<button type="button" id="voice_input_button" class="btn btn-outline-secondary mt-2 mt-md-0">🎤 Start Voice Input</button>
-<input type="file" id="image_input" accept="image/*" class="d-none">
-<button type="button" id="trigger_image_input" class="btn btn-outline-secondary mt-2 mt-md-0" style="display: none;">📸 Upload Image</button>
-</div>
-<div class="d-flex flex-column flex-md-row gap-2 mt-3 mt-md-0">
-<button type="submit" id="generate_prompts_btn" class="btn btn-primary mb-2 mb-md-0 mr-2">Generate Prompts</button>
-<button type="button" id="reverse_prompt_btn" class="btn btn-secondary">Reverse Prompt</button>
-</div>
-<span id="cooldown_timer"></span>
+    <div class="input-controls">
+        <button type="button" id="voice_input_button" class="btn btn-outline-secondary mt-2 mt-md-0">🎤 Start Voice Input</button>
+        <input type="file" id="image_input" accept="image/*" class="d-none">
+        <button type="button" id="trigger_image_input" class="btn btn-outline-secondary mt-2 mt-md-0" style="display: none;">📸 Upload Image</button>
+    </div>
+    <div class="d-flex flex-column flex-md-row gap-2 mt-3 mt-md-0">
+        <button type="submit" id="generate_prompts_btn" class="btn btn-primary mb-2 mb-md-0 mr-2">Generate Prompts</button>
+        <button type="button" id="reverse_prompt_btn" class="btn btn-secondary">Reverse Prompt</button>
+    </div>
 </div>
 </form>
 <div class="image-input-section mt-4">
@@ -1578,27 +1577,35 @@ const testLLMButton = document.getElementById('llm_test_button'); // Reference t
 // Store original button texts when the script first runs
 const originalGenerateText = generateButton ? generateButton.textContent.trim() : 'Generate Prompts';
 const originalReverseText = reversePromptButton ? reversePromptButton.textContent.trim() : 'Reverse Prompt';
+// We must also update the reference for the Test LLM button if it's used globally
+const testLLMButton = document.getElementById('llm_test_button');
+// --- END NEW GLOBAL DECLARATIONS ---
 
 
+// --- NEW startCooldownTimer function implementation ---
 function startCooldownTimer(remainingTime) {
     let timeLeft = remainingTime;
     
-    // We need to identify all buttons that should show the timer:
+    // Identify all buttons that should show the timer:
     const buttonsToUpdate = [generateButton, reversePromptButton];
 
-    // The Test LLM button lives in a modal and might not be visible/in the array, 
-    // but we can push it if the reference exists.
-    const testLLMButton = document.getElementById('llm_test_button');
-    if (testLLMButton) {
+    // Check for the Test LLM button, which is in the modal.
+    const testLLMButton = document.getElementById('llm_test_button'); // Fetch/re-confirm ref inside modal
+    const modalOverlay = document.getElementById('fullContextModalOverlay');
+    
+    // Only push the Test LLM button if the modal is currently showing (the most likely case for a test cooldown)
+    if (testLLMButton && modalOverlay && modalOverlay.classList.contains('show')) {
         buttonsToUpdate.push(testLLMButton);
     }
     
-    // Disable all buttons immediately
+    // Disable all relevant buttons immediately
     buttonsToUpdate.forEach(btn => {
         if (btn) btn.disabled = true;
     });
 
-    // We do NOT interact with the separate #cooldown_timer span anymore.
+    // We do NOT display the separate timer span.
+    const cooldownTimerDisplay = document.getElementById('cooldown_timer');
+    if (cooldownTimerDisplay) cooldownTimerDisplay.style.display = 'none';
 
     if (cooldownTimerInterval) {
         clearInterval(cooldownTimerInterval);
@@ -1608,18 +1615,18 @@ function startCooldownTimer(remainingTime) {
         timeLeft--;
         const timerText = ` (Cooldown: ${timeLeft}s)`;
         
-        // Update all buttons dynamically
+        // Update Generate/Reverse Buttons text
         if (generateButton) generateButton.textContent = originalGenerateText + timerText;
         if (reversePromptButton) reversePromptButton.textContent = originalReverseText + timerText;
         
-        // For the test button, we use its known base text ('Test LLM')
-        if (testLLMButton) testLLMButton.textContent = 'Test LLM' + timerText;
+        // Update Test LLM Button text (if it was included in the array)
+        if (testLLMButton && buttonsToUpdate.includes(testLLMButton)) testLLMButton.textContent = 'Test LLM' + timerText;
 
 
         if (timeLeft <= 0) {
             clearInterval(cooldownTimerInterval);
             
-            // Restore button original text for Generate/Reverse
+            // Restore button original text
             if (generateButton) generateButton.textContent = originalGenerateText;
             if (reversePromptButton) reversePromptButton.textContent = originalReverseText;
             if (testLLMButton) testLLMButton.textContent = 'Test LLM'; // Restore base text
@@ -1629,6 +1636,7 @@ function startCooldownTimer(remainingTime) {
         }
     }, 1000);
 }
+// --- END NEW startCooldownTimer function implementation ---
 
 // --- LLM Niche Map (Based on Screenshot 2025-10-29) ---
 const LLM_NICHE_MAP = [
@@ -1789,7 +1797,7 @@ canGenerate = false;
 messageType = 'warning';
 originalAlertMessage = `Cooldown active: Please wait ${data.remaining_time} seconds before your next generation.`; // Capture dynamic part
 statusMessage = originalAlertMessage; // Set initial status
-startCooldownTimer(data.remaining_time); // Start/continue timer
+if (cooldownTimerDisplay) cooldownTimerDisplay.style.display = 'none'; // REMOVE OLD COOLDOWN SPAN INTERACTION
 } else if (data.daily_limit_reached) {
 canGenerate = false;
 messageType = 'danger';
@@ -1801,7 +1809,7 @@ cooldownTimerDisplay.style.display = 'none'; // Ensure timer is hidden
 if (!data.is_admin) {
 statusMessage += ` You have used ${data.daily_count}/${data.user_daily_limit} generations today.`;
 }
-cooldownTimerDisplay.style.display = 'none'; // Ensure timer is hidden
+if (cooldownTimerDisplay) cooldownTimerDisplay.style.display = 'none'; // REMOVE OLD COOLDOWN SPAN INTERACTION
 statusMessage = statusMessage; // Keep the ready message
 }
 
