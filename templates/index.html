@@ -571,7 +571,7 @@ line-height: 1.5;
 }
 
 /* Cooldown Timer Styling */
-#cooldown_timer {
+# {
 margin-left: 15px;
 font-weight: bold;
 color: #dc3545; /* Red for active timer */
@@ -814,14 +814,16 @@ Use the Category filter and either the Subcategory or Persona filter.
 <textarea id="prompt_input" name="prompt_input" class="form-control" rows="8" placeholder="e.g., Write a story about a robot who wants to be a chef."></textarea>
 
 <div class="d-flex justify-content-between align-items-center mt-3 flex-wrap">
-<div class="input-controls">
-<button type="button" id="voice_input_button" class="btn btn-outline-secondary mt-2 mt-md-0">🎤 Start Voice Input</button>
-<input type="file" id="image_input" accept="image/*" class="d-none">
-<button type="button" id="trigger_image_input" class="btn btn-outline-secondary mt-2 mt-md-0" style="display: none;">📸 Upload Image</button>
-</div>
-<div class="d-flex flex-column flex-md-row gap-2 mt-3 mt-md-0">
-<button type="submit" id="generate_prompts_btn" class="btn btn-primary mb-2 mb-md-0 mr-2">Generate Prompts</button>
-<button type="button" id="reverse_prompt_btn" class="btn btn-secondary">Reverse Prompt</button>
+    <div class="input-controls">
+        <button type="button" id="voice_input_button" class="btn btn-outline-secondary mt-2 mt-md-0">🎤 Start Voice Input</button>
+        <input type="file" id="image_input" accept="image/*" class="d-none">
+        <button type="button" id="trigger_image_input" class="btn btn-outline-secondary mt-2 mt-md-0" style="display: none;">📸 Upload Image</button>
+    </div>
+    <div class="d-flex flex-column flex-md-row gap-2 mt-3 mt-md-0">
+        <button type="submit" id="generate_prompts_btn" class="btn btn-primary mb-2 mb-md-0 mr-2">Generate Prompts</button>
+        <button type="button" id="reverse_prompt_btn" class="btn btn-secondary">Reverse Prompt</button>
+    </div>
+    </div>
 </form>
 <div class="image-input-section mt-4">
 <h5>Image Input (Handwritten Text)</h5>
