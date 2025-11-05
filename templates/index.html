@@ -1572,32 +1572,62 @@ const imagePreview = document.getElementById('image_preview');
 const imageInput = document.getElementById('image_input');
 const processImageButton = document.getElementById('process_image_button');
 const imageLoadingSpinner = document.getElementById('image_loading_spinner');
+const generateButton = document.getElementById('generate_prompts_btn');
+const reversePromptButton = document.getElementById('reverse_prompt_btn');
+const testLLMButton = document.getElementById('llm_test_button'); // Reference to button inside modal
+// Store original button texts when the script first runs
+const originalGenerateText = generateButton ? generateButton.textContent.trim() : 'Generate Prompts';
+const originalReverseText = reversePromptButton ? reversePromptButton.textContent.trim() : 'Reverse Prompt';
 
 
 function startCooldownTimer(remainingTime) {
-let timeLeft = remainingTime;
-generateButton.disabled = true;
-reversePromptButton.disabled = true;
-voiceInputButton.disabled = true; // Disable voice input during cooldown
-// triggerImageInputButton.disabled = true; // No longer needed as button is hidden
-processImageButton.disabled = true; // Disable image processing during cooldown
+    let timeLeft = remainingTime;
+    
+    // We need to identify all buttons that should show the timer:
+    const buttonsToUpdate = [generateButton, reversePromptButton];
+
+    // The Test LLM button lives in a modal and might not be visible/in the array, 
+    // but we can push it if the reference exists.
+    const testLLMButton = document.getElementById('llm_test_button');
+    if (testLLMButton) {
+        buttonsToUpdate.push(testLLMButton);
+    }
+    
+    // Disable all buttons immediately
+    buttonsToUpdate.forEach(btn => {
+        if (btn) btn.disabled = true;
+    });
+
+    // We do NOT interact with the separate #cooldown_timer span anymore.
+
+    if (cooldownTimerInterval) {
+        clearInterval(cooldownTimerInterval);
+    }
+
+    cooldownTimerInterval = setInterval(() => {
+        timeLeft--;
+        const timerText = ` (Cooldown: ${timeLeft}s)`;
+        
+        // Update all buttons dynamically
+        if (generateButton) generateButton.textContent = originalGenerateText + timerText;
+        if (reversePromptButton) reversePromptButton.textContent = originalReverseText + timerText;
+        
+        // For the test button, we use its known base text ('Test LLM')
+        if (testLLMButton) testLLMButton.textContent = 'Test LLM' + timerText;
 
 
-cooldownTimerDisplay.style.display = 'inline';
-cooldownTimerDisplay.textContent = `Cooldown: ${timeLeft}s`;
+        if (timeLeft <= 0) {
+            clearInterval(cooldownTimerInterval);
+            
+            // Restore button original text for Generate/Reverse
+            if (generateButton) generateButton.textContent = originalGenerateText;
+            if (reversePromptButton) reversePromptButton.textContent = originalReverseText;
+            if (testLLMButton) testLLMButton.textContent = 'Test LLM'; // Restore base text
 
-if (cooldownTimerInterval) {
-clearInterval(cooldownTimerInterval);
-}
-
-cooldownTimerInterval = setInterval(() => {
-timeLeft--;
-cooldownTimerDisplay.textContent = `Cooldown: ${timeLeft}s`;
-if (timeLeft <= 0) {
-clearInterval(cooldownTimerInterval);
-updateAllButtonStates(); // Re-check status to re-enable buttons
-}
-}, 1000);
+            // Re-enable buttons by checking overall application status
+            updateAllButtonStates();
+        }
+    }, 1000);
 }
 
 // --- LLM Niche Map (Based on Screenshot 2025-10-29) ---
