@@ -925,8 +925,7 @@ Upload an image containing handwritten text. The AI will attempt to recognize it
 </div>
 
 <div class="history-sections row">
-    <div class="col-md-4">
-        <div class="card">
+    <div class="col-md-4">  <div class="card">
             <div class="card-header">
                 <h5>Saved Prompts</h5>
             </div>
@@ -952,8 +951,7 @@ Upload an image containing handwritten text. The AI will attempt to recognize it
         </div>
     </div>
 
-    <div class="col-md-4">
-        <div class="card">
+    <div class="col-md-4">  <div class="card">
             <div class="card-header">
                 <h5>Past Raw Requests (Last 10)</h5>
             </div>
@@ -977,6 +975,9 @@ Upload an image containing handwritten text. The AI will attempt to recognize it
 <p class="text-muted" style="font-size: 0.85rem;">
 Note: For Image and Video Creation modes, the sample response will be a short textual response.
 </p>
+<div id="llm_test_response_area" class="mt-2">
+<p>Click "Test Prompt" to generate a sample response.</p>
+</div>
 <div class="llm-metadata" id="llm_response_metadata"></div> <div class="text-center mt-3">
 <div class="btn-group" role="group" aria-label="Prompt Actions">
     <button id="saveTestResponseButton" class="btn btn-warning mr-1"><i class="fas fa-save"></i> Save Response</button> 
@@ -1169,7 +1170,7 @@ savedPromptsListElement.innerHTML = '<li class="list-group-item">Error loading s
 }
 }
 
-// Function to fetch and display auto-saved responses    
+// Function to fetch and display auto-saved responses
 async function fetchAndDisplayAutoSavedResponses() {
     const autoSavedResponsesListElement = document.getElementById('auto_saved_responses_list');
     if (!autoSavedResponsesListElement) return;
@@ -1202,11 +1203,8 @@ async function fetchAndDisplayAutoSavedResponses() {
         console.error("Error fetching auto-saved responses:", error);
         autoSavedResponsesListElement.innerHTML = '<li class="list-group-item">Error loading saved responses.</li>';
     }
-}
-
-
-
-
+}    
+    
 // Function to fetch and display past raw requests
 async function fetchAndDisplayRawPrompts() {
 const pastRawRequestsListElement = document.getElementById('past_raw_requests_list');
@@ -1576,9 +1574,9 @@ function initializeTheme() {
 
 // index.html (Inside DOMContentLoaded listener)
 document.addEventListener('DOMContentLoaded', () => {
-    initializeTheme(); // Call theme initializer first!
+initializeTheme(); // Call theme initializer first!
 fetchAndDisplaySavedPrompts();
-    fetchAndDisplayAutoSavedResponses(); // NEW CALL
+fetchAndDisplayAutoSavedResponses();
 fetchAndDisplayRawPrompts();
 updateAllButtonStates(); // Initial check and update of all button states
 handlePromptModeChange(); // Set initial state for buttons based on default mode
@@ -2192,40 +2190,47 @@ console.error("Network error saving prompt:", error);
 });
 });
 
-// NEW: Modal Save Button Handler (Placed here for logical grouping)
+// index.html (New Listener placed near existing save prompt logic)
+
 document.getElementById('saveTestResponseButton').addEventListener('click', async function() {
     const responseTextElement = document.getElementById('llm_test_response_area').querySelector('pre');
     
-    // Use the primary prompt text for logging context
-    const inputPromptElement = document.getElementById('fullContextModalText'); 
-    
+    // Check if the LLM has run and provided content (which should be in a <pre> tag)
     const responseText = responseTextElement ? responseTextElement.textContent.trim() : '';
     const selectedLanguage = document.getElementById('lang_select').value;
     const appOutput = document.getElementById('app_output');
 
     if (!responseText) {
-        appOutput.textContent = "❗ Cannot save. Please run a successful Test LLM first.";
+        appOutput.textContent = getMessage("no_prompt_to_save", selectedLanguage, {type: "Test LLM"});
         appOutput.className = 'mt-4 warning';
         return;
     }
 
-    // Call the existing /save_prompt endpoint, treating the test response as a 'polished' type
+    // Call the existing /save_prompt endpoint
     try {
         const response = await fetch('/save_prompt', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ 
                 prompt_text: responseText, 
-                // Using 'polished' type to save to SavedPrompt, or 'test_response' if you 
-                // wish to use a unique type for filtering as noted in the comment.
-                prompt_type: 'test_response' 
+                prompt_type: 'manual_test_save' // Use a distinct type
             })
         });
 
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
+        }
+
         const data = await response.json();
         if (data.success) {
-            // Update the main app console
-            appOutput.textContent = `✅ Test Response manually saved!`;
+            // Update the main app console and display points instantly
+            if (data.total_points) {
+                updatePointsDisplay(data.total_points);
+                appOutput.textContent = `✅ Test Response manually saved! (+${data.new_points} points!)`;
+            } else {
+                appOutput.textContent = `✅ Test Response manually saved!`;
+            }
             appOutput.className = 'mt-4 success';
             // Also update the permanent saved prompts list display
             fetchAndDisplaySavedPrompts(); 
@@ -2234,11 +2239,12 @@ document.getElementById('saveTestResponseButton').addEventListener('click', asyn
             appOutput.className = 'mt-4 danger';
         }
     } catch (error) {
-        appOutput.textContent = `❌ Network error saving Test Response.`;
+        appOutput.textContent = `❌ Network error saving Test Response: ${error.message}`;
         appOutput.className = 'mt-4 danger';
     }
-});
+});    
 
+    
 // --- NEW: Social Media Share Functions ---
 function sharePromptToSocial(platform, promptText) {
 const appName = "Creative AI Prompt Generator";
