@@ -925,32 +925,44 @@ Upload an image containing handwritten text. The AI will attempt to recognize it
 </div>
 
 <div class="history-sections row">
-<div class="col-md-6">
-<div class="card">
-<div class="card-header">
-<h5>Saved Prompts</h5>
-</div>
-<div class="card-body">
-<ul id="saved_prompts_list" class="list-group">
-</ul>
-<button id="download_prompts_btn" class="download-all-button btn btn-success mt-3" onclick="window.location.href='/download_prompts_txt'" disabled>
-⬇️ Download All Prompts (TXT)
-</button>
-</div>
-</div>
-</div>
-<div class="col-md-6">
-<div class="card">
-<div class="card-header">
-<h5>Past Raw Requests (Last 10)</h5>
-</div>
-<div class="card-body">
-<ul id="past_raw_requests_list" class="list-group">
-</ul>
-</div>
-</div>
-</div>
-</div>
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header">
+                <h5>Saved Prompts</h5>
+            </div>
+            <div class="card-body">
+                <ul id="saved_prompts_list" class="list-group">
+                </ul>
+                <button id="download_prompts_btn" class="download-all-button btn btn-success mt-3" onclick="window.location.href='/download_prompts_txt'" disabled>
+                    ⬇️ Download All Prompts (TXT)
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header">
+                <h5>Auto-Saved LLM Responses (Last 10)</h5>
+            </div>
+            <div class="card-body">
+                <ul id="auto_saved_responses_list" class="list-group">
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header">
+                <h5>Past Raw Requests (Last 10)</h5>
+            </div>
+            <div class="card-body">
+                <ul id="past_raw_requests_list" class="list-group">
+                </ul>
+            </div>
+        </div>
+    </div>
 </div>
 
 <div id="fullContextModalOverlay" class="modal-overlay">
@@ -965,11 +977,9 @@ Upload an image containing handwritten text. The AI will attempt to recognize it
 <p class="text-muted" style="font-size: 0.85rem;">
 Note: For Image and Video Creation modes, the sample response will be a short textual response.
 </p>
-<div id="llm_test_response_area" class="mt-2">
-<p>Click "Test Prompt" to generate a sample response.</p>
-</div>
 <div class="llm-metadata" id="llm_response_metadata"></div> <div class="text-center mt-3">
 <div class="btn-group" role="group" aria-label="Prompt Actions">
+    <button id="saveTestResponseButton" class="btn btn-warning mr-1"><i class="fas fa-save"></i> Save Response</button> 
 <button id="llm_test_button" class="btn btn-primary">Test LLM</button>
 <button id="perplexitySearchButton" class="btn btn-secondary"><i class="fas fa-search"></i> Web Search</button>
 </div>
@@ -1158,6 +1168,44 @@ console.error("Error fetching saved prompts:", error);
 savedPromptsListElement.innerHTML = '<li class="list-group-item">Error loading saved prompts.</li>';
 }
 }
+
+// Function to fetch and display auto-saved responses    
+async function fetchAndDisplayAutoSavedResponses() {
+    const autoSavedResponsesListElement = document.getElementById('auto_saved_responses_list');
+    if (!autoSavedResponsesListElement) return;
+
+    autoSavedResponsesListElement.innerHTML = '';
+
+    try {
+        const response = await fetch('/get_auto_saved_responses');
+        if (!response.ok) {
+            autoSavedResponsesListElement.innerHTML = '<li class="list-group-item">Please log in to view auto-saved responses.</li>';
+            return;
+        }
+        const savedResponses = await response.json();
+
+        if (savedResponses.length === 0) {
+            autoSavedResponsesListElement.innerHTML = '<li class="list-group-item">No test responses saved yet.</li>';
+        } else {
+            savedResponses.forEach(response => {
+                const listItem = document.createElement('li');
+                listItem.className = 'list-group-item';
+                listItem.innerHTML = `
+                    <strong>Test Run (${response.timestamp}):</strong>
+                    <pre class="mb-1">${response.test_text}</pre>
+                    <small class="text-muted">Input: ${response.input_prompt}</small>
+                `;
+                autoSavedResponsesListElement.appendChild(listItem);
+            });
+        }
+    } catch (error) {
+        console.error("Error fetching auto-saved responses:", error);
+        autoSavedResponsesListElement.innerHTML = '<li class="list-group-item">Error loading saved responses.</li>';
+    }
+}
+
+
+
 
 // Function to fetch and display past raw requests
 async function fetchAndDisplayRawPrompts() {
@@ -1529,6 +1577,8 @@ function initializeTheme() {
 // index.html (Inside DOMContentLoaded listener)
 document.addEventListener('DOMContentLoaded', () => {
     initializeTheme(); // Call theme initializer first!
+fetchAndDisplaySavedPrompts();
+    fetchAndDisplayAutoSavedResponses(); // NEW CALL
 fetchAndDisplayRawPrompts();
 updateAllButtonStates(); // Initial check and update of all button states
 handlePromptModeChange(); // Set initial state for buttons based on default mode
@@ -2140,6 +2190,53 @@ appOutput.className = 'mt-4 danger';
 console.error("Network error saving prompt:", error);
 }
 });
+});
+
+// NEW: Modal Save Button Handler (Placed here for logical grouping)
+document.getElementById('saveTestResponseButton').addEventListener('click', async function() {
+    const responseTextElement = document.getElementById('llm_test_response_area').querySelector('pre');
+    
+    // Use the primary prompt text for logging context
+    const inputPromptElement = document.getElementById('fullContextModalText'); 
+    
+    const responseText = responseTextElement ? responseTextElement.textContent.trim() : '';
+    const selectedLanguage = document.getElementById('lang_select').value;
+    const appOutput = document.getElementById('app_output');
+
+    if (!responseText) {
+        appOutput.textContent = "❗ Cannot save. Please run a successful Test LLM first.";
+        appOutput.className = 'mt-4 warning';
+        return;
+    }
+
+    // Call the existing /save_prompt endpoint, treating the test response as a 'polished' type
+    try {
+        const response = await fetch('/save_prompt', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ 
+                prompt_text: responseText, 
+                // Using 'polished' type to save to SavedPrompt, or 'test_response' if you 
+                // wish to use a unique type for filtering as noted in the comment.
+                prompt_type: 'test_response' 
+            })
+        });
+
+        const data = await response.json();
+        if (data.success) {
+            // Update the main app console
+            appOutput.textContent = `✅ Test Response manually saved!`;
+            appOutput.className = 'mt-4 success';
+            // Also update the permanent saved prompts list display
+            fetchAndDisplaySavedPrompts(); 
+        } else {
+            appOutput.textContent = `❌ Failed to save Test Response: ${data.message}`;
+            appOutput.className = 'mt-4 danger';
+        }
+    } catch (error) {
+        appOutput.textContent = `❌ Network error saving Test Response.`;
+        appOutput.className = 'mt-4 danger';
+    }
 });
 
 // --- NEW: Social Media Share Functions ---
