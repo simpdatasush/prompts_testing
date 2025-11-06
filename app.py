@@ -1607,7 +1607,16 @@ async def test_llm_response(): # CHANGED to async def
             user.daily_generation_count += 1
         db.session.add(user)
         
-        # 2. Log the successful LLM response/answer
+        # 2. AUTO-SAVE the successful Test Response
+        if current_user.is_authenticated:
+            new_auto_save = AutoSavedResponse(
+                user_id=current_user.id,
+                test_text=filtered_llm_response_text,
+                input_prompt=prompt_text[:250]
+            )
+            db.session.add(new_auto_save)
+        
+        # 3. Log the successful LLM response/answer
         log_llm_response(
             current_user.id, 
             'test_llm_response', 
@@ -1617,7 +1626,7 @@ async def test_llm_response(): # CHANGED to async def
             model_name=TEST_MODEL
         )
 
-        # 3. Commit ALL changes (stats, points, log) atomically
+        # 4. Commit ALL changes (stats, points, auto-save, log) atomically
         db.session.commit()
         app.logger.info(f"User {user.username}'s last prompt request time updated, count incremented, and LLM response logged.")
 
@@ -1656,7 +1665,7 @@ async def test_llm_response(): # CHANGED to async def
         return jsonify({"error": filtered_error_message}), 500
 
 
-# --- UPDATED: Endpoint to check cooldown status for frontend ---
+ # --- UPDATED: Endpoint to check cooldown status for frontend ---
 @app.route('/check_cooldown', methods=['GET'])
 @login_required
 def check_cooldown():
