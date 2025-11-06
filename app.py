@@ -52,10 +52,20 @@ db = SQLAlchemy(app)
 
 
 # --- NEW: Flask-Login Configuration ---
+# app.py (Around line 41-46)
+# --- NEW: Flask-Login Configuration ---
 login_manager = LoginManager()
 login_manager.init_app(app)
-login_manager.login_view = 'login' # The view Flask-Login should redirect to for login
-login_manager.login_message_category = 'info' # Category for flash messages
+login_manager.login_view = 'login' 
+login_manager.login_message_category = 'info' 
+
+# NEW FIX: Custom handler for unauthorized AJAX requests
+@login_manager.unauthorized_handler
+def unauthorized():
+    if request.blueprint == 'api' or request.is_json or request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+        return jsonify({"error": "Authentication required. Please log in.", "redirect": url_for('login')}), 401
+    return redirect(url_for('login'))
+# --- END NEW FIX ---
 # --- END NEW: Flask-Login Configuration ---
 
 
