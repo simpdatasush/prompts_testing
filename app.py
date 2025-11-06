@@ -283,6 +283,24 @@ class ApiRequestLog(db.Model):
     def __repr__(self):
         return f"ApiRequestLog(user_id={self.user_id}, endpoint='{self.endpoint}', status_code={self.status_code})"
 
+ # app.py (New model added around line 11331, after ApiRequestLog)
+
+# ... (Existing ApiRequestLog model around line 11331) ...
+
+# NEW: Model for Auto-Saved LLM Test Responses
+class AutoSavedResponse(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    test_text = db.Column(db.Text, nullable=False) # The returned sample response text
+    input_prompt = db.Column(db.String(250), nullable=True) # The prompt used as input for context
+    timestamp = db.Column(db.DateTime, default=datetime.utcnow)
+
+    def __repr__(self):
+        return f"AutoSavedResponse('{self.test_text[:30]}...', '{self.timestamp}')"
+
+# --- Helper Function to Log LLM Responses/Errors (Retained from previous plan) ---
+# ... (log_llm_response function definition must follow LLMResponseLog model definition) ...
+
 
 # --- Flask-Login User Loader ---
 @login_manager.user_loader
@@ -1567,9 +1585,7 @@ async def test_llm_response(): # CHANGED to async def
     )
 
     try:
-        # Generate LLM response with a specific token limit (524 tokens as requested)
-        # Use asyncio.to_thread to run the synchronous ask_gemini_for_text_prompt in a separate thread
-        # --- FIX: Provide the required 'model_name' argument ---
+        # Generate LLM response with a specific model
         # For testing/admin purposes, we default to the fastest, cheapest model: gemini-2.0-flash.
         TEST_MODEL = 'gemini-2.0-flash'
         llm_response_text_raw = await asyncio.to_thread(ask_gemini_for_text_prompt, llm_instruction, model_name=TEST_MODEL, max_output_tokens=8192)
@@ -1583,13 +1599,27 @@ async def test_llm_response(): # CHANGED to async def
         app.logger.info(f"User {user.username} awarded {points_awarded} points for Test LLM. Total: {user.total_points}")
         # --- END GAMIFICATION ---
 
-        # Update user stats after successful test prompt
+        # --- PREPARE FOR FINAL DATABASE COMMIT (Successful Path) ---
+
+        # 1. Update user stats 
         user.last_generation_time = now
         if not user.is_admin:
             user.daily_generation_count += 1
         db.session.add(user)
+        
+        # 2. Log the successful LLM response/answer
+        log_llm_response(
+            current_user.id, 
+            'test_llm_response', 
+            prompt_mode, 
+            prompt_text, # raw input
+            filtered_llm_response_text, # full output
+            model_name=TEST_MODEL
+        )
+
+        # 3. Commit ALL changes (stats, points, log) atomically
         db.session.commit()
-        app.logger.info(f"User {user.username}'s last prompt request time updated and count incremented after test prompt.")
+        app.logger.info(f"User {user.username}'s last prompt request time updated, count incremented, and LLM response logged.")
 
         return jsonify({
             "sample_response": filtered_llm_response_text,
@@ -1598,9 +1628,33 @@ async def test_llm_response(): # CHANGED to async def
         })
     except Exception as e:
         app.logger.exception("Error during LLM sample response generation:")
-        # Ensure error message is filtered before sending to frontend
+        
+        # --- LOGGING FAILURE AND ROLLBACK ---
+        
+        # 1. Rollback any pending user stat/point changes
+        db.session.rollback() 
+        
+        # 2. Log the failure
+        error_output = f"An unexpected server error occurred during sample response generation: {e}"
+        log_llm_response(
+            current_user.id, 
+            'test_llm_response_FAIL', 
+            prompt_mode, 
+            prompt_text, 
+            error_output, 
+            model_name='N/A'
+        )
+        
+        # 3. Commit only the failure log entry
+        try:
+            db.session.commit() 
+        except Exception as commit_e:
+            app.logger.error(f"Failed to commit FAILURE log for user {current_user.id}: {commit_e}")
+
+        # 4. Return filtered error message
         filtered_error_message = filter_gemini_response(f"An unexpected server error occurred during sample response generation: {e}. Please check server logs for details.")
         return jsonify({"error": filtered_error_message}), 500
+
 
 # --- UPDATED: Endpoint to check cooldown status for frontend ---
 @app.route('/check_cooldown', methods=['GET'])
@@ -1677,6 +1731,21 @@ def save_prompt():
         db.session.rollback()
         return jsonify({'success': False, 'message': f'Database error: {e}'}), 500
 
+# app.py (New route added around line 12526)
+
+# --- Get Auto-Saved Responses Endpoint ---
+@app.route('/get_auto_saved_responses', methods=['GET'])
+@login_required
+def get_auto_saved_responses():
+    auto_saved_responses = AutoSavedResponse.query.filter_by(user_id=current_user.id).order_by(AutoSavedResponse.timestamp.desc()).limit(10).all()
+    responses_data = []
+    for response in auto_saved_responses:
+        responses_data.append({
+            'test_text': response.test_text,
+            'input_prompt': response.input_prompt,
+            'timestamp': response.timestamp.strftime('%Y-%m-%d %H:%M:%S')
+        })
+    return jsonify(responses_data)
 
 # --- NEW: Endpoint for Social Sharing Points (Gamification) ---
 @app.route('/award_share_points', methods=['POST'])
