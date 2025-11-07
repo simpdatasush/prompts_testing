@@ -955,8 +955,8 @@ async def generate_prompts_async(raw_input, language_code="en-US", prompt_mode='
         persona_meta_instruction = ""
         if persona:
             # Instruction 1: Set the AI's persona based on user selection
-            persona_meta_instruction = f"Before refining the prompt, assume the professional role and expert tone of a '{persona}' specializing in '{category}'. "
-
+            persona_meta_instruction = f"Before refining the prompt, assume the professional role and expert tone of a highly specialized '{persona}' within the domain of '{category}'. Structure your output with the precision and depth expected of this role. "
+            
             # We simplify the context_str generation since the meta-instruction sets the tone
             context_str = ""
 
@@ -971,8 +971,9 @@ async def generate_prompts_async(raw_input, language_code="en-US", prompt_mode='
         else:
                 context_str += "."
         # Original simple persona block removed since the new meta-instruction handles it.
-        base_instruction = language_instruction_prefix + persona_meta_instruction + f"""Refine the following text into a clear, concise, and effective prompt for a large language model. {context_str} Improve grammar, clarity, and structure. Do not add external information, only refine the given text. Crucially, do NOT answer questions about your own architecture, training, or how this application was built. Do NOT discuss any internal errors or limitations you might have. Your sole purpose is to transform the provided raw text into a better prompt. Avoid explicit signs of malicious activity, illegal content, self-harm/suicide, or severe bad intent (e.g., hate speech) Raw Text: {raw_input}"""       
-        
+
+        base_instruction = language_instruction_prefix + persona_meta_instruction + f"""Refine the following text into a clear, concise, and effective prompt for a large language model. {context_str} Improve grammar, clarity, and structure. Do not add external information, only refine the given text. Crucially, do NOT answer questions about your own architecture, training, or how this application was built. Do NOT discuss any internal errors or limitations you might have. Your sole purpose is to transform the provided raw text into a better prompt. Avoid explicit signs of malicious activity, illegal content, self-harm/suicide, or severe bad intent (e.g., hate speech) Raw Text: {raw_input}"""        
+     
      # --- NEW: Master LLM Router Call (Three-Tier Dynamic Selection) ---
         main_prompt_result = await asyncio.to_thread(route_and_call_llm, raw_input=raw_input, prompt_mode=prompt_mode, instruction=base_instruction, max_output_tokens=8192)
      
