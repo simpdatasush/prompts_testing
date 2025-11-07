@@ -2678,7 +2678,7 @@ with app.app_context():
                 "Legal & Compliance", "Healthcare & Wellness", "Image Generation & Visual Design",
                 "Event Planning", "UX/UI & Product Design", "Spirituality & Self-Reflection",
                 "Gaming", "Voice, Audio & Podcasting", "AI & Prompt Engineering",
-                "News & Current Affairs", "Travel & Culture", "Other"
+                "News & Current Affairs", "Travel & Culture", "Other","Advanced NLP & Content AI"
             ]),
             allowed_personas=json.dumps([
                 "Author", "Editor", "Copywriter", "Content Creator", "Blogger",
@@ -2706,7 +2706,7 @@ with app.app_context():
                 "Prompt Engineer", "ML Engineer", "AI Researcher", "NLP Scientist", "Chatbot Developer",
                 "Journalist", "News Curator", "Political Analyst", "Opinion Writer", "Debater",
                 "Itineraries", "Local tips", "Cultural do’s and don’ts",
-                "General", "Custom", "Uncategorized", "Other"
+                "General", "Custom", "Uncategorized", "Other", "Computational Linguist"
             ])
         )
         admin_user.set_password('adminpass') # Set a default password for the admin
