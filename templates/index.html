@@ -1256,9 +1256,9 @@ const settingsToggleIcon = document.getElementById('settings_toggle_icon');
 const settingsLockIcon = document.getElementById('settings_lock_icon'); // NEW: Reference to the lock icon
 
 // index.html (Replace existing constants around line 3489)
-const USER_ALLOWED_CATEGORIES = {{ allowed_categories | tojson | default('null') }}; [cite: 3486]
-const USER_ALLOWED_PERSONAS = {{ allowed_personas | tojson | default('null') }}; [cite: 3487]
-const IS_ADMIN = {{ current_user.is_admin | tojson | default('false') }}; [cite: 3488] // NEW: Pass is_admin status
+const USER_ALLOWED_CATEGORIES = {{ allowed_categories | tojson | default('null') }};
+const USER_ALLOWED_PERSONAS = {{ allowed_personas | tojson | default('null') }};
+const IS_ADMIN = {{ current_user.is_admin | tojson | default('false') }}; // NEW: Pass is_admin status
 
 // --- NEW: Data Structures loaded from Flask backend via Jinja2 ---
 // JSON.parse is necessary because Flask dumps the Python dicts as JSON strings.
