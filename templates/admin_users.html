@@ -332,10 +332,48 @@
   <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
   <script>
       // Master lists of categories and personas (should match those in app.py for consistency)
-      const ALL_CATEGORIES = Object.keys(JSON.parse('{{ all_categories_map | safe }}'));
+      const ALL_CATEGORIES = [
+          "General Writing & Editing", "Programming & Code", "Business & Finance",
+          "Education & Learning", "Technical Writing & Explanation", "Customer Support",
+          "Research & Information Retrieval", "Data Analysis & Interpretation",
+          "Productivity & Planning", "Creative Writing", "Marketing & Advertising",
+          "Multilingual & Translation", "Entertainment & Media", "Career & Resume",
+          "Legal & Compliance", "Healthcare & Wellness", "Image Generation & Visual Design",
+          "Event Planning", "UX/UI & Product Design", "Spirituality & Self-Reflection",
+          "Gaming", "Voice, Audio & Podcasting", "AI & Prompt Engineering",
+          "News & Current Affairs", "Travel & Culture", "Other"
+      ];
+
 
       // This mapping is crucial for filtering personas based on selected categories
-      const CATEGORY_PERSONAS_MAP = JSON.parse('{{ category_personas_map | safe }}');
+      const CATEGORY_PERSONAS_MAP = {
+          "General Writing & Editing": ["Author", "Editor", "Copywriter", "Content Creator", "Blogger", "Other"],
+          "Programming & Code": ["Software Developer", "Frontend Engineer", "Backend Engineer", "Data Scientist", "DevOps Engineer", "Other"],
+          "Business & Finance": ["Entrepreneur", "Business Analyst", "Financial Advisor", "Investor", "Startup Founder", "Other"],
+          "Education & Learning": ["Student", "Teacher", "Tutor", "Curriculum Designer", "Lifelong Learner", "Other"],
+          "Technical Writing & Explanation": ["Technical Writer", "System Architect", "Engineer", "Product Manager", "Compliance Officer", "Other"],
+          "Customer Support": ["Support Agent", "Customer Success Manager", "Helpdesk Analyst", "Call Center Manager", "Chatbot Designer", "Other"],
+          "Research & Information Retrieval": ["Researcher", "Scientist", "Academic", "Policy Analyst", "Librarian", "Other"],
+          "Data Analysis & Interpretation": ["Data Analyst", "BI Analyst", "Statistician", "Data Engineer", "Operations Manager", "Other"],
+          "Productivity & Planning": ["Project Manager", "Life Coach", "Executive Assistant", "Scrum Master", "Productivity Hacker", "Other"],
+          "Creative Writing": ["Novelist", "Poet", "Screenwriter", "Songwriter", "Creative Director", "Other"],
+          "Marketing & Advertising": ["Marketing Manager", "Brand Strategist", "SEO Specialist", "Content Marketer", "Media Planner", "Other"],
+          "Multilingual & Translation": ["Translator", "Interpreter", "Language Teacher", "Localization Specialist", "Multilingual Blogger", "Other"],
+          "Entertainment & Media": ["YouTuber", "Streamer", "Podcaster", "Critic", "Fan Fiction Author", "Other"],
+          "Career & Resume": ["Job Seeker", "Career Coach", "HR Recruiter", "Hiring Manager", "Resume Writer", "Other"],
+          "Legal & Compliance": ["Lawyer", "Paralegal", "Compliance Officer", "Policy Advisor", "Contract Manager", "Other"],
+          "Healthcare & Wellness": ["Nutritionist", "Fitness Coach", "Therapist", "Health Blogger", "Wellness Consultant", "Other"],
+          "Image Generation & Visual Design": ["Graphic Designer", "Concept Artist", "Art Director", "Photographer", "AI Image Prompt Engineer", "Other"],
+          "Event Planning": ["Event Planner", "Wedding Coordinator", "Conference Organizer", "Marketing Executive", "Venue Manager", "Other"],
+          "UX/UI & Product Design": ["UX Designer", "UI Designer", "Product Designer", "Interaction Designer", "Design Researcher", "Other"],
+          "Spirituality & Self-Reflection": ["Meditation Coach", "Spiritual Guide", "Mindfulness Blogger", "Philosopher", "Self-help Author", "Other"],
+          "Gaming": ["Game Developer", "Game Designer", "Gamer", "Stream Host", "Lore Writer", "Other"],
+          "Voice, Audio & Podcasting": ["Voice Actor", "Podcaster", "Audio Engineer", "Narrator", "Sound Designer", "Other"],
+          "AI & Prompt Engineering": ["Prompt Engineer", "ML Engineer", "AI Researcher", "NLP Scientist", "Chatbot Developer", "Other"],
+          "News & Current Affairs": ["Journalist", "News Curator", "Political Analyst", "Opinion Writer", "Debater", "Other"],
+          "Travel & Culture": ["Itineraries", "Local tips", "Cultural do’s and don’ts", "Other"],
+          "Other": ["General", "Custom", "Uncategorized"], // Default personas for the "Other" main category
+      };
 
 
       // Function to populate a select element with options
