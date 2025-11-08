@@ -1550,30 +1550,33 @@ async def test_llm_response(): # CHANGED to async def
             return jsonify({"error": "Selected persona is not allowed for your account."}), 403
     # --- END Server-side validation ---
 
-    # Construct the instruction for the LLM, including context if provided
-    context_str = ""
-    if category:
-        context_str += f"The user requested this for the category '{category}'"
-        if subcategory:
-            context_str += f" and subcategory '{subcategory}'."
-        else:
-            context_str += "."
-    if persona:
-        if context_str:
-            context_str += f" The response should be from the perspective of a '{persona}'."
-        else:
-            context_str += f"Craft the response from the perspective of a '{persona}'."
+    # 1. Determine the specialization domain (handles missing category gracefully)
+    if category and category.strip():
+        specialization_domain = category.strip()
+    else:
+        # Default the specialization based on persona, or to 'General Knowledge' if both are missing.
+        specialization_domain = f"General Expertise matching the '{persona}' role" if persona and persona.strip() else "General Knowledge"
 
-    # Define the model and temperature to be used for the test response
+    # 2. Build the Persona Meta-Instruction (The core of the specialized response)
+    persona_meta_instruction = ""
+    if persona and persona.strip():
+        # This is the specialized instruction for the AI model to adopt a role.
+        persona_meta_instruction = (
+            f"Adopt the professional role and expert tone of a highly specialized '{persona}' "
+            f"within the domain of '{specialization_domain}' to structure your answer. "
+        )
+    
+    # 3. Build the Core Instruction for the LLM
     llm_model_name = "gemini-2.5-flash" # As defined globally
     llm_temperature = 0.1 # As defined globally for text_model
 
     llm_instruction = (
-        f"Generate a concise sample response to the following prompt, as if you are the AI model "
-        f"receiving this prompt. Keep the response brief and to the point, demonstrating how you would "
-        f"interpret and fulfill the prompt. The response MUST be entirely in {LANGUAGE_MAP.get(language_code, 'English')}. "
-        f"Crucially, **DO NOT attempt to refine, rewrite, rephrase, or critique the input prompt**; only provide the requested answer or output based on the prompt's content. "
-        f"{context_str}\n\nPrompt: {prompt_text}"
+        f"Your ONLY TASK is to generate a concise SAMPLE ANSWER to the prompt provided below. "
+        f"Do not reformulate or critique the input prompt. "
+        f"{persona_meta_instruction}" # Inject specialized role instruction here
+        f"The response MUST be entirely in {LANGUAGE_MAP.get(language_code, 'English')}. "
+        f"Keep the answer brief and to the point.\n\n"
+        f"Prompt: {prompt_text}"
     )
 
     try:
