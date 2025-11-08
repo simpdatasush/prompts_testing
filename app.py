@@ -1322,15 +1322,15 @@ async def generate(): # CHANGED FROM ASYNC
         user.last_generation_time = now # Record the time of this successful request
         if not user.is_admin: # Only increment count for non-admin users
             user.daily_generation_count += 1
-        db.session.add(user) # Add the user object back to the session to mark it as modified
-        db.session.commit()
+        await asyncio.to_thread(db.session.add, user) # Add the user object back to the session to mark it as modified
+        await asyncio.to_thread(db.session.commit)
         app.logger.info(f"User {user.username}'s last prompt request time updated and count incremented. (Forward Prompt)")
 
         if current_user.is_authenticated:
             try:
                 new_raw_prompt = RawPrompt(user_id=current_user.id, raw_text=prompt_input)
-                db.session.add(new_raw_prompt)
-                db.session.commit()
+                await asyncio.to_thread(db.session.add,new_raw_prompt)
+                await asyncio.to_thread(db.session.commit)
                 app.logger.info(f"Raw prompt saved for user {current_user.username}")
             except Exception as e:
                 app.logger.error(f"Error saving raw prompt for user {current_user.username}: {e}")
