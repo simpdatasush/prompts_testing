@@ -2571,7 +2571,7 @@ def api_reverse_prompt(user):
             if user.daily_generation_date != today:
                 user.daily_generation_count = 0
                 user.daily_generation_date = today
-                await asyncio.to_thread((db.session.add, user)
+                await asyncio.to_thread(db.session.add, user)
                 await asyncio.to_thread(db.session.commit)
 
             if user.daily_generation_count >= user.daily_limit:
