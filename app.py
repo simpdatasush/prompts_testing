@@ -657,23 +657,6 @@ def ask_gemini_for_structured_prompt(prompt_instruction, generation_config=None,
         app.logger.error(f"DEBUG: Unexpected Error calling Gemini API (structured_gen_model - {model_name}): {e}", exc_info=True)
         return filter_gemini_response(f"An unexpected error occurred: {str(e)}")
 
-
-# --- NEW: Gemini API for Image Understanding (Synchronous wrapper for vision_model) ---
-def ask_gemini_for_image_text(image_data_bytes):
-    try:
-        response = vision_model.generate_content(prompt_parts)
-        extracted_text = response.text if response and response.text else ""
-        return extracted_text # Return raw text for further processing/filtering
-    except ValueError as e: # <--- CATCH THE VALUE ERROR HERE
-        app.logger.error(f"DEBUG: Unexpected ValueError from Gemini API (vision_model): {e}", exc_info=True)
-        return filter_gemini_response(f"AI image text extraction failed due to an issue: {str(e)}")
-    except google_api_exceptions.GoogleAPICallError as e:
-        app.logger.error(f"Error calling Gemini API for image text extraction: {e}", exc_info=True)
-        return filter_gemini_response(f"Error extracting text from image: {str(e)}")
-    except Exception as e:
-        app.logger.error(f"Unexpected Error calling Gemini API for image text extraction: {e}", exc_info=True)
-        return filter_gemini_response(f"An unexpected error occurred during image text extraction: {str(e)}")
-
 # --- NEW GAMIFICATION HELPER FUNCTIONS ---
 def calculate_generation_points(raw_input, prompt_mode, language_code, category, persona):
     """Calculates points based on complexity and settings usage."""
@@ -1424,83 +1407,6 @@ async def reverse_prompt(): # CHANGED FROM ASYNC
     except Exception as e:
         app.logger.exception("Error during reverse prompt generation in endpoint:")
         return jsonify({"error": f"An unexpected server error occurred: {e}. Please check server logs for details."}), 500
-
-
-# NEW: Image Processing Endpoint ---
-@app.route('/process_image_prompt', methods=['POST'])
-@login_required
-async def process_image_prompt(): # CHANGED FROM ASYNC
-    user = current_user
-    now = datetime.utcnow()
-    
-    # --- Check if the user is locked out ---
-    if user.is_locked:
-        return jsonify({
-            "error": "Your account is locked. Please contact support.",
-            "account_locked": True
-        }), 403 # Forbidden
-
-    # Apply cooldown to image processing as well
-    if user.last_generation_time: # Changed from last_prompt_request
-        time_since_last_request = (now - user.last_generation_time).total_seconds()
-        if time_since_last_request < COOLDOWN_SECONDS:
-            remaining_time = int(COOLDOWN_SECONDS - time_since_last_request)
-            app.logger.info(f"User {user.username} is on cooldown for image processing. Remaining: {remaining_time}s")
-            return jsonify({
-                "error": f"Please wait {remaining_time} seconds before processing another image.",
-                "cooldown_active": True,
-                "remaining_time": remaining_time
-            }), 429
-
-    # Daily limit check for image processing
-    if not user.is_admin:
-        today = now.date()
-        if user.daily_generation_date != today: # Changed from last_count_reset_date
-            user.daily_generation_count = 0
-            user.daily_generation_date = today # Changed from last_count_reset_date
-            db.session.add(user)
-            db.session.commit()
-
-        if user.daily_generation_count >= user.daily_limit:
-            app.logger.info(f"User {user.username} exceeded their daily image processing limit of {user.daily_limit}.")
-            return jsonify({
-                "error": f"You have reached your daily limit of {user.daily_limit} generations. If you are looking for more prompts, kindly make a payment to increase your limit.",
-                "daily_limit_reached": True,
-                "payment_link": PAYMENT_LINK
-            }), 429
-
-    data = request.get_json()
-    image_data_b64 = data.get('image_data')
-    language_code = data.get('language_code', 'en-US') # Not directly used by Gemini Vision, but good to pass
-
-
-    if not image_data_b64:
-        return jsonify({"error": "No image data provided."}), 400
-
-    try:
-        image_data_bytes = base64.b64decode(image_data_b64) # Decode base64 string to bytes
-        
-        # Call the Gemini API for image understanding
-        recognized_text = await asyncio.to_thread(ask_gemini_for_image_text, image_data_bytes)
-        
-        # --- GAMIFICATION: Award points for image processing (multimodal input) ---
-        points_awarded = 50 # Flat rate for processing an image/multimodal input
-        user.total_points += points_awarded
-        app.logger.info(f"User {user.username} awarded {points_awarded} points for image processing. Total: {user.total_points}")
-        # --- END GAMIFICATION ---
-
-        # Update last_generation_time after successful image processing
-        user.last_generation_time = now
-        if not user.is_admin:
-            user.daily_generation_count += 1
-        db.session.add(user)
-        db.session.commit()
-        app.logger.info(f"User {user.username}'s last prompt request time updated and count incremented after image processing.")
-
-        return jsonify({"recognized_text": recognized_text})
-    except Exception as e:
-        app.logger.exception("Error during image processing endpoint:")
-        return jsonify({"error": f"An unexpected server error occurred during image processing: {e}. Please check server logs for details."}), 500
 
 
 # --- NEW: Route to Handle Perplexity Search Request from Frontend ---
