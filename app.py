@@ -1252,14 +1252,14 @@ async def generate(): # CHANGED FROM ASYNC
         if user.daily_generation_date != today:
             user.daily_generation_count = 0
             user.daily_generation_date = today
-            db.session.add(user) # Mark user as modified
-            db.session.commit() # Commit reset immediately to prevent race conditions on count
+            await asyncio.to_thread(db.session.add, user)
+            await asyncio.to_thread(db.session.commit) # Commit reset immediately to prevent race conditions on count
 
         if current_user.is_authenticated:
             try:
                 new_raw_prompt = RawPrompt(user_id=current_user.id, raw_text=prompt_input)
-                db.session.add(new_raw_prompt)
-                db.session.commit() # <<< This commit must succeed.
+                await asyncio.to_thread(db.session.add,new_raw_prompt)
+                await asyncio.to_thread(db.session.commit) # <<< This commit must succeed.
                 app.logger.info(f"Raw prompt saved for user {current_user.username}")
             except Exception as e:
                 app.logger.error(f"Error saving raw prompt for user {current_user.username}: {e}")
@@ -1375,8 +1375,8 @@ async def reverse_prompt(): # CHANGED FROM ASYNC
         if user.daily_generation_date != today: # Changed from last_count_reset_date
             user.daily_generation_count = 0
             user.daily_generation_date = today # Changed from last_count_reset_date
-            db.session.add(user)
-            db.session.commit()
+            await asyncio.to_thread(db.session.add, user)
+            await asyncio.to_thread(db.session.commit)
 
         if user.daily_generation_count >= user.daily_limit: # Check against per-user limit
             app.logger.info(f"User {user.username} exceeded their daily reverse prompt limit of {user.daily_limit}.")
@@ -1417,8 +1417,8 @@ async def reverse_prompt(): # CHANGED FROM ASYNC
         user.last_generation_time = now
         if not user.is_admin:
             user.daily_generation_count += 1
-        db.session.add(user)
-        db.session.commit()
+        await asyncio.to_thread(db.session.add, user)
+        await asyncio.to_thread(db.session.commit)
         app.logger.info(f"API user {user.username}'s last prompt request time updated and count incremented. (API Reverse Prompt)")
 
         return jsonify({"inferred_prompt": inferred_prompt})
@@ -1457,7 +1457,7 @@ async def search_perplexity():
     
     try:
         # Commit the point change to the database
-        db.session.commit()
+        await asyncio.to_thread(db.session.commit)
         app.logger.info(f"User {user.username} awarded {points_awarded} points for Web Search. Total: {user.total_points}")
     except Exception as e:
         db.session.rollback()
@@ -1505,8 +1505,8 @@ async def test_llm_response(): # CHANGED to async def
         if user.daily_generation_date != today:
             user.daily_generation_count = 0
             user.daily_generation_date = today
-            db.session.add(user)
-            db.session.commit()
+            await asyncio.to_thread(db.session.add,user)
+            await asyncio.to_thread(db.session.commit)
 
         if user.daily_generation_count >= user.daily_limit:
             app.logger.info(f"User {user.username} exceeded their daily test prompt limit of {user.daily_limit}.")
@@ -1585,8 +1585,8 @@ async def test_llm_response(): # CHANGED to async def
         user.last_generation_time = now
         if not user.is_admin:
             user.daily_generation_count += 1
-        db.session.add(user)
-        db.session.commit()
+        await asyncio.to_thread(db.session.add,user)
+        await asyncio.to_thread(db.session.commit)
         app.logger.info(f"User {user.username}'s last prompt request time updated and count incremented after test prompt.")
 
         return jsonify({
@@ -1668,7 +1668,7 @@ def save_prompt():
         app.logger.info(f"User {current_user.username} awarded {points_awarded} points for saving. Total: {current_user.total_points}")
         # --- END GAMIFICATION ---
 
-        db.session.commit()
+        await asyncio.to_thread(db.session.commit)
         return jsonify({'success': True, 'message': 'Prompt saved successfully!', 'new_points': points_awarded, 'total_points': current_user.total_points})
     except Exception as e:
         logging.error(f"Error saving prompt: {e}")
@@ -1683,8 +1683,9 @@ def award_share_points():
     points_awarded = 15
     try:
         current_user.total_points += points_awarded
-        db.session.add(current_user)
-        db.session.commit()
+
+        await asyncio.to_thread(db.session.add,user)
+        await asyncio.to_thread(db.session.commit)
         app.logger.info(f"User {current_user.username} awarded {points_awarded} points for sharing. Total: {current_user.total_points}")
         return jsonify({'success': True, 'new_points': points_awarded, 'total_points': current_user.total_points})
     except Exception as e:
@@ -1772,8 +1773,8 @@ def add_prompt():
             technical_prompt=technical_prompt,
             display_type=display_type # NEW: Save display_type
         )
-        db.session.add(new_prompt)
-        db.session.commit()
+        await asyncio.to_thread(db.session.add, new_prompt)
+        await asyncio.to_thread(db.session.commit)
         flash('Sample prompt added successfully!', 'success')
     except Exception as e:
         db.session.rollback()
@@ -1786,8 +1787,8 @@ def add_prompt():
 def delete_prompt(prompt_id):
     prompt = SamplePrompt.query.get_or_404(prompt_id)
     try:
-        db.session.delete(prompt)
-        db.session.commit()
+        await asyncio.to_thread(db.session.delete,prompt)
+        await asyncio.to_thread(db.session.commit)
         flash('Sample prompt deleted successfully!', 'success')
     except Exception as e:
         db.session.rollback()
@@ -1802,7 +1803,7 @@ def repost_prompt(prompt_id):
     try:
         # Update timestamp to now to bring it to the top of the list
         prompt.timestamp = datetime.utcnow()
-        db.session.commit()
+        await asyncio.to_thread(db.session.commit)
         flash('Sample prompt reposted successfully (timestamp updated)!', 'success')
     except Exception as e:
         db.session.rollback()
@@ -1846,8 +1847,8 @@ def add_news():
             published_date=published_date,
             user_id=current_user.id # Assign current admin user
         )
-        db.session.add(new_news)
-        db.session.commit()
+        await asyncio.to_thread(db.session.add,new_news)
+        await asyncio.to_thread(db.session.commit)
         flash('News item added successfully!', 'success')
     except Exception as e:
         db.session.rollback()
@@ -1860,8 +1861,8 @@ def add_news():
 def delete_news(news_id):
     news_item = NewsItem.query.get_or_404(news_id)
     try:
-        db.session.delete(news_item)
-        db.session.commit()
+        await asyncio.to_thread(db.session.delete, news_item)
+        await asyncio.to_thread(db.session.commit)
         flash('News item deleted successfully!', 'success')
     except Exception as e:
         db.session.rollback()
@@ -1876,7 +1877,7 @@ def repost_news(news_id):
     try:
         # Update timestamp to now to bring it to the top of the list
         news_item.timestamp = datetime.utcnow()
-        db.session.commit()
+        await asyncio.to_thread(db.session.commit)
         flash('News item reposted successfully (timestamp updated)!', 'success')
     except Exception as e:
         db.session.rollback()
@@ -1924,8 +1925,8 @@ def add_job():
             published_date=published_date,
             user_id=current_user.id # Assign current admin user
         )
-        db.session.add(new_job)
-        db.session.commit()
+        await asyncio.to_thread(db.session.add,new_job)
+        await asyncio.to_thread(db.session.commit)
         flash('Job listing added successfully!', 'success')
     except Exception as e:
         db.session.rollback()
@@ -1938,8 +1939,8 @@ def add_job():
 def delete_job(job_id):
     job_listing = JobListing.query.get_or_404(job_id)
     try:
-        db.session.delete(job_listing)
-        db.session.commit()
+        await asyncio.to_thread(db.session.delete, job_listing)
+        await asyncio.to_thread(db.session.commit)
         flash('Job listing deleted successfully!', 'success')
     except Exception as e:
         db.session.rollback()
@@ -1954,7 +1955,7 @@ def repost_job(job_id):
     try:
         # Update timestamp to now to bring it to the top of the list
         job_listing.timestamp = datetime.utcnow()
-        db.session.commit()
+        await asyncio.to_thread(db.session.commit)
         flash('Job listing reposted successfully (timestamp updated)!', 'success')
     except Exception as e:
         db.session.rollback()
@@ -1990,7 +1991,7 @@ def change_password():
 
         try:
             current_user.set_password(new_password)
-            db.session.commit()
+            await asyncio.to_thread(db.session.commit)
             flash('Your password has been changed successfully!', 'success')
             return redirect(url_for('app_home')) # Redirect to app_home
         except Exception as e:
@@ -2033,8 +2034,8 @@ def add_gift():
             points_required=points_required,
             user_id=current_user.id
         )
-        db.session.add(new_gift)
-        db.session.commit()
+        await asyncio.to_thread(db.session.add, new_gift)
+        await asyncio.to_thread(db.session.commit)
         flash('Gift added successfully!', 'success')
     except Exception as e:
         db.session.rollback()
@@ -2047,8 +2048,8 @@ def add_gift():
 def delete_gift(gift_id):
     gift = Gift.query.get_or_404(gift_id)
     try:
-        db.session.delete(gift)
-        db.session.commit()
+        await asyncio.to_thread(db.session.delete, gift)
+        await asyncio.to_thread(db.session.commit)
         flash('Gift deleted successfully!', 'success')
     except Exception as e:
         db.session.rollback()
@@ -2063,7 +2064,7 @@ def repost_gift(gift_id):
         # Repost logic updates the timestamp and ensures it is active
         gift.timestamp = datetime.utcnow()
         gift.is_active = True
-        db.session.commit()
+        await asyncio.to_thread(db.session.commit)
         flash('Gift reposted successfully (timestamp updated)!', 'success')
     except Exception as e:
         db.session.rollback()
@@ -2091,7 +2092,7 @@ async def send_reset_link():
         
         user.reset_token = token # Changed from password_reset_token
         user.reset_token_expiration = expiration # Changed from password_reset_expiration
-        db.session.commit()
+        await asyncio.to_thread(db.session.commit)
         
         reset_link = url_for('reset_password', token=token, _external=True)
         
@@ -2153,7 +2154,7 @@ def reset_password(token):
         user.set_password(new_password)
         user.reset_token = None # Invalidate the token after use
         user.reset_token_expiration = None
-        db.session.commit()
+        await asyncio.to_thread(db.session.commit)
         flash('Your password has been reset successfully! Please log in with your new password.', 'success')
         return redirect(url_for('login'))
     return render_template('reset_password.html', token=token)
@@ -2178,7 +2179,7 @@ def subscribe_newsletter():
         try:
             new_subscriber = NewsletterSubscriber(email=email)
             db.session.add(new_subscriber)
-            db.session.commit()
+            await asyncio.to_thread(db.session.commit)
             flash('Successfully subscribed to our newsletter! Thank a you!', 'success')
         except Exception as e:
             db.session.rollback()
@@ -2215,8 +2216,8 @@ def register():
             else:
                 new_user = User(username=username, email=email) # Pass email to User constructor
                 new_user.set_password(password)
-                db.session.add(new_user)
-                db.session.commit()
+                await asyncio.to_thread(db.session.add, new_user)
+                await asyncio.to_thread(db.session.commit)
                 login_user(new_user) # Automatically log in the new user
                 flash('Registration successful! You are now logged in.', 'success')
                 return redirect(url_for('app_home')) # Redirect to app home after registration
@@ -2331,7 +2332,7 @@ def toggle_user_access(user_id):
             flash(f"User {user.username} has been unlocked.", "success")
         else:
             flash(f"User {user.username} has been locked.", "info")
-        db.session.commit()
+        await asyncio.to_thread(db.session.commit)
     return redirect(url_for('admin_users'))
 
 # NEW: Admin route to update user's daily limit
@@ -2346,7 +2347,7 @@ def update_user_quota(user_id):
         if new_limit < 0:
             raise ValueError("Limit cannot be negative.")
         user.daily_limit = new_limit
-        db.session.commit()
+        await asyncio.to_thread(db.session.commit)
         flash(f"Daily prompt limit for {user.username} has been updated to {new_limit}.", "success")
     except (ValueError, TypeError) as e:
         flash(f"Invalid limit value. Please enter a positive integer. Error: {e}", "danger")
@@ -2368,7 +2369,7 @@ def generate_api_key(user_id):
     user = User.query.get_or_404(user_id)
     new_api_key = str(uuid.uuid4())
     user.api_key = new_api_key
-    db.session.commit()
+    await asyncio.to_thread(db.session.commit)
     flash(f"New API key generated for {user.username}.", "success")
     return redirect(url_for('admin_users'))
 
@@ -2387,7 +2388,7 @@ def update_user_access(user_id):
         # Store them as JSON strings in the database
         user.allowed_categories = json.dumps(selected_categories)
         user.allowed_personas = json.dumps(selected_personas)
-        db.session.commit()
+        await asyncio.to_thread(db.session.commit)
         flash(f"Access permissions for {user.username} updated successfully!", "success")
     except Exception as e:
         db.session.rollback()
@@ -2441,8 +2442,8 @@ def api_generate(user):
             if user.daily_generation_date != today:
                 user.daily_generation_count = 0
                 user.daily_generation_date = today
-                db.session.add(user)
-                db.session.commit()
+                await asyncio.to_thread(db.session.add, user)
+                await asyncio.to_thread(db.session.commit)
 
             if user.daily_generation_count >= user.daily_limit:
                 app.logger.info(f"API user {user.username} exceeded their daily prompt limit of {user.daily_limit}.")
@@ -2491,8 +2492,8 @@ def api_generate(user):
         user.last_generation_time = now
         if not user.is_admin:
             user.daily_generation_count += 1
-        db.session.add(user)
-        db.session.commit()
+        await asyncio.to_thread(db.session.add, user)
+        await asyncio.to_thread(db.session.commit)
         app.logger.info(f"API user {user.username}'s last prompt request time updated and count incremented. (API Forward Prompt)")
 
         status_code = 200
@@ -2519,8 +2520,8 @@ def api_generate(user):
                 status_code=status_code,
                 raw_input=raw_input_log
             )
-            db.session.add(log_entry)
-            db.session.commit()
+            await asyncio.to_thread(db.session.add,log_entry)
+            await asyncio.to_thread(db.session.commit)
         except Exception as log_e:
             app.logger.error(f"Error saving API request log for /api/v1/generate: {log_e}")
             db.session.rollback()
@@ -2570,8 +2571,8 @@ def api_reverse_prompt(user):
             if user.daily_generation_date != today:
                 user.daily_generation_count = 0
                 user.daily_generation_date = today
-                db.session.add(user)
-                db.session.commit()
+                await asyncio.to_thread((db.session.add, user)
+                await asyncio.to_thread(db.session.commit)
 
             if user.daily_generation_count >= user.daily_limit:
                 app.logger.info(f"API user {user.username} exceeded their daily reverse prompt limit of {user.daily_limit}.")
@@ -2605,7 +2606,7 @@ def api_reverse_prompt(user):
         if not user.is_admin:
             user.daily_generation_count += 1
         db.session.add(user)
-        db.session.commit()
+        await asyncio.to_thread(
         app.logger.info(f"API user {user.username}'s last prompt request time updated and count incremented. (API Reverse Prompt)")
 
         status_code = 200
@@ -2632,8 +2633,8 @@ def api_reverse_prompt(user):
                 status_code=status_code,
                 raw_input=raw_input_log
             )
-            db.session.add(log_entry)
-            db.session.commit()
+            await asyncio.to_thread(db.session.add,log_entry)
+            await asyncio.to_thread(db.session.commit)
         except Exception as log_e:
             app.logger.error(f"Error saving API request log for /api/v1/reverse: {log_e}")
             db.session.rollback()
@@ -2672,8 +2673,8 @@ with app.app_context():
             allowed_personas=json.dumps(allowed_personas_list)
         )
         admin_user.set_password('adminpass') # Set a default password for the admin
-        db.session.add(admin_user)
-        db.session.commit()
+        await asyncio.to_thread(db.session.add,admin_user)
+        await asyncio.to_thread(db.session.commit)
         app.logger.info("Default admin user 'admin' created with password 'adminpass'.")
 
 # --- Main App Run ---
