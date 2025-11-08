@@ -2096,7 +2096,7 @@ If you did not request a password reset, please ignore this email.
 Sincerely,
 The SuperPrompter Team
 """
-            mail.send(msg)
+            await asyncio.to_thread(mail.send, msg)
             app.logger.info(f"Password reset email sent to {user.email} for user {user.username}")
             flash('A password reset link has been sent to your email address. Please check your inbox (and spam folder).', 'info')
         except Exception as e:
