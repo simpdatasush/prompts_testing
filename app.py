@@ -390,6 +390,29 @@ def filter_gemini_response(text):
         if phrase in text_lower:
             return unauthorized_message
 
+    # --- NEW: Filter specific injected system instructions ---
+    
+    # Phrases from the Output Structure Mandate (used by /generate)
+    if "your sole task is to analyze the user's input and generate three distinct, finalized prompt versions" in text_lower:
+        return unauthorized_message
+        
+    # Phrases from the Anti-Refinement Constraint (used by /test_llm_response)
+    if "your only task is to generate a concise sample answer to the prompt provided below" in text_lower:
+        return unauthorized_message
+        
+    # Phrases from the Persona Constraint (used by both)
+    if "adopt the professional role and expert tone of a highly specialized" in text_lower:
+        return unauthorized_message
+        
+    if "the response must be entirely in" in text_lower and "raw text" not in text_lower:
+        return unauthorized_message
+        
+    # Phrases from the original Base Instruction (for robustness)
+    if "your sole purpose is to transform the provided raw text into a better prompt" in text_lower:
+        return unauthorized_message
+    
+    # --- END NEW FILTERS --- 
+
     # Specific filtering for Gemini API quota/internal errors
     if "you exceeded your current quota" in text_lower:
         return "You exceeded your current quota. Please try again later or check your plan and billing details."
@@ -409,8 +432,16 @@ def filter_gemini_response(text):
             return "There was an issue with the AI service. Please try again later."
         
         return filtered_text.strip()
-
-    return text
+     
+    # --- START: Structural Cleanup ---
+    # This must run AFTER the API scrubbing to catch any accidental label inclusion
+    
+    # Filter the entire structural markdown and labels if they appear outside the expected format:
+    text = re.sub(r'Polished Version:', '', text, flags=re.IGNORECASE)
+    text = re.sub(r'Creative Version:', '', text, flags=re.IGNORECASE)
+    text = re.sub(r'Technical Version:', '', text, flags=re.IGNORECASE)
+ 
+    return text.strip()
 
 # --- NEW: Perplexity SDK interaction function ---
 def ask_perplexity_for_text_prompt(prompt_instruction, model_name='sonar-pro', max_output_tokens=8192):
