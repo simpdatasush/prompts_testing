@@ -1237,7 +1237,7 @@ def llm_benchmark():
 
 @app.route('/generate', methods=['POST'])
 @login_required # Protect this route
-def generate(): # CHANGED FROM ASYNC
+async def generate(): # CHANGED FROM ASYNC
     user = current_user # Get the current user object
     now = datetime.utcnow() # Use utcnow for consistency with database default
 
@@ -1349,7 +1349,7 @@ def generate(): # CHANGED FROM ASYNC
 # --- NEW: Reverse Prompt Endpoint ---
 @app.route('/reverse_prompt', methods=['POST'])
 @login_required
-def reverse_prompt(): # CHANGED FROM ASYNC
+async def reverse_prompt(): # CHANGED FROM ASYNC
     user = current_user
     now = datetime.utcnow()
 
@@ -1429,7 +1429,7 @@ def reverse_prompt(): # CHANGED FROM ASYNC
 # NEW: Image Processing Endpoint ---
 @app.route('/process_image_prompt', methods=['POST'])
 @login_required
-def process_image_prompt(): # CHANGED FROM ASYNC
+async def process_image_prompt(): # CHANGED FROM ASYNC
     user = current_user
     now = datetime.utcnow()
     
