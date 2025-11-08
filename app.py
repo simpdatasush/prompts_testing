@@ -1255,6 +1255,16 @@ async def generate(): # CHANGED FROM ASYNC
             db.session.add(user) # Mark user as modified
             db.session.commit() # Commit reset immediately to prevent race conditions on count
 
+        if current_user.is_authenticated:
+            try:
+                new_raw_prompt = RawPrompt(user_id=current_user.id, raw_text=prompt_input)
+                db.session.add(new_raw_prompt)
+                db.session.commit() # <<< This commit must succeed.
+                app.logger.info(f"Raw prompt saved for user {current_user.username}")
+            except Exception as e:
+                app.logger.error(f"Error saving raw prompt for user {current_user.username}: {e}")
+                db.session.rollback() # Rollback in case of error
+
         if user.daily_generation_count >= user.daily_limit: # Check against per-user limit
             app.logger.info(f"User {user.username} exceeded their daily prompt limit of {user.daily_limit}.")
             # NEW: Return a specific payment message instead of just an error
@@ -1295,6 +1305,10 @@ async def generate(): # CHANGED FROM ASYNC
 
     try:
         results = await generate_prompts_async(prompt_input, language_code, prompt_mode, category, subcategory, persona) # NEW: Pass persona
+
+        # Wrap synchronous DB updates in asyncio.to_thread (if necessary)
+        await asyncio.to_thread(db.session.add, user)
+        await asyncio.to_thread(db.session.commit)
 
     # --- GAMIFICATION: Award points for complexity, settings, and refinement ---
         points_awarded = calculate_generation_points(prompt_input, prompt_mode, language_code, category, persona)
@@ -1388,6 +1402,10 @@ async def reverse_prompt(): # CHANGED FROM ASYNC
 
     try:
         inferred_prompt = await generate_reverse_prompt_async(input_text, language_code, prompt_mode)
+
+     # Wrap synchronous DB updates in asyncio.to_thread (if necessary)
+        await asyncio.to_thread(db.session.add, user)
+        await asyncio.to_thread(db.session.commit)
 
      # --- GAMIFICATION: Award points for reverse prompt ---
         points_awarded = 75 # Flat rate for reverse prompting
