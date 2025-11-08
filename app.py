@@ -1311,7 +1311,7 @@ def generate(): # CHANGED FROM ASYNC
         })
 
     try:
-        results = asyncio.run(generate_prompts_async(prompt_input, language_code, prompt_mode, category, subcategory, persona)) # NEW: Pass persona
+        results = await generate_prompts_async(prompt_input, language_code, prompt_mode, category, subcategory, persona) # NEW: Pass persona
 
     # --- GAMIFICATION: Award points for complexity, settings, and refinement ---
         points_awarded = calculate_generation_points(prompt_input, prompt_mode, language_code, category, persona)
@@ -1404,7 +1404,7 @@ def reverse_prompt(): # CHANGED FROM ASYNC
         return jsonify({"inferred_prompt": "Reverse prompting is not applicable for image or video generation modes."}), 200
 
     try:
-        inferred_prompt = asyncio.run(generate_reverse_prompt_async(input_text, language_code, prompt_mode))
+        inferred_prompt = await generate_reverse_prompt_async(input_text, language_code, prompt_mode)
 
      # --- GAMIFICATION: Award points for reverse prompt ---
         points_awarded = 75 # Flat rate for reverse prompting
@@ -1481,8 +1481,8 @@ def process_image_prompt(): # CHANGED FROM ASYNC
         image_data_bytes = base64.b64decode(image_data_b64) # Decode base64 string to bytes
         
         # Call the Gemini API for image understanding
-        recognized_text = asyncio.run(ask_gemini_for_image_text(image_data_bytes))
-
+        recognized_text = await asyncio.to_thread(ask_gemini_for_image_text, image_data_bytes)
+        
         # --- GAMIFICATION: Award points for image processing (multimodal input) ---
         points_awarded = 50 # Flat rate for processing an image/multimodal input
         user.total_points += points_awarded
