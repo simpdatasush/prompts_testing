@@ -2673,8 +2673,8 @@ with app.app_context():
             allowed_personas=json.dumps(allowed_personas_list)
         )
         admin_user.set_password('adminpass') # Set a default password for the admin
-        await asyncio.to_thread(db.session.add,admin_user)
-        await asyncio.to_thread(db.session.commit)
+        db.session.add(admin_user)
+        db.session.commit()
         app.logger.info("Default admin user 'admin' created with password 'adminpass'.")
 
 # --- Main App Run ---
