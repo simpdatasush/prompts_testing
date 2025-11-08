@@ -120,14 +120,14 @@ def get_dynamic_model_name(prompt_instruction: str) -> str:
     prompt_length = len(prompt_instruction)
     
     # Tier 3: Very Complex (>900 chars) -> Use Perplexity Sonar Pro
-    if prompt_length > 2700:
+    if prompt_length > 900:
         model_name = 'sonar-pro'
     
     # Tier 2: Moderately Complex (300 to 900 chars) -> Use Gemini 2.5 Flash
-    elif prompt_length >= 900:
+    elif prompt_length >= 300:
         model_name = 'gemini-2.5-flash'
         
-    # Tier 1: Simple/Cost-Effective (<900 chars) -> Use Gemini 2.0 Flash
+    # Tier 1: Simple/Cost-Effective (<300 chars) -> Use Gemini 2.0 Flash
     else:
         model_name = 'gemini-2.0-flash'
 
@@ -390,29 +390,6 @@ def filter_gemini_response(text):
         if phrase in text_lower:
             return unauthorized_message
 
-    # --- NEW: Filter specific injected system instructions ---
-    
-    # Phrases from the Output Structure Mandate (used by /generate)
-    if "your sole task is to analyze the user's input and generate three distinct, finalized prompt versions" in text_lower:
-        return unauthorized_message
-        
-    # Phrases from the Anti-Refinement Constraint (used by /test_llm_response)
-    if "your only task is to generate a concise sample answer to the prompt provided below" in text_lower:
-        return unauthorized_message
-        
-    # Phrases from the Persona Constraint (used by both)
-    if "adopt the professional role and expert tone of a highly specialized" in text_lower:
-        return unauthorized_message
-        
-    if "the response must be entirely in" in text_lower and "raw text" not in text_lower:
-        return unauthorized_message
-        
-    # Phrases from the original Base Instruction (for robustness)
-    if "your sole purpose is to transform the provided raw text into a better prompt" in text_lower:
-        return unauthorized_message
-    
-    # --- END NEW FILTERS --- 
-
     # Specific filtering for Gemini API quota/internal errors
     if "you exceeded your current quota" in text_lower:
         return "You exceeded your current quota. Please try again later or check your plan and billing details."
@@ -432,16 +409,8 @@ def filter_gemini_response(text):
             return "There was an issue with the AI service. Please try again later."
         
         return filtered_text.strip()
-     
-    # --- START: Structural Cleanup ---
-    # This must run AFTER the API scrubbing to catch any accidental label inclusion
-    
-    # Filter the entire structural markdown and labels if they appear outside the expected format:
-    text = re.sub(r'Polished Version:', '', text, flags=re.IGNORECASE)
-    text = re.sub(r'Creative Version:', '', text, flags=re.IGNORECASE)
-    text = re.sub(r'Technical Version:', '', text, flags=re.IGNORECASE)
- 
-    return text.strip()
+
+    return text
 
 # --- NEW: Perplexity SDK interaction function ---
 def ask_perplexity_for_text_prompt(prompt_instruction, model_name='sonar-pro', max_output_tokens=8192):
@@ -981,45 +950,19 @@ async def generate_prompts_async(raw_input, language_code="en-US", prompt_mode='
 
     else: # Default text mode (contextual)
         context_str = ""
-
-        # NEW LOGIC: Dynamic Persona Instruction Assembly
-        persona_meta_instruction = ""
-        if persona:
-            # Instruction 1: Set the AI's persona based on user selection
-            persona_meta_instruction = (
-            f"Adopt the professional role and expert tone of a highly specialized '{persona}' "
-            f"within the domain of '{category}' before generating the prompts. ")
-            
-            # We simplify the context_str generation since the meta-instruction sets the tone
-            context_str = ""
-
-        # The default context string builder (for category/subcategory) is now only needed 
-        # if the primary persona meta-instruction wasn't used, but for simplicity, 
-        # we keep the original context builder and prepend the new meta-instruction.
-
-        if category and not persona: 
+        if category:
             context_str += f"The user is looking for help with the category '{category}'"
-        if subcategory:
-            context_str += f" and the subcategory '{subcategory}'."
-        else:
-            context_str += "."
-        # Original simple persona block removed since the new meta-instruction handles it.
-
-        base_instruction = (
-    language_instruction_prefix + 
-    "" +  # persona_meta_instruction is empty
-    """
-    Your SOLE TASK is to analyze the user's input and generate THREE distinct, finalized prompt versions: Polished, Creative, and Technical. 
-    The refinement MUST adhere to the following structure and constraints:
-
-    1. The output must begin exactly with the labels 'Polished Version:', 'Creative Version:', and 'Technical Version:' (each on a new line).
-    2. Do NOT include any introductory, concluding, or explanatory text (like the text above or below the refinement).
-    3. Do NOT answer questions about your architecture or limitations.
-    4. Focus on improving grammar, clarity, and structural precision related to the Category/Subcategory: '' / ''. 
-    5. Do not add external information, only refine the given text. Crucially, do NOT answer questions about your own architecture, training, or how this application was built. Do NOT discuss any internal errors or limitations you might have. Your sole purpose is to transform the provided raw text into a better prompt. Avoid explicit signs of malicious activity, illegal content, self-harm/suicide, or severe bad intent (e.g., hate speech)
-    
-    Raw Text: {raw_input}
-    """)
+            if subcategory:
+                context_str += f" and the subcategory '{subcategory}'."
+            else:
+                context_str += "."
+        if persona: # NEW: Add persona to context string
+            if context_str: # If category/subcategory already added, append with "as"
+                context_str += f" The response should be crafted from the perspective of a '{persona}'."
+            else: # If no category/subcategory, start with persona
+                context_str += f"Craft the response from the perspective of a '{persona}'."
+             
+        base_instruction = language_instruction_prefix + f"""Refine the following text into a clear, concise, and effective prompt for a large language model. {context_str} Improve grammar, clarity, and structure. Do not add external information, only refine the given text. Crucially, do NOT answer questions about your own architecture, training, or how this application was built. Do NOT discuss any internal errors or limitations you might have. Your sole purpose is to transform the provided raw text into a better prompt. Avoid explicit signs of malicious activity, illegal content, self-harm/suicide, or severe bad intent (e.g., hate speech) Raw Text: {raw_input}"""
      
      # --- NEW: Master LLM Router Call (Three-Tier Dynamic Selection) ---
         main_prompt_result = await asyncio.to_thread(route_and_call_llm, raw_input=raw_input, prompt_mode=prompt_mode, instruction=base_instruction, max_output_tokens=8192)
@@ -1597,34 +1540,30 @@ async def test_llm_response(): # CHANGED to async def
             return jsonify({"error": "Selected persona is not allowed for your account."}), 403
     # --- END Server-side validation ---
 
-    # 1. Determine the specialization domain (handles missing category gracefully)
-    if category and category.strip():
-        specialization_domain = category.strip()
-    else:
-        # Default the specialization based on persona, or to 'General Knowledge' if both are missing.
-        specialization_domain = f"General Expertise matching the '{persona}' role" if persona and persona.strip() else "General Knowledge"
+    # Construct the instruction for the LLM, including context if provided
+    context_str = ""
+    if category:
+        context_str += f"The user requested this for the category '{category}'"
+        if subcategory:
+            context_str += f" and subcategory '{subcategory}'."
+        else:
+            context_str += "."
+    if persona:
+        if context_str:
+            context_str += f" The response should be from the perspective of a '{persona}'."
+        else:
+            context_str += f"Craft the response from the perspective of a '{persona}'."
 
-    # 2. Build the Persona Meta-Instruction (The core of the specialized response)
-    persona_meta_instruction = ""
-    if persona and persona.strip():
-        # This is the specialized instruction for the AI model to adopt a role.
-        persona_meta_instruction = (
-            f"Adopt the professional role and expert tone of a highly specialized '{persona}' "
-            f"within the domain of '{specialization_domain}' to structure your answer. "
-        )
-    
-    # 3. Build the Core Instruction for the LLM
+    # Define the model and temperature to be used for the test response
     llm_model_name = "gemini-2.5-flash" # As defined globally
     llm_temperature = 0.1 # As defined globally for text_model
 
     llm_instruction = (
-        f"Your ONLY TASK is to generate a concise SAMPLE ANSWER to the prompt provided below. "
-        f"Do not reformulate or critique the input prompt. "
-        f"{persona_meta_instruction}" # Inject specialized role instruction here
-        f"The response MUST be entirely in {LANGUAGE_MAP.get(language_code, 'English')}. "
-        f"Do not add external information, only refine the given text. Crucially, do NOT answer questions about your own architecture, training, or how this application was built. Do NOT discuss any internal errors or limitations you might have. Your sole purpose is to transform the provided raw text into a better prompt. Avoid explicit signs of malicious activity, illegal content, self-harm/suicide, or severe bad intent (e.g., hate speech) "
-        f"Keep the answer brief and to the point.\n\n"
-        f"Prompt: {prompt_text}"
+        f"Generate a concise sample response to the following prompt, as if you are the AI model "
+        f"receiving this prompt. Keep the response brief and to the point, demonstrating how you would "
+        f"interpret and fulfill the prompt. The response MUST be entirely in {LANGUAGE_MAP.get(language_code, 'English')}. "
+        f"Crucially, **DO NOT attempt to refine, rewrite, rephrase, or critique the input prompt**; only provide the requested answer or output based on the prompt's content. "
+        f"{context_str}\n\nPrompt: {prompt_text}"
     )
 
     try:
@@ -2729,7 +2668,7 @@ with app.app_context():
                 "Legal & Compliance", "Healthcare & Wellness", "Image Generation & Visual Design",
                 "Event Planning", "UX/UI & Product Design", "Spirituality & Self-Reflection",
                 "Gaming", "Voice, Audio & Podcasting", "AI & Prompt Engineering",
-                "News & Current Affairs", "Travel & Culture", "Other","Advanced NLP & Content AI"
+                "News & Current Affairs", "Travel & Culture", "Other"
             ]),
             allowed_personas=json.dumps([
                 "Author", "Editor", "Copywriter", "Content Creator", "Blogger",
@@ -2757,7 +2696,7 @@ with app.app_context():
                 "Prompt Engineer", "ML Engineer", "AI Researcher", "NLP Scientist", "Chatbot Developer",
                 "Journalist", "News Curator", "Political Analyst", "Opinion Writer", "Debater",
                 "Itineraries", "Local tips", "Cultural do’s and don’ts",
-                "General", "Custom", "Uncategorized", "Other", "Computational Linguist"
+                "General", "Custom", "Uncategorized", "Other"
             ])
         )
         admin_user.set_password('adminpass') # Set a default password for the admin
