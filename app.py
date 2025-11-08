@@ -2393,7 +2393,7 @@ def admin_users():
             'allowed_personas': allowed_personas
         })
     
-    return render_template('admin_users.html', users=users_data, current_user=current_user)
+    return render_template('admin_users.html', users=users_data, current_user=current_user, all_categories_map=json.dumps(CATEGORIES_AND_SUBCATEGORIES), category_personas_map=json.dumps(CATEGORY_PERSONAS))
 
 @app.route('/admin/users/toggle_access/<int:user_id>', methods=['POST'])
 @admin_required
