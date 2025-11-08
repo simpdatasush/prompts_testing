@@ -967,7 +967,7 @@ async def generate_prompts_async(raw_input, language_code="en-US", prompt_mode='
         # we keep the original context builder and prepend the new meta-instruction.
 
         if category and not persona: 
-        context_str += f"The user is looking for help with the category '{category}'"
+            context_str += f"The user is looking for help with the category '{category}'"
         if subcategory:
             context_str += f" and the subcategory '{subcategory}'."
         else:
