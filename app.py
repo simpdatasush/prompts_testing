@@ -1668,7 +1668,7 @@ def save_prompt():
         app.logger.info(f"User {current_user.username} awarded {points_awarded} points for saving. Total: {current_user.total_points}")
         # --- END GAMIFICATION ---
 
-        await asyncio.to_thread(db.session.commit)
+        db.session.commit()
         return jsonify({'success': True, 'message': 'Prompt saved successfully!', 'new_points': points_awarded, 'total_points': current_user.total_points})
     except Exception as e:
         logging.error(f"Error saving prompt: {e}")
@@ -1684,8 +1684,8 @@ def award_share_points():
     try:
         current_user.total_points += points_awarded
 
-        await asyncio.to_thread(db.session.add,user)
-        await asyncio.to_thread(db.session.commit)
+        db.session.add(current_user)
+        db.session.commit()
         app.logger.info(f"User {current_user.username} awarded {points_awarded} points for sharing. Total: {current_user.total_points}")
         return jsonify({'success': True, 'new_points': points_awarded, 'total_points': current_user.total_points})
     except Exception as e:
@@ -1773,8 +1773,8 @@ def add_prompt():
             technical_prompt=technical_prompt,
             display_type=display_type # NEW: Save display_type
         )
-        await asyncio.to_thread(db.session.add, new_prompt)
-        await asyncio.to_thread(db.session.commit)
+        db.session.add(new_prompt)
+        db.session.commit()
         flash('Sample prompt added successfully!', 'success')
     except Exception as e:
         db.session.rollback()
@@ -1787,8 +1787,8 @@ def add_prompt():
 def delete_prompt(prompt_id):
     prompt = SamplePrompt.query.get_or_404(prompt_id)
     try:
-        await asyncio.to_thread(db.session.delete,prompt)
-        await asyncio.to_thread(db.session.commit)
+        db.session.delete(prompt)
+        db.session.commit()
         flash('Sample prompt deleted successfully!', 'success')
     except Exception as e:
         db.session.rollback()
@@ -1803,7 +1803,7 @@ def repost_prompt(prompt_id):
     try:
         # Update timestamp to now to bring it to the top of the list
         prompt.timestamp = datetime.utcnow()
-        await asyncio.to_thread(db.session.commit)
+        db.session.commit()
         flash('Sample prompt reposted successfully (timestamp updated)!', 'success')
     except Exception as e:
         db.session.rollback()
@@ -1847,8 +1847,8 @@ def add_news():
             published_date=published_date,
             user_id=current_user.id # Assign current admin user
         )
-        await asyncio.to_thread(db.session.add,new_news)
-        await asyncio.to_thread(db.session.commit)
+        db.session.add(new_news)
+        db.session.commit()
         flash('News item added successfully!', 'success')
     except Exception as e:
         db.session.rollback()
@@ -1861,8 +1861,8 @@ def add_news():
 def delete_news(news_id):
     news_item = NewsItem.query.get_or_404(news_id)
     try:
-        await asyncio.to_thread(db.session.delete, news_item)
-        await asyncio.to_thread(db.session.commit)
+        db.session.delete(news_item)
+        db.session.commit()
         flash('News item deleted successfully!', 'success')
     except Exception as e:
         db.session.rollback()
@@ -1877,7 +1877,7 @@ def repost_news(news_id):
     try:
         # Update timestamp to now to bring it to the top of the list
         news_item.timestamp = datetime.utcnow()
-        await asyncio.to_thread(db.session.commit)
+        db.session.commit()
         flash('News item reposted successfully (timestamp updated)!', 'success')
     except Exception as e:
         db.session.rollback()
@@ -1925,8 +1925,8 @@ def add_job():
             published_date=published_date,
             user_id=current_user.id # Assign current admin user
         )
-        await asyncio.to_thread(db.session.add,new_job)
-        await asyncio.to_thread(db.session.commit)
+        db.session.add(new_job)
+        db.session.commit()
         flash('Job listing added successfully!', 'success')
     except Exception as e:
         db.session.rollback()
@@ -1939,8 +1939,8 @@ def add_job():
 def delete_job(job_id):
     job_listing = JobListing.query.get_or_404(job_id)
     try:
-        await asyncio.to_thread(db.session.delete, job_listing)
-        await asyncio.to_thread(db.session.commit)
+        db.session.delete(job_listing)
+        db.session.commit()
         flash('Job listing deleted successfully!', 'success')
     except Exception as e:
         db.session.rollback()
@@ -1955,7 +1955,7 @@ def repost_job(job_id):
     try:
         # Update timestamp to now to bring it to the top of the list
         job_listing.timestamp = datetime.utcnow()
-        await asyncio.to_thread(db.session.commit)
+        db.session.commit()
         flash('Job listing reposted successfully (timestamp updated)!', 'success')
     except Exception as e:
         db.session.rollback()
@@ -1991,7 +1991,7 @@ def change_password():
 
         try:
             current_user.set_password(new_password)
-            await asyncio.to_thread(db.session.commit)
+            db.session.commit()
             flash('Your password has been changed successfully!', 'success')
             return redirect(url_for('app_home')) # Redirect to app_home
         except Exception as e:
@@ -2034,8 +2034,8 @@ def add_gift():
             points_required=points_required,
             user_id=current_user.id
         )
-        await asyncio.to_thread(db.session.add, new_gift)
-        await asyncio.to_thread(db.session.commit)
+        db.session.add(new_gift)
+        db.session.commit()
         flash('Gift added successfully!', 'success')
     except Exception as e:
         db.session.rollback()
@@ -2048,8 +2048,8 @@ def add_gift():
 def delete_gift(gift_id):
     gift = Gift.query.get_or_404(gift_id)
     try:
-        await asyncio.to_thread(db.session.delete, gift)
-        await asyncio.to_thread(db.session.commit)
+        db.session.delete(gift)
+        db.session.commit()
         flash('Gift deleted successfully!', 'success')
     except Exception as e:
         db.session.rollback()
@@ -2064,7 +2064,7 @@ def repost_gift(gift_id):
         # Repost logic updates the timestamp and ensures it is active
         gift.timestamp = datetime.utcnow()
         gift.is_active = True
-        await asyncio.to_thread(db.session.commit)
+        db.session.commit()
         flash('Gift reposted successfully (timestamp updated)!', 'success')
     except Exception as e:
         db.session.rollback()
@@ -2154,7 +2154,7 @@ def reset_password(token):
         user.set_password(new_password)
         user.reset_token = None # Invalidate the token after use
         user.reset_token_expiration = None
-        await asyncio.to_thread(db.session.commit)
+        db.session.commit()
         flash('Your password has been reset successfully! Please log in with your new password.', 'success')
         return redirect(url_for('login'))
     return render_template('reset_password.html', token=token)
@@ -2179,7 +2179,7 @@ def subscribe_newsletter():
         try:
             new_subscriber = NewsletterSubscriber(email=email)
             db.session.add(new_subscriber)
-            await asyncio.to_thread(db.session.commit)
+            db.session.commit()
             flash('Successfully subscribed to our newsletter! Thank a you!', 'success')
         except Exception as e:
             db.session.rollback()
@@ -2216,8 +2216,8 @@ def register():
             else:
                 new_user = User(username=username, email=email) # Pass email to User constructor
                 new_user.set_password(password)
-                await asyncio.to_thread(db.session.add, new_user)
-                await asyncio.to_thread(db.session.commit)
+                db.session.add(new_user)
+                db.session.commit()
                 login_user(new_user) # Automatically log in the new user
                 flash('Registration successful! You are now logged in.', 'success')
                 return redirect(url_for('app_home')) # Redirect to app home after registration
@@ -2332,7 +2332,7 @@ def toggle_user_access(user_id):
             flash(f"User {user.username} has been unlocked.", "success")
         else:
             flash(f"User {user.username} has been locked.", "info")
-        await asyncio.to_thread(db.session.commit)
+        db.session.commit()
     return redirect(url_for('admin_users'))
 
 # NEW: Admin route to update user's daily limit
@@ -2347,7 +2347,7 @@ def update_user_quota(user_id):
         if new_limit < 0:
             raise ValueError("Limit cannot be negative.")
         user.daily_limit = new_limit
-        await asyncio.to_thread(db.session.commit)
+        db.session.commit()
         flash(f"Daily prompt limit for {user.username} has been updated to {new_limit}.", "success")
     except (ValueError, TypeError) as e:
         flash(f"Invalid limit value. Please enter a positive integer. Error: {e}", "danger")
@@ -2369,7 +2369,7 @@ def generate_api_key(user_id):
     user = User.query.get_or_404(user_id)
     new_api_key = str(uuid.uuid4())
     user.api_key = new_api_key
-    await asyncio.to_thread(db.session.commit)
+    db.session.commit()
     flash(f"New API key generated for {user.username}.", "success")
     return redirect(url_for('admin_users'))
 
@@ -2388,7 +2388,7 @@ def update_user_access(user_id):
         # Store them as JSON strings in the database
         user.allowed_categories = json.dumps(selected_categories)
         user.allowed_personas = json.dumps(selected_personas)
-        await asyncio.to_thread(db.session.commit)
+        db.session.commit()
         flash(f"Access permissions for {user.username} updated successfully!", "success")
     except Exception as e:
         db.session.rollback()
@@ -2401,7 +2401,7 @@ def update_user_access(user_id):
 # NEW: API endpoint for external clients using API keys to generate prompts
 @app.route('/api/v1/generate', methods=['POST'])
 @api_key_required
-def api_generate(user):
+async def api_generate(user):
     """
     API endpoint to generate polished, creative, and technical prompts.
     Requires an API key in the 'X-API-KEY' header.
@@ -2486,7 +2486,7 @@ def api_generate(user):
             }
             return jsonify(response_data), status_code
 
-        results = asyncio.run(generate_prompts_async(raw_input=prompt_input, language_code=language_code, prompt_mode=prompt_mode, category=category, subcategory=subcategory, persona=persona))
+        results = await generate_prompts_async(raw_input=prompt_input, language_code=language_code, prompt_mode=prompt_mode, category=category, subcategory=subcategory, persona=persona)
 
         # --- Update user stats and save raw_input ---
         user.last_generation_time = now
@@ -2530,7 +2530,7 @@ def api_generate(user):
 # NEW: API endpoint for reverse prompting
 @app.route('/api/v1/reverse', methods=['POST'])
 @api_key_required
-def api_reverse_prompt(user):
+async def api_reverse_prompt(user):
     """
     API endpoint to infer a prompt from a given text or code.
     Requires an API key in the 'X-API-KEY' header.
@@ -2599,7 +2599,7 @@ def api_reverse_prompt(user):
             response_data = {"inferred_prompt": "Reverse prompting is not applicable for image or video generation modes."}
             return jsonify(response_data), status_code
 
-        inferred_prompt = asyncio.run(generate_reverse_prompt_async(input_text, language_code, prompt_mode))
+        inferred_prompt = await generate_reverse_prompt_async(input_text, language_code, prompt_mode)
 
         # Update user stats after successful reverse prompt
         user.last_generation_time = now
