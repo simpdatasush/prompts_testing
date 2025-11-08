@@ -95,6 +95,78 @@ LANGUAGE_MAP = {
  "hi-IN": "Hindi"
 }
 
+# app.py (New Global Configuration - near line 75)
+# --- LLM Niche Map (Moved from frontend) ---
+LLM_NICHE_MAP = [
+    {"name": "ChatGPT", "keywords": ["mathematical", "math", "multi-step", "reasoning", "haiku", "algebra"], "categories": ["Programming & Code", "Education & Learning"], "persona": []},
+    {"name": "Claude", "keywords": ["coding", "ethical", "document analysis", "agentic", "structured"], "categories": ["Programming & Code", "Technical Writing & Explanation", "Legal & Compliance"], "persona": ["Compliance Officer", "Lawyer", "Software Developer"]},
+    {"name": "Mistral", "keywords": ["multilingual", "translation", "speed", "resource-constrained", "edge"], "categories": ["Multilingual & Translation"], "persona": []},
+    {"name": "Gemini", "keywords": ["multimodal", "image", "video", "adaptive reasoning", "puzzles", "visual design"], "categories": ["Image Generation & Visual Design", "Data Analysis & Interpretation", "UX/UI & Product Design"], "persona": []},
+    {"name": "Grok", "keywords": ["exploratory reasoning", "scientific", "logic puzzles", "unfiltered", "x.ai"], "categories": ["Research & Information Retrieval", "Education & Learning", "Spirituality & Self-Reflection"], "persona": ["Scientist", "Researcher", "Philosopher"]},
+    {"name": "Perplexity", "keywords": ["research-oriented", "fact-checked", "multi-source", "verifiable", "citations", "web"], "categories": ["Research & Information Retrieval", "News & Current Affairs", "Data Analysis & Interpretation"], "persona": ["Researcher", "Journalist", "Academic"]},
+    {"name": "DeepSeek", "keywords": ["algorithmic", "financial modeling", "math", "tool use", "banking"], "categories": ["Business & Finance", "Programming & Code"], "persona": ["Financial Advisor", "Business Analyst"]},
+]
+
+# --- Category and Subcategory Mapping (Moved from frontend) ---
+CATEGORIES_AND_SUBCATEGORIES = {
+    "General Writing & Editing": ["Grammar correction", "Rephrasing", "Summarization", "Paraphrasing", "Other"],
+    "Programming & Code": ["Code generation", "Debugging", "Explanation", "Optimization", "Other"],
+    "Business & Finance": ["Business plans", "Financial analysis", "Emails", "Market research", "Other"],
+    "Education & Learning": ["Concept explanations", "Lesson plans", "Study aids", "Quiz generation", "Other"],
+    "Technical Writing & Explanation": ["API docs", "System descriptions", "Technical proposals", "Other"],
+    "Customer Support": ["Auto-replies", "Ticket handling", "FAQ generation", "User guides", "Other"],
+    "Research & Information Retrieval": ["Literature review", "Data extraction", "Comparisons", "Citations", "Other"],
+    "Data Analysis & Interpretation": ["Analyzing datasets", "Summarizing insights", "Chart explanations", "Other"],
+    "Productivity & Planning": ["Task lists", "Planners", "Time management strategies", "Workflows", "Other"],
+    "Creative Writing": ["Stories", "Poems", "Lyrics", "Fictional characters", "Worldbuilding", "Other"],
+    "Marketing & Advertising": ["Ad copy", "Slogans", "Social media posts", "SEO content", "Other"],
+    "Multilingual & Translation": ["Translation", "Localization", "Multilingual prompts", "Other"],
+    "Entertainment & Media": ["Movie/book/game recommendations", "Trivia", "Storytelling", "Other"],
+    "Career & Resume": ["Resume writing", "Cover letters", "Interview prep", "Other"],
+    "Legal & Compliance": ["Contracts", "Disclaimers", "Legal summaries (non-advisory)", "Other"],
+    "Healthcare & Wellness": ["Non-diagnostic advice", "Fitness plans", "Mental health prompts", "Other"],
+    "Image Generation & Visual Design": ["Prompts for image tools", "Scene descriptions", "Visual styles", "Other"],
+    "Event Planning": ["Agendas", "Checklists", "Invitations", "Budget planning", "Other"],
+    "UX/UI & Product Design": ["UX copy", "Persona generation", "Wireframe ideas", "Other"],
+    "Spirituality & Self-Reflection": ["Meditation Coach", "Affirmations", "Philosopher", "Other"],
+    "Gaming": ["Game Developer", "Game Designer", "Gamer", "Stream Host", "Lore Writer", "Other"],
+    "Voice, Audio & Podcasting": ["Scriptwriting", "Transcription", "Voiceover prompts", "Other"],
+    "AI & Prompt Engineering": ["LLM tuning", "Meta-prompts", "Dataset generation", "Evaluations", "Other"],
+    "News & Current Affairs": ["Summaries", "Debate simulations", "Editorial writing", "Other"],
+    "Travel & Culture": ["Itineraries", "Local tips", "Cultural do’s and don’ts", "Other"],
+    "Other": ["General", "Custom", "Uncategorized"],
+}
+
+# --- Category and Persona Mapping (Moved from frontend) ---
+CATEGORY_PERSONAS = {
+    "General Writing & Editing": ["Author", "Editor", "Copywriter", "Content Creator", "Blogger", "Other"],
+    "Programming & Code": ["Software Developer", "Frontend Engineer", "Backend Engineer", "Data Scientist", "DevOps Engineer", "Other"],
+    "Business & Finance": ["Entrepreneur", "Business Analyst", "Financial Advisor", "Investor", "Startup Founder", "Director", "CEO", "Other"],
+    "Education & Learning": ["Student", "Teacher", "Tutor", "Curriculum Designer", "Lifelong Learner", "Other"],
+    "Technical Writing & Explanation": ["Technical Writer", "System Architect", "Engineer", "Product Manager", "Compliance Officer", "Other"],
+    "Customer Support": ["Support Agent", "Customer Success Manager", "Helpdesk Analyst", "Call Center Manager", "Chatbot Designer", "Other"],
+    "Research & Information Retrieval": ["Researcher", "Scientist", "Academic", "Policy Analyst", "Librarian", "Other"],
+    "Data Analysis & Interpretation": ["Data Analyst", "BI Analyst", "Statistician", "Data Engineer", "Operations Manager", "Other"],
+    "Productivity & Planning": ["Project Manager", "Life Coach", "Executive Assistant", "Scrum Master", "Productivity Hacker", "Other"],
+    "Creative Writing": ["Novelist", "Poet", "Screenwriter", "Songwriter", "Creative Director", "Other"],
+    "Marketing & Advertising": ["Marketing Manager", "Brand Strategist", "SEO Specialist", "Content Marketer", "Media Planner", "Other"],
+    "Multilingual & Translation": ["Translator", "Interpreter", "Language Teacher", "Localization Specialist", "Multilingual Blogger", "Other"],
+    "Entertainment & Media": ["YouTuber", "Streamer", "Podcaster", "Critic", "Fan Fiction Author", "Other"],
+    "Career & Resume": ["Job Seeker", "Career Coach", "HR Recruiter", "Hiring Manager", "Resume Writer", "Other"],
+    "Legal & Compliance": ["Lawyer", "Paralegal", "Compliance Officer", "Policy Advisor", "Contract Manager", "Other"],
+    "Healthcare & Wellness": ["Nutritionist", "Fitness Coach", "Therapist", "Health Blogger", "Wellness Consultant", "Other"],
+    "Image Generation & Visual Design": ["Graphic Designer", "Concept Artist", "Art Director", "Photographer", "AI Image Prompt Engineer", "Other"],
+    "Event Planning": ["Event Planner", "Wedding Coordinator", "Conference Organizer", "Marketing Executive", "Venue Manager", "Other"],
+    "UX/UI & Product Design": ["UX Designer", "UI Designer", "Product Designer", "Interaction Designer", "Design Researcher", "Other"],
+    "Spirituality & Self-Reflection": ["Meditation Coach", "Spiritual Guide", "Mindfulness Blogger", "Philosopher", "Self-help Author", "Other"],
+    "Gaming": ["Game Developer", "Game Designer", "Gamer", "Stream Host", "Lore Writer", "Other"],
+    "Voice, Audio & Podcasting": ["Voice Actor", "Podcaster", "Audio Engineer", "Narrator", "Sound Designer", "Other"],
+    "AI & Prompt Engineering": ["Prompt Engineer", "ML Engineer", "AI Researcher", "NLP Scientist", "Chatbot Developer", "Other"],
+    "News & Current Affairs": ["Journalist", "News Curator", "Political Analyst", "Opinion Writer", "Debater", "Other"],
+    "Travel & Culture": ["Itineraries", "Local tips", "Cultural do’s and don’ts", "Other"],
+    "Other": ["General", "Custom", "Uncategorized"], # Default personas for the "Other" main category
+}
+
 # https://ai.google.dev/gemini-api/docs/pricing#gemini-2.5-flash
 
 # --- Configure Google Gemini API ---
@@ -1144,17 +1216,19 @@ def view_prompt(prompt_id):
 @app.route('/app_home')
 @login_required # REQUIRE LOGIN FOR APP HOME PAGE
 def app_home():
-    # Pass current_user object to the template to show login/logout status
-    # Also pass allowed_categories and allowed_personas (parsed from JSON string)
+    # ... existing logic ...
     allowed_categories_list = json.loads(current_user.allowed_categories)
     allowed_personas_list = json.loads(current_user.allowed_personas)
 
     return render_template('index.html',
-                           current_user=current_user,
-                           allowed_categories=allowed_categories_list,
-                           allowed_personas=allowed_personas_list)
-# The link needs to be updated in index.html (not app.py route itself)
-
+        current_user=current_user,
+        allowed_categories=allowed_categories_list,
+        allowed_personas=allowed_personas_list,
+        llm_niche_map=json.dumps(LLM_NICHE_MAP),
+        categories_and_subcategories=json.dumps(CATEGORIES_AND_SUBCATEGORIES),
+        category_personas=json.dumps(CATEGORY_PERSONAS)
+    )
+ 
 # NEW: LLM Benchmark Page Route
 @app.route('/llm_benchmark')
 def llm_benchmark():
@@ -2651,59 +2725,32 @@ with app.app_context():
     # NEW: Create an admin user if one doesn't exist for easy testing
     # Also ensure initial admin gets all categories and personas
     if not User.query.filter_by(username='admin').first():
+        
+        # 1. Dynamically build a list of all unique categories (keys from the map)
+        # Assumes CATEGORIES_AND_SUBCATEGORIES is defined globally above.
+        allowed_categories_list = list(CATEGORIES_AND_SUBCATEGORIES.keys())
+        
+        # 2. Dynamically build a consolidated, unique list of all personas (values from the map)
+        # Assumes CATEGORY_PERSONAS is defined globally above.
+        all_personas_set = set()
+        for persona_list in CATEGORY_PERSONAS.values():
+            all_personas_set.update(persona_list)
+        # Sort the list for consistent JSON output, but this is optional
+        allowed_personas_list = sorted(list(all_personas_set))
+        
         admin_user = User(
             username='admin', 
             is_admin=True, 
             daily_limit=999999,
-            email = 'admin@example.com', # Assign a dummy email for admin
-            # Populate allowed_categories and allowed_personas with all possible options
-            # This is a placeholder for initial admin setup. In a real app, you might fetch all distinct values.
-            # For now, we'll use a hardcoded list that includes all values from CATEGORIES_AND_SUBCATEGORIES and CATEGORY_PERSONAS
-            allowed_categories=json.dumps([
-                "General Writing & Editing", "Programming & Code", "Business & Finance",
-                "Education & Learning", "Technical Writing & Explanation", "Customer Support",
-                "Research & Information Retrieval", "Data Analysis & Interpretation",
-                "Productivity & Planning", "Creative Writing", "Marketing & Advertising",
-                "Multilingual & Translation", "Entertainment & Media", "Career & Resume",
-                "Legal & Compliance", "Healthcare & Wellness", "Image Generation & Visual Design",
-                "Event Planning", "UX/UI & Product Design", "Spirituality & Self-Reflection",
-                "Gaming", "Voice, Audio & Podcasting", "AI & Prompt Engineering",
-                "News & Current Affairs", "Travel & Culture", "Other"
-            ]),
-            allowed_personas=json.dumps([
-                "Author", "Editor", "Copywriter", "Content Creator", "Blogger",
-                "Software Developer", "Frontend Engineer", "Backend Engineer", "Data Scientist", "DevOps Engineer",
-                "Entrepreneur", "Business Analyst", "Financial Advisor", "Investor", "Startup Founder", "Director", "CEO",
-                "Student", "Teacher", "Tutor", "Curriculum Designer", "Lifelong Learner",
-                "Technical Writer", "System Architect", "Engineer", "Product Manager", "Compliance Officer",
-                "Support Agent", "Customer Success Manager", "Helpdesk Analyst", "Call Center Manager", "Chatbot Designer",
-                "Researcher", "Scientist", "Academic", "Policy Analyst", "Librarian",
-                "Data Analyst", "BI Analyst", "Statistician", "Data Engineer", "Operations Manager",
-                "Project Manager", "Life Coach", "Executive Assistant", "Scrum Master", "Productivity Hacker",
-                "Novelist", "Poet", "Screenwriter", "Songwriter", "Creative Director",
-                "Marketing Manager", "Brand Strategist", "SEO Specialist", "Content Marketer", "Media Planner",
-                "Translator", "Interpreter", "Language Teacher", "Localization Specialist", "Multilingual Blogger",
-                "YouTuber", "Streamer", "Podcaster", "Critic", "Fan Fiction Author",
-                "Job Seeker", "Career Coach", "HR Recruiter", "Hiring Manager", "Resume Writer",
-                "Lawyer", "Paralegal", "Compliance Officer", "Policy Advisor", "Contract Manager",
-                "Nutritionist", "Fitness Coach", "Therapist", "Health Blogger", "Wellness Consultant",
-                "Graphic Designer", "Concept Artist", "Art Director", "Photographer", "AI Image Prompt Engineer",
-                "Event Planner", "Wedding Coordinator", "Conference Organizer", "Marketing Executive", "Venue Manager",
-                "UX Designer", "UI Designer", "Product Designer", "Interaction Designer", "Design Researcher",
-                "Meditation Coach", "Spiritual Guide", "Mindfulness Blogger", "Philosopher", "Self-help Author",
-                "Game Developer", "Game Designer", "Gamer", "Stream Host", "Lore Writer",
-                "Voice Actor", "Podcaster", "Audio Engineer", "Narrator", "Sound Designer",
-                "Prompt Engineer", "ML Engineer", "AI Researcher", "NLP Scientist", "Chatbot Developer",
-                "Journalist", "News Curator", "Political Analyst", "Opinion Writer", "Debater",
-                "Itineraries", "Local tips", "Cultural do’s and don’ts",
-                "General", "Custom", "Uncategorized", "Other"
-            ])
+            email='admin@example.com', # Assign a dummy email for admin
+            # Store the dynamically generated lists as JSON strings in the database
+            allowed_categories=json.dumps(allowed_categories_list),
+            allowed_personas=json.dumps(allowed_personas_list)
         )
         admin_user.set_password('adminpass') # Set a default password for the admin
         db.session.add(admin_user)
         db.session.commit()
         app.logger.info("Default admin user 'admin' created with password 'adminpass'.")
-
 
 # --- Main App Run ---
 if __name__ == '__main__':
