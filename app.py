@@ -2605,8 +2605,8 @@ def api_reverse_prompt(user):
         user.last_generation_time = now
         if not user.is_admin:
             user.daily_generation_count += 1
-        db.session.add(user)
-        await asyncio.to_thread(
+        await asyncio.to_thread(db.session.add, user)
+        await asyncio.to_thread(db.session.commit)
         app.logger.info(f"API user {user.username}'s last prompt request time updated and count incremented. (API Reverse Prompt)")
 
         status_code = 200
