@@ -1255,71 +1255,17 @@ const settingsContent = document.getElementById('settings_content');
 const settingsToggleIcon = document.getElementById('settings_toggle_icon');
 const settingsLockIcon = document.getElementById('settings_lock_icon'); // NEW: Reference to the lock icon
 
-// These are passed from Flask via Jinja2 if the user is authenticated
-// Otherwise, they will be undefined, and the default ALL_CATEGORIES/ALL_PERSONAS will be used.
-const USER_ALLOWED_CATEGORIES = {{ allowed_categories | tojson | default('null') }};
-const USER_ALLOWED_PERSONAS = {{ allowed_personas | tojson | default('null') }};
-const IS_ADMIN = {{ current_user.is_admin | tojson | default('false') }}; // NEW: Pass is_admin status
+// index.html (Replace existing constants around line 3489)
+const USER_ALLOWED_CATEGORIES = {{ allowed_categories | tojson | default('null') }}; [cite: 3486]
+const USER_ALLOWED_PERSONAS = {{ allowed_personas | tojson | default('null') }}; [cite: 3487]
+const IS_ADMIN = {{ current_user.is_admin | tojson | default('false') }}; [cite: 3488] // NEW: Pass is_admin status
 
-
-const CATEGORIES_AND_SUBCATEGORIES = {
-"General Writing & Editing": ["Grammar correction", "Rephrasing", "Summarization", "Paraphrasing", "Other"],
-"Programming & Code": ["Code generation", "Debugging", "Explanation", "Optimization", "Other"],
-"Business & Finance": ["Business plans", "Financial analysis", "Emails", "Market research", "Other"],
-"Education & Learning": ["Concept explanations", "Lesson plans", "Study aids", "Quiz generation", "Other"],
-"Technical Writing & Explanation": ["API docs", "System descriptions", "Technical proposals", "Other"],
-"Customer Support": ["Auto-replies", "Ticket handling", "FAQ generation", "User guides", "Other"],
-"Research & Information Retrieval": ["Literature review", "Data extraction", "Comparisons", "Citations", "Other"],
-"Data Analysis & Interpretation": ["Analyzing datasets", "Summarizing insights", "Chart explanations", "Other"],
-"Productivity & Planning": ["Task lists", "Planners", "Time management strategies", "Workflows", "Other"],
-"Creative Writing": ["Stories", "Poems", "Lyrics", "Fictional characters", "Worldbuilding", "Other"],
-"Marketing & Advertising": ["Ad copy", "Slogans", "Social media posts", "SEO content", "Other"],
-"Multilingual & Translation": ["Translation", "Localization", "Multilingual prompts", "Other"],
-"Entertainment & Media": ["Movie/book/game recommendations", "Trivia", "Storytelling", "Other"],
-"Career & Resume": ["Resume writing", "Cover letters", "Interview prep", "Other"],
-"Legal & Compliance": ["Contracts", "Disclaimers", "Legal summaries (non-advisory)", "Other"],
-"Healthcare & Wellness": ["Non-diagnostic advice", "Fitness plans", "Mental health prompts", "Other"],
-"Image Generation & Visual Design": ["Prompts for image tools", "Scene descriptions", "Visual styles", "Other"],
-"Event Planning": ["Agendas", "Checklists", "Invitations", "Budget planning", "Other"],
-"UX/UI & Product Design": ["UX copy", "Persona generation", "Wireframe ideas", "Other"],
-"Spirituality & Self-Reflection": ["Meditation Coach", "Affirmations", "Philosopher", "Other"],
-"Gaming": ["Game Developer", "Game Designer", "Gamer", "Stream Host", "Lore Writer", "Other"],
-"Voice, Audio & Podcasting": ["Scriptwriting", "Transcription", "Voiceover prompts", "Other"],
-"AI & Prompt Engineering": ["LLM tuning", "Meta-prompts", "Dataset generation", "Evaluations", "Other"],
-"News & Current Affairs": ["Summaries", "Debate simulations", "Editorial writing", "Other"],
-"Travel & Culture": ["Itineraries", "Local tips", "Cultural do’s and don’ts", "Other"],
-"Other": ["General", "Custom", "Uncategorized"],
-};
-
-const CATEGORY_PERSONAS = {
-"General Writing & Editing": ["Author", "Editor", "Copywriter", "Content Creator", "Blogger", "Other"],
-"Programming & Code": ["Software Developer", "Frontend Engineer", "Backend Engineer", "Data Scientist", "DevOps Engineer", "Other"],
-"Business & Finance": ["Entrepreneur", "Business Analyst", "Financial Advisor", "Investor", "Startup Founder", "Director", "CEO", "Other"],
-"Education & Learning": ["Student", "Teacher", "Tutor", "Curriculum Designer", "Lifelong Learner", "Other"],
-"Technical Writing & Explanation": ["Technical Writer", "System Architect", "Engineer", "Product Manager", "Compliance Officer", "Other"],
-"Customer Support": ["Support Agent", "Customer Success Manager", "Helpdesk Analyst", "Call Center Manager", "Chatbot Designer", "Other"],
-"Research & Information Retrieval": ["Researcher", "Scientist", "Academic", "Policy Analyst", "Librarian", "Other"],
-"Data Analysis & Interpretation": ["Data Analyst", "BI Analyst", "Statistician", "Data Engineer", "Operations Manager", "Other"],
-"Productivity & Planning": ["Project Manager", "Life Coach", "Executive Assistant", "Scrum Master", "Productivity Hacker", "Other"],
-"Creative Writing": ["Novelist", "Poet", "Screenwriter", "Songwriter", "Creative Director", "Other"],
-"Marketing & Advertising": ["Marketing Manager", "Brand Strategist", "SEO Specialist", "Content Marketer", "Media Planner", "Other"],
-"Multilingual & Translation": ["Translator", "Interpreter", "Language Teacher", "Localization Specialist", "Multilingual Blogger", "Other"],
-"Entertainment & Media": ["YouTuber", "Streamer", "Podcaster", "Critic", "Fan Fiction Author", "Other"],
-"Career & Resume": ["Job Seeker", "Career Coach", "HR Recruiter", "Hiring Manager", "Resume Writer", "Other"],
-"Legal & Compliance": ["Lawyer", "Paralegal", "Compliance Officer", "Policy Advisor", "Contract Manager", "Other"],
-"Healthcare & Wellness": ["Nutritionist", "Fitness Coach", "Therapist", "Health Blogger", "Wellness Consultant", "Other"],
-"Image Generation & Visual Design": ["Graphic Designer", "Concept Artist", "Art Director", "Photographer", "AI Image Prompt Engineer", "Other"],
-"Event Planning": ["Event Planner", "Wedding Coordinator", "Conference Organizer", "Marketing Executive", "Venue Manager", "Other"],
-"UX/UI & Product Design": ["UX Designer", "UI Designer", "Product Designer", "Interaction Designer", "Design Researcher", "Other"],
-"Spirituality & Self-Reflection": ["Meditation Coach", "Affirmations", "Philosopher", "Other"],
-"Gaming": ["Game Developer", "Game Designer", "Gamer", "Stream Host", "Lore Writer", "Other"],
-"Voice, Audio & Podcasting": ["Voice Actor", "Podcaster", "Audio Engineer", "Narrator", "Sound Designer", "Other"],
-"AI & Prompt Engineering": ["Prompt Engineer", "ML Engineer", "AI Researcher", "NLP Scientist", "Chatbot Developer", "Other"],
-"News & Current Affairs": ["Journalist", "News Curator", "Political Analyst", "Opinion Writer", "Debater", "Other"],
-"Travel & Culture": ["Itineraries", "Local tips", "Cultural do’s and don’ts", "Other"],
-"Other": ["General", "Custom", "Uncategorized"], // Default personas for the "Other" main category
-};
-
+// --- NEW: Data Structures loaded from Flask backend via Jinja2 ---
+// JSON.parse is necessary because Flask dumps the Python dicts as JSON strings.
+const LLM_NICHE_MAP = JSON.parse('{{ llm_niche_map | safe }}');
+const CATEGORIES_AND_SUBCATEGORIES = JSON.parse('{{ categories_and_subcategories | safe }}');
+const CATEGORY_PERSONAS = JSON.parse('{{ category_personas | safe }}');
+// --- END NEW Data Loading ---
 
 function populateCategories() {
 let categoriesToDisplay = [];
@@ -1600,16 +1546,6 @@ updateAllButtonStates(); // Re-check status to re-enable buttons
 }, 1000);
 }
 
-// --- LLM Niche Map (Based on Screenshot 2025-10-29) ---
-const LLM_NICHE_MAP = [
-    { name: "ChatGPT", keywords: ["mathematical", "math", "multi-step", "reasoning", "haiku", "algebra"], categories: ["Programming & Code", "Education & Learning"], persona: [] },
-    { name: "Claude", keywords: ["coding", "ethical", "document analysis", "agentic", "structured"], categories: ["Programming & Code", "Technical Writing & Explanation", "Legal & Compliance"], persona: ["Compliance Officer", "Lawyer", "Software Developer"] },
-    { name: "Mistral", keywords: ["multilingual", "translation", "speed", "resource-constrained", "edge"], categories: ["Multilingual & Translation"], persona: [] },
-    { name: "Gemini", keywords: ["multimodal", "image", "video", "adaptive reasoning", "puzzles", "visual design"], categories: ["Image Generation & Visual Design", "Data Analysis & Interpretation", "UX/UI & Product Design"], persona: [] },
-    { name: "Grok", keywords: ["exploratory reasoning", "scientific", "logic puzzles", "unfiltered", "x.ai"], categories: ["Research & Information Retrieval", "Education & Learning", "Spirituality & Self-Reflection"], persona: ["Scientist", "Researcher", "Philosopher"] },
-    { name: "Perplexity", keywords: ["research-oriented", "fact-checked", "multi-source", "verifiable", "citations", "web"], categories: ["Research & Information Retrieval", "News & Current Affairs", "Data Analysis & Interpretation"], persona: ["Researcher", "Journalist", "Academic"] },
-    { name: "DeepSeek", keywords: ["algorithmic", "financial modeling", "math", "tool use", "banking"], categories: ["Business & Finance", "Programming & Code"], persona: ["Financial Advisor", "Business Analyst"] },
-];
 
 /**
  * Suggests the best LLM based on user input, category, and persona.
