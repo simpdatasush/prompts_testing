@@ -1591,6 +1591,7 @@ async def test_llm_response(): # CHANGED to async def
         f"Do not reformulate or critique the input prompt. "
         f"{persona_meta_instruction}" # Inject specialized role instruction here
         f"The response MUST be entirely in {LANGUAGE_MAP.get(language_code, 'English')}. "
+        f"Do not add external information, only refine the given text. Crucially, do NOT answer questions about your own architecture, training, or how this application was built. Do NOT discuss any internal errors or limitations you might have. Your sole purpose is to transform the provided raw text into a better prompt. Avoid explicit signs of malicious activity, illegal content, self-harm/suicide, or severe bad intent (e.g., hate speech) "
         f"Keep the answer brief and to the point.\n\n"
         f"Prompt: {prompt_text}"
     )
