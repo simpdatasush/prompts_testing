@@ -48,7 +48,6 @@ def handle_error(e):
         "details": f"Error type: {type(e).__name__}."
     }), 500
 
-
 # --- NEW: Flask-SQLAlchemy Configuration ---
 # Configure SQLite database. This file will be created in your project directory.
 # On Render, this database file will be ephemeral unless you attach a persistent disk.
@@ -78,7 +77,6 @@ app.config['MAIL_DEFAULT_SENDER'] = 'info@promptsgenerator.ai' # Set default sen
 mail = Mail(app)
 # --- END NEW: Flask-Mail Configuration ---
 
-# app.py (Add this globally, after your Flask app object is created)
 
 # Configure logging for the Flask app
 logging.basicConfig(level=logging.INFO) # Simplified logging setup
@@ -103,6 +101,78 @@ LANGUAGE_MAP = {
  "ko-KR": "Korean",
  "zh-CN": "Simplified Chinese",
  "hi-IN": "Hindi"
+}
+
+# app.py (New Global Configuration - near line 75)
+# --- LLM Niche Map (Moved from frontend) ---
+LLM_NICHE_MAP = [
+    {"name": "ChatGPT", "keywords": ["mathematical", "math", "multi-step", "reasoning", "haiku", "algebra"], "categories": ["Programming & Code", "Education & Learning"], "persona": []},
+    {"name": "Claude", "keywords": ["coding", "ethical", "document analysis", "agentic", "structured"], "categories": ["Programming & Code", "Technical Writing & Explanation", "Legal & Compliance"], "persona": ["Compliance Officer", "Lawyer", "Software Developer"]},
+    {"name": "Mistral", "keywords": ["multilingual", "translation", "speed", "resource-constrained", "edge"], "categories": ["Multilingual & Translation"], "persona": []},
+    {"name": "Gemini", "keywords": ["multimodal", "image", "video", "adaptive reasoning", "puzzles", "visual design"], "categories": ["Image Generation & Visual Design", "Data Analysis & Interpretation", "UX/UI & Product Design"], "persona": []},
+    {"name": "Grok", "keywords": ["exploratory reasoning", "scientific", "logic puzzles", "unfiltered", "x.ai"], "categories": ["Research & Information Retrieval", "Education & Learning", "Spirituality & Self-Reflection"], "persona": ["Scientist", "Researcher", "Philosopher"]},
+    {"name": "Perplexity", "keywords": ["research-oriented", "fact-checked", "multi-source", "verifiable", "citations", "web"], "categories": ["Research & Information Retrieval", "News & Current Affairs", "Data Analysis & Interpretation"], "persona": ["Researcher", "Journalist", "Academic"]},
+    {"name": "DeepSeek", "keywords": ["algorithmic", "financial modeling", "math", "tool use", "banking"], "categories": ["Business & Finance", "Programming & Code"], "persona": ["Financial Advisor", "Business Analyst"]},
+]
+
+# --- Category and Subcategory Mapping (Moved from frontend) ---
+CATEGORIES_AND_SUBCATEGORIES = {
+    "General Writing & Editing": ["Grammar correction", "Rephrasing", "Summarization", "Paraphrasing", "Other"],
+    "Programming & Code": ["Code generation", "Debugging", "Explanation", "Optimization", "Other"],
+    "Business & Finance": ["Business plans", "Financial analysis", "Emails", "Market research", "Other"],
+    "Education & Learning": ["Concept explanations", "Lesson plans", "Study aids", "Quiz generation", "Other"],
+    "Technical Writing & Explanation": ["API docs", "System descriptions", "Technical proposals", "Other"],
+    "Customer Support": ["Auto-replies", "Ticket handling", "FAQ generation", "User guides", "Other"],
+    "Research & Information Retrieval": ["Literature review", "Data extraction", "Comparisons", "Citations", "Other"],
+    "Data Analysis & Interpretation": ["Analyzing datasets", "Summarizing insights", "Chart explanations", "Other"],
+    "Productivity & Planning": ["Task lists", "Planners", "Time management strategies", "Workflows", "Other"],
+    "Creative Writing": ["Stories", "Poems", "Lyrics", "Fictional characters", "Worldbuilding", "Other"],
+    "Marketing & Advertising": ["Ad copy", "Slogans", "Social media posts", "SEO content", "Other"],
+    "Multilingual & Translation": ["Translation", "Localization", "Multilingual prompts", "Other"],
+    "Entertainment & Media": ["Movie/book/game recommendations", "Trivia", "Storytelling", "Other"],
+    "Career & Resume": ["Resume writing", "Cover letters", "Interview prep", "Other"],
+    "Legal & Compliance": ["Contracts", "Disclaimers", "Legal summaries (non-advisory)", "Other"],
+    "Healthcare & Wellness": ["Non-diagnostic advice", "Fitness plans", "Mental health prompts", "Other"],
+    "Image Generation & Visual Design": ["Prompts for image tools", "Scene descriptions", "Visual styles", "Other"],
+    "Event Planning": ["Agendas", "Checklists", "Invitations", "Budget planning", "Other"],
+    "UX/UI & Product Design": ["UX copy", "Persona generation", "Wireframe ideas", "Other"],
+    "Spirituality & Self-Reflection": ["Meditation Coach", "Affirmations", "Philosopher", "Other"],
+    "Gaming": ["Game Developer", "Game Designer", "Gamer", "Stream Host", "Lore Writer", "Other"],
+    "Voice, Audio & Podcasting": ["Scriptwriting", "Transcription", "Voiceover prompts", "Other"],
+    "AI & Prompt Engineering": ["LLM tuning", "Meta-prompts", "Dataset generation", "Evaluations", "Other"],
+    "News & Current Affairs": ["Summaries", "Debate simulations", "Editorial writing", "Other"],
+    "Travel & Culture": ["Itineraries", "Local tips", "Cultural do’s and don’ts", "Other"],
+    "Other": ["General", "Custom", "Uncategorized"],
+}
+
+# --- Category and Persona Mapping (Moved from frontend) ---
+CATEGORY_PERSONAS = {
+    "General Writing & Editing": ["Author", "Editor", "Copywriter", "Content Creator", "Blogger", "Other"],
+    "Programming & Code": ["Software Developer", "Frontend Engineer", "Backend Engineer", "Data Scientist", "DevOps Engineer", "Other"],
+    "Business & Finance": ["Entrepreneur", "Business Analyst", "Financial Advisor", "Investor", "Startup Founder", "Director", "CEO", "Other"],
+    "Education & Learning": ["Student", "Teacher", "Tutor", "Curriculum Designer", "Lifelong Learner", "Other"],
+    "Technical Writing & Explanation": ["Technical Writer", "System Architect", "Engineer", "Product Manager", "Compliance Officer", "Other"],
+    "Customer Support": ["Support Agent", "Customer Success Manager", "Helpdesk Analyst", "Call Center Manager", "Chatbot Designer", "Other"],
+    "Research & Information Retrieval": ["Researcher", "Scientist", "Academic", "Policy Analyst", "Librarian", "Other"],
+    "Data Analysis & Interpretation": ["Data Analyst", "BI Analyst", "Statistician", "Data Engineer", "Operations Manager", "Other"],
+    "Productivity & Planning": ["Project Manager", "Life Coach", "Executive Assistant", "Scrum Master", "Productivity Hacker", "Other"],
+    "Creative Writing": ["Novelist", "Poet", "Screenwriter", "Songwriter", "Creative Director", "Other"],
+    "Marketing & Advertising": ["Marketing Manager", "Brand Strategist", "SEO Specialist", "Content Marketer", "Media Planner", "Other"],
+    "Multilingual & Translation": ["Translator", "Interpreter", "Language Teacher", "Localization Specialist", "Multilingual Blogger", "Other"],
+    "Entertainment & Media": ["YouTuber", "Streamer", "Podcaster", "Critic", "Fan Fiction Author", "Other"],
+    "Career & Resume": ["Job Seeker", "Career Coach", "HR Recruiter", "Hiring Manager", "Resume Writer", "Other"],
+    "Legal & Compliance": ["Lawyer", "Paralegal", "Compliance Officer", "Policy Advisor", "Contract Manager", "Other"],
+    "Healthcare & Wellness": ["Nutritionist", "Fitness Coach", "Therapist", "Health Blogger", "Wellness Consultant", "Other"],
+    "Image Generation & Visual Design": ["Graphic Designer", "Concept Artist", "Art Director", "Photographer", "AI Image Prompt Engineer", "Other"],
+    "Event Planning": ["Event Planner", "Wedding Coordinator", "Conference Organizer", "Marketing Executive", "Venue Manager", "Other"],
+    "UX/UI & Product Design": ["UX Designer", "UI Designer", "Product Designer", "Interaction Designer", "Design Researcher", "Other"],
+    "Spirituality & Self-Reflection": ["Meditation Coach", "Spiritual Guide", "Mindfulness Blogger", "Philosopher", "Self-help Author", "Other"],
+    "Gaming": ["Game Developer", "Game Designer", "Gamer", "Stream Host", "Lore Writer", "Other"],
+    "Voice, Audio & Podcasting": ["Voice Actor", "Podcaster", "Audio Engineer", "Narrator", "Sound Designer", "Other"],
+    "AI & Prompt Engineering": ["Prompt Engineer", "ML Engineer", "AI Researcher", "NLP Scientist", "Chatbot Developer", "Other"],
+    "News & Current Affairs": ["Journalist", "News Curator", "Political Analyst", "Opinion Writer", "Debater", "Other"],
+    "Travel & Culture": ["Itineraries", "Local tips", "Cultural do’s and don’ts", "Other"],
+    "Other": ["General", "Custom", "Uncategorized"], # Default personas for the "Other" main category
 }
 
 # https://ai.google.dev/gemini-api/docs/pricing#gemini-2.5-flash
@@ -594,23 +664,6 @@ def ask_gemini_for_structured_prompt(prompt_instruction, generation_config=None,
     except Exception as e:
         app.logger.error(f"DEBUG: Unexpected Error calling Gemini API (structured_gen_model - {model_name}): {e}", exc_info=True)
         return filter_gemini_response(f"An unexpected error occurred: {str(e)}")
-
-
-# --- NEW: Gemini API for Image Understanding (Synchronous wrapper for vision_model) ---
-def ask_gemini_for_image_text(image_data_bytes):
-    try:
-        response = vision_model.generate_content(prompt_parts)
-        extracted_text = response.text if response and response.text else ""
-        return extracted_text # Return raw text for further processing/filtering
-    except ValueError as e: # <--- CATCH THE VALUE ERROR HERE
-        app.logger.error(f"DEBUG: Unexpected ValueError from Gemini API (vision_model): {e}", exc_info=True)
-        return filter_gemini_response(f"AI image text extraction failed due to an issue: {str(e)}")
-    except google_api_exceptions.GoogleAPICallError as e:
-        app.logger.error(f"Error calling Gemini API for image text extraction: {e}", exc_info=True)
-        return filter_gemini_response(f"Error extracting text from image: {str(e)}")
-    except Exception as e:
-        app.logger.error(f"Unexpected Error calling Gemini API for image text extraction: {e}", exc_info=True)
-        return filter_gemini_response(f"An unexpected error occurred during image text extraction: {str(e)}")
 
 # --- NEW GAMIFICATION HELPER FUNCTIONS ---
 def calculate_generation_points(raw_input, prompt_mode, language_code, category, persona):
@@ -1154,17 +1207,19 @@ def view_prompt(prompt_id):
 @app.route('/app_home')
 @login_required # REQUIRE LOGIN FOR APP HOME PAGE
 def app_home():
-    # Pass current_user object to the template to show login/logout status
-    # Also pass allowed_categories and allowed_personas (parsed from JSON string)
+    # ... existing logic ...
     allowed_categories_list = json.loads(current_user.allowed_categories)
     allowed_personas_list = json.loads(current_user.allowed_personas)
 
     return render_template('index.html',
-                           current_user=current_user,
-                           allowed_categories=allowed_categories_list,
-                           allowed_personas=allowed_personas_list)
-# The link needs to be updated in index.html (not app.py route itself)
-
+        current_user=current_user,
+        allowed_categories=allowed_categories_list,
+        allowed_personas=allowed_personas_list,
+        llm_niche_map=json.dumps(LLM_NICHE_MAP),
+        categories_and_subcategories=json.dumps(CATEGORIES_AND_SUBCATEGORIES),
+        category_personas=json.dumps(CATEGORY_PERSONAS)
+    )
+ 
 # NEW: LLM Benchmark Page Route
 @app.route('/llm_benchmark')
 def llm_benchmark():
@@ -1173,7 +1228,7 @@ def llm_benchmark():
 
 @app.route('/generate', methods=['POST'])
 @login_required # Protect this route
-def generate(): # CHANGED FROM ASYNC
+async def generate(): # CHANGED FROM ASYNC
     user = current_user # Get the current user object
     now = datetime.utcnow() # Use utcnow for consistency with database default
 
@@ -1205,8 +1260,18 @@ def generate(): # CHANGED FROM ASYNC
         if user.daily_generation_date != today:
             user.daily_generation_count = 0
             user.daily_generation_date = today
-            db.session.add(user) # Mark user as modified
-            db.session.commit() # Commit reset immediately to prevent race conditions on count
+            await asyncio.to_thread(db.session.add, user)
+            await asyncio.to_thread(db.session.commit) # Commit reset immediately to prevent race conditions on count
+
+        if current_user.is_authenticated:
+            try:
+                new_raw_prompt = RawPrompt(user_id=current_user.id, raw_text=prompt_input)
+                await asyncio.to_thread(db.session.add,new_raw_prompt)
+                await asyncio.to_thread(db.session.commit) # <<< This commit must succeed.
+                app.logger.info(f"Raw prompt saved for user {current_user.username}")
+            except Exception as e:
+                app.logger.error(f"Error saving raw prompt for user {current_user.username}: {e}")
+                db.session.rollback() # Rollback in case of error
 
         if user.daily_generation_count >= user.daily_limit: # Check against per-user limit
             app.logger.info(f"User {user.username} exceeded their daily prompt limit of {user.daily_limit}.")
@@ -1247,7 +1312,11 @@ def generate(): # CHANGED FROM ASYNC
         })
 
     try:
-        results = asyncio.run(generate_prompts_async(prompt_input, language_code, prompt_mode, category, subcategory, persona)) # NEW: Pass persona
+        results = await generate_prompts_async(prompt_input, language_code, prompt_mode, category, subcategory, persona) # NEW: Pass persona
+
+        # Wrap synchronous DB updates in asyncio.to_thread (if necessary)
+        await asyncio.to_thread(db.session.add, user)
+        await asyncio.to_thread(db.session.commit)
 
     # --- GAMIFICATION: Award points for complexity, settings, and refinement ---
         points_awarded = calculate_generation_points(prompt_input, prompt_mode, language_code, category, persona)
@@ -1261,15 +1330,15 @@ def generate(): # CHANGED FROM ASYNC
         user.last_generation_time = now # Record the time of this successful request
         if not user.is_admin: # Only increment count for non-admin users
             user.daily_generation_count += 1
-        db.session.add(user) # Add the user object back to the session to mark it as modified
-        db.session.commit()
+        await asyncio.to_thread(db.session.add, user) # Add the user object back to the session to mark it as modified
+        await asyncio.to_thread(db.session.commit)
         app.logger.info(f"User {user.username}'s last prompt request time updated and count incremented. (Forward Prompt)")
 
         if current_user.is_authenticated:
             try:
                 new_raw_prompt = RawPrompt(user_id=current_user.id, raw_text=prompt_input)
-                db.session.add(new_raw_prompt)
-                db.session.commit()
+                await asyncio.to_thread(db.session.add,new_raw_prompt)
+                await asyncio.to_thread(db.session.commit)
                 app.logger.info(f"Raw prompt saved for user {current_user.username}")
             except Exception as e:
                 app.logger.error(f"Error saving raw prompt for user {current_user.username}: {e}")
@@ -1285,7 +1354,7 @@ def generate(): # CHANGED FROM ASYNC
 # --- NEW: Reverse Prompt Endpoint ---
 @app.route('/reverse_prompt', methods=['POST'])
 @login_required
-def reverse_prompt(): # CHANGED FROM ASYNC
+async def reverse_prompt(): # CHANGED FROM ASYNC
     user = current_user
     now = datetime.utcnow()
 
@@ -1314,8 +1383,8 @@ def reverse_prompt(): # CHANGED FROM ASYNC
         if user.daily_generation_date != today: # Changed from last_count_reset_date
             user.daily_generation_count = 0
             user.daily_generation_date = today # Changed from last_count_reset_date
-            db.session.add(user)
-            db.session.commit()
+            await asyncio.to_thread(db.session.add, user)
+            await asyncio.to_thread(db.session.commit)
 
         if user.daily_generation_count >= user.daily_limit: # Check against per-user limit
             app.logger.info(f"User {user.username} exceeded their daily reverse prompt limit of {user.daily_limit}.")
@@ -1340,7 +1409,11 @@ def reverse_prompt(): # CHANGED FROM ASYNC
         return jsonify({"inferred_prompt": "Reverse prompting is not applicable for image or video generation modes."}), 200
 
     try:
-        inferred_prompt = asyncio.run(generate_reverse_prompt_async(input_text, language_code, prompt_mode))
+        inferred_prompt = await generate_reverse_prompt_async(input_text, language_code, prompt_mode)
+
+     # Wrap synchronous DB updates in asyncio.to_thread (if necessary)
+        await asyncio.to_thread(db.session.add, user)
+        await asyncio.to_thread(db.session.commit)
 
      # --- GAMIFICATION: Award points for reverse prompt ---
         points_awarded = 75 # Flat rate for reverse prompting
@@ -1352,91 +1425,14 @@ def reverse_prompt(): # CHANGED FROM ASYNC
         user.last_generation_time = now
         if not user.is_admin:
             user.daily_generation_count += 1
-        db.session.add(user)
-        db.session.commit()
+        await asyncio.to_thread(db.session.add, user)
+        await asyncio.to_thread(db.session.commit)
         app.logger.info(f"API user {user.username}'s last prompt request time updated and count incremented. (API Reverse Prompt)")
 
         return jsonify({"inferred_prompt": inferred_prompt})
     except Exception as e:
         app.logger.exception("Error during reverse prompt generation in endpoint:")
         return jsonify({"error": f"An unexpected server error occurred: {e}. Please check server logs for details."}), 500
-
-
-# NEW: Image Processing Endpoint ---
-@app.route('/process_image_prompt', methods=['POST'])
-@login_required
-def process_image_prompt(): # CHANGED FROM ASYNC
-    user = current_user
-    now = datetime.utcnow()
-    
-    # --- Check if the user is locked out ---
-    if user.is_locked:
-        return jsonify({
-            "error": "Your account is locked. Please contact support.",
-            "account_locked": True
-        }), 403 # Forbidden
-
-    # Apply cooldown to image processing as well
-    if user.last_generation_time: # Changed from last_prompt_request
-        time_since_last_request = (now - user.last_generation_time).total_seconds()
-        if time_since_last_request < COOLDOWN_SECONDS:
-            remaining_time = int(COOLDOWN_SECONDS - time_since_last_request)
-            app.logger.info(f"User {user.username} is on cooldown for image processing. Remaining: {remaining_time}s")
-            return jsonify({
-                "error": f"Please wait {remaining_time} seconds before processing another image.",
-                "cooldown_active": True,
-                "remaining_time": remaining_time
-            }), 429
-
-    # Daily limit check for image processing
-    if not user.is_admin:
-        today = now.date()
-        if user.daily_generation_date != today: # Changed from last_count_reset_date
-            user.daily_generation_count = 0
-            user.daily_generation_date = today # Changed from last_count_reset_date
-            db.session.add(user)
-            db.session.commit()
-
-        if user.daily_generation_count >= user.daily_limit:
-            app.logger.info(f"User {user.username} exceeded their daily image processing limit of {user.daily_limit}.")
-            return jsonify({
-                "error": f"You have reached your daily limit of {user.daily_limit} generations. If you are looking for more prompts, kindly make a payment to increase your limit.",
-                "daily_limit_reached": True,
-                "payment_link": PAYMENT_LINK
-            }), 429
-
-    data = request.get_json()
-    image_data_b64 = data.get('image_data')
-    language_code = data.get('language_code', 'en-US') # Not directly used by Gemini Vision, but good to pass
-
-
-    if not image_data_b64:
-        return jsonify({"error": "No image data provided."}), 400
-
-    try:
-        image_data_bytes = base64.b64decode(image_data_b64) # Decode base64 string to bytes
-        
-        # Call the Gemini API for image understanding
-        recognized_text = asyncio.run(ask_gemini_for_image_text(image_data_bytes))
-
-        # --- GAMIFICATION: Award points for image processing (multimodal input) ---
-        points_awarded = 50 # Flat rate for processing an image/multimodal input
-        user.total_points += points_awarded
-        app.logger.info(f"User {user.username} awarded {points_awarded} points for image processing. Total: {user.total_points}")
-        # --- END GAMIFICATION ---
-
-        # Update last_generation_time after successful image processing
-        user.last_generation_time = now
-        if not user.is_admin:
-            user.daily_generation_count += 1
-        db.session.add(user)
-        db.session.commit()
-        app.logger.info(f"User {user.username}'s last prompt request time updated and count incremented after image processing.")
-
-        return jsonify({"recognized_text": recognized_text})
-    except Exception as e:
-        app.logger.exception("Error during image processing endpoint:")
-        return jsonify({"error": f"An unexpected server error occurred during image processing: {e}. Please check server logs for details."}), 500
 
 
 # --- NEW: Route to Handle Perplexity Search Request from Frontend ---
@@ -1469,7 +1465,7 @@ async def search_perplexity():
     
     try:
         # Commit the point change to the database
-        db.session.commit()
+        await asyncio.to_thread(db.session.commit)
         app.logger.info(f"User {user.username} awarded {points_awarded} points for Web Search. Total: {user.total_points}")
     except Exception as e:
         db.session.rollback()
@@ -1517,8 +1513,8 @@ async def test_llm_response(): # CHANGED to async def
         if user.daily_generation_date != today:
             user.daily_generation_count = 0
             user.daily_generation_date = today
-            db.session.add(user)
-            db.session.commit()
+            await asyncio.to_thread(db.session.add,user)
+            await asyncio.to_thread(db.session.commit)
 
         if user.daily_generation_count >= user.daily_limit:
             app.logger.info(f"User {user.username} exceeded their daily test prompt limit of {user.daily_limit}.")
@@ -1597,8 +1593,8 @@ async def test_llm_response(): # CHANGED to async def
         user.last_generation_time = now
         if not user.is_admin:
             user.daily_generation_count += 1
-        db.session.add(user)
-        db.session.commit()
+        await asyncio.to_thread(db.session.add,user)
+        await asyncio.to_thread(db.session.commit)
         app.logger.info(f"User {user.username}'s last prompt request time updated and count incremented after test prompt.")
 
         return jsonify({
@@ -1695,6 +1691,7 @@ def award_share_points():
     points_awarded = 15
     try:
         current_user.total_points += points_awarded
+
         db.session.add(current_user)
         db.session.commit()
         app.logger.info(f"User {current_user.username} awarded {points_awarded} points for sharing. Total: {current_user.total_points}")
@@ -2103,7 +2100,7 @@ async def send_reset_link():
         
         user.reset_token = token # Changed from password_reset_token
         user.reset_token_expiration = expiration # Changed from password_reset_expiration
-        db.session.commit()
+        await asyncio.to_thread(db.session.commit)
         
         reset_link = url_for('reset_password', token=token, _external=True)
         
@@ -2126,7 +2123,7 @@ If you did not request a password reset, please ignore this email.
 Sincerely,
 The SuperPrompter Team
 """
-            mail.send(msg)
+            await asyncio.to_thread(mail.send, msg)
             app.logger.info(f"Password reset email sent to {user.email} for user {user.username}")
             flash('A password reset link has been sent to your email address. Please check your inbox (and spam folder).', 'info')
         except Exception as e:
@@ -2329,7 +2326,7 @@ def admin_users():
             'allowed_personas': allowed_personas
         })
     
-    return render_template('admin_users.html', users=users_data, current_user=current_user)
+    return render_template('admin_users.html', users=users_data, current_user=current_user, all_categories_map=json.dumps(CATEGORIES_AND_SUBCATEGORIES), category_personas_map=json.dumps(CATEGORY_PERSONAS))
 
 @app.route('/admin/users/toggle_access/<int:user_id>', methods=['POST'])
 @admin_required
@@ -2412,7 +2409,7 @@ def update_user_access(user_id):
 # NEW: API endpoint for external clients using API keys to generate prompts
 @app.route('/api/v1/generate', methods=['POST'])
 @api_key_required
-def api_generate(user):
+async def api_generate(user):
     """
     API endpoint to generate polished, creative, and technical prompts.
     Requires an API key in the 'X-API-KEY' header.
@@ -2453,8 +2450,8 @@ def api_generate(user):
             if user.daily_generation_date != today:
                 user.daily_generation_count = 0
                 user.daily_generation_date = today
-                db.session.add(user)
-                db.session.commit()
+                await asyncio.to_thread(db.session.add, user)
+                await asyncio.to_thread(db.session.commit)
 
             if user.daily_generation_count >= user.daily_limit:
                 app.logger.info(f"API user {user.username} exceeded their daily prompt limit of {user.daily_limit}.")
@@ -2497,14 +2494,14 @@ def api_generate(user):
             }
             return jsonify(response_data), status_code
 
-        results = asyncio.run(generate_prompts_async(raw_input=prompt_input, language_code=language_code, prompt_mode=prompt_mode, category=category, subcategory=subcategory, persona=persona))
+        results = await generate_prompts_async(raw_input=prompt_input, language_code=language_code, prompt_mode=prompt_mode, category=category, subcategory=subcategory, persona=persona)
 
         # --- Update user stats and save raw_input ---
         user.last_generation_time = now
         if not user.is_admin:
             user.daily_generation_count += 1
-        db.session.add(user)
-        db.session.commit()
+        await asyncio.to_thread(db.session.add, user)
+        await asyncio.to_thread(db.session.commit)
         app.logger.info(f"API user {user.username}'s last prompt request time updated and count incremented. (API Forward Prompt)")
 
         status_code = 200
@@ -2531,8 +2528,8 @@ def api_generate(user):
                 status_code=status_code,
                 raw_input=raw_input_log
             )
-            db.session.add(log_entry)
-            db.session.commit()
+            await asyncio.to_thread(db.session.add,log_entry)
+            await asyncio.to_thread(db.session.commit)
         except Exception as log_e:
             app.logger.error(f"Error saving API request log for /api/v1/generate: {log_e}")
             db.session.rollback()
@@ -2541,7 +2538,7 @@ def api_generate(user):
 # NEW: API endpoint for reverse prompting
 @app.route('/api/v1/reverse', methods=['POST'])
 @api_key_required
-def api_reverse_prompt(user):
+async def api_reverse_prompt(user):
     """
     API endpoint to infer a prompt from a given text or code.
     Requires an API key in the 'X-API-KEY' header.
@@ -2582,8 +2579,8 @@ def api_reverse_prompt(user):
             if user.daily_generation_date != today:
                 user.daily_generation_count = 0
                 user.daily_generation_date = today
-                db.session.add(user)
-                db.session.commit()
+                await asyncio.to_thread(db.session.add, user)
+                await asyncio.to_thread(db.session.commit)
 
             if user.daily_generation_count >= user.daily_limit:
                 app.logger.info(f"API user {user.username} exceeded their daily reverse prompt limit of {user.daily_limit}.")
@@ -2610,14 +2607,14 @@ def api_reverse_prompt(user):
             response_data = {"inferred_prompt": "Reverse prompting is not applicable for image or video generation modes."}
             return jsonify(response_data), status_code
 
-        inferred_prompt = asyncio.run(generate_reverse_prompt_async(input_text, language_code, prompt_mode))
+        inferred_prompt = await generate_reverse_prompt_async(input_text, language_code, prompt_mode)
 
         # Update user stats after successful reverse prompt
         user.last_generation_time = now
         if not user.is_admin:
             user.daily_generation_count += 1
-        db.session.add(user)
-        db.session.commit()
+        await asyncio.to_thread(db.session.add, user)
+        await asyncio.to_thread(db.session.commit)
         app.logger.info(f"API user {user.username}'s last prompt request time updated and count incremented. (API Reverse Prompt)")
 
         status_code = 200
@@ -2644,8 +2641,8 @@ def api_reverse_prompt(user):
                 status_code=status_code,
                 raw_input=raw_input_log
             )
-            db.session.add(log_entry)
-            db.session.commit()
+            await asyncio.to_thread(db.session.add,log_entry)
+            await asyncio.to_thread(db.session.commit)
         except Exception as log_e:
             app.logger.error(f"Error saving API request log for /api/v1/reverse: {log_e}")
             db.session.rollback()
@@ -2661,53 +2658,27 @@ with app.app_context():
     # NEW: Create an admin user if one doesn't exist for easy testing
     # Also ensure initial admin gets all categories and personas
     if not User.query.filter_by(username='admin').first():
+        
+        # 1. Dynamically build a list of all unique categories (keys from the map)
+        # Assumes CATEGORIES_AND_SUBCATEGORIES is defined globally above.
+        allowed_categories_list = list(CATEGORIES_AND_SUBCATEGORIES.keys())
+        
+        # 2. Dynamically build a consolidated, unique list of all personas (values from the map)
+        # Assumes CATEGORY_PERSONAS is defined globally above.
+        all_personas_set = set()
+        for persona_list in CATEGORY_PERSONAS.values():
+            all_personas_set.update(persona_list)
+        # Sort the list for consistent JSON output, but this is optional
+        allowed_personas_list = sorted(list(all_personas_set))
+        
         admin_user = User(
             username='admin', 
             is_admin=True, 
             daily_limit=999999,
-            email = 'admin@example.com', # Assign a dummy email for admin
-            # Populate allowed_categories and allowed_personas with all possible options
-            # This is a placeholder for initial admin setup. In a real app, you might fetch all distinct values.
-            # For now, we'll use a hardcoded list that includes all values from CATEGORIES_AND_SUBCATEGORIES and CATEGORY_PERSONAS
-            allowed_categories=json.dumps([
-                "General Writing & Editing", "Programming & Code", "Business & Finance",
-                "Education & Learning", "Technical Writing & Explanation", "Customer Support",
-                "Research & Information Retrieval", "Data Analysis & Interpretation",
-                "Productivity & Planning", "Creative Writing", "Marketing & Advertising",
-                "Multilingual & Translation", "Entertainment & Media", "Career & Resume",
-                "Legal & Compliance", "Healthcare & Wellness", "Image Generation & Visual Design",
-                "Event Planning", "UX/UI & Product Design", "Spirituality & Self-Reflection",
-                "Gaming", "Voice, Audio & Podcasting", "AI & Prompt Engineering",
-                "News & Current Affairs", "Travel & Culture", "Other"
-            ]),
-            allowed_personas=json.dumps([
-                "Author", "Editor", "Copywriter", "Content Creator", "Blogger",
-                "Software Developer", "Frontend Engineer", "Backend Engineer", "Data Scientist", "DevOps Engineer",
-                "Entrepreneur", "Business Analyst", "Financial Advisor", "Investor", "Startup Founder", "Director", "CEO",
-                "Student", "Teacher", "Tutor", "Curriculum Designer", "Lifelong Learner",
-                "Technical Writer", "System Architect", "Engineer", "Product Manager", "Compliance Officer",
-                "Support Agent", "Customer Success Manager", "Helpdesk Analyst", "Call Center Manager", "Chatbot Designer",
-                "Researcher", "Scientist", "Academic", "Policy Analyst", "Librarian",
-                "Data Analyst", "BI Analyst", "Statistician", "Data Engineer", "Operations Manager",
-                "Project Manager", "Life Coach", "Executive Assistant", "Scrum Master", "Productivity Hacker",
-                "Novelist", "Poet", "Screenwriter", "Songwriter", "Creative Director",
-                "Marketing Manager", "Brand Strategist", "SEO Specialist", "Content Marketer", "Media Planner",
-                "Translator", "Interpreter", "Language Teacher", "Localization Specialist", "Multilingual Blogger",
-                "YouTuber", "Streamer", "Podcaster", "Critic", "Fan Fiction Author",
-                "Job Seeker", "Career Coach", "HR Recruiter", "Hiring Manager", "Resume Writer",
-                "Lawyer", "Paralegal", "Compliance Officer", "Policy Advisor", "Contract Manager",
-                "Nutritionist", "Fitness Coach", "Therapist", "Health Blogger", "Wellness Consultant",
-                "Graphic Designer", "Concept Artist", "Art Director", "Photographer", "AI Image Prompt Engineer",
-                "Event Planner", "Wedding Coordinator", "Conference Organizer", "Marketing Executive", "Venue Manager",
-                "UX Designer", "UI Designer", "Product Designer", "Interaction Designer", "Design Researcher",
-                "Meditation Coach", "Spiritual Guide", "Mindfulness Blogger", "Philosopher", "Self-help Author",
-                "Game Developer", "Game Designer", "Gamer", "Stream Host", "Lore Writer",
-                "Voice Actor", "Podcaster", "Audio Engineer", "Narrator", "Sound Designer",
-                "Prompt Engineer", "ML Engineer", "AI Researcher", "NLP Scientist", "Chatbot Developer",
-                "Journalist", "News Curator", "Political Analyst", "Opinion Writer", "Debater",
-                "Itineraries", "Local tips", "Cultural do’s and don’ts",
-                "General", "Custom", "Uncategorized", "Other"
-            ])
+            email='admin@example.com', # Assign a dummy email for admin
+            # Store the dynamically generated lists as JSON strings in the database
+            allowed_categories=json.dumps(allowed_categories_list),
+            allowed_personas=json.dumps(allowed_personas_list)
         )
         admin_user.set_password('adminpass') # Set a default password for the admin
         db.session.add(admin_user)
