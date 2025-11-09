@@ -8,6 +8,7 @@ import asyncio
 import os
 import google.generativeai as genai
 from flask import Flask, render_template, request, jsonify, make_response, redirect, url_for, flash, send_file
+from asgiref.wsgi import WsgiToAsgi
 import logging
 from datetime import datetime, timedelta # Import timedelta for time calculations
 import re # Import for regular expressions
@@ -38,6 +39,18 @@ from flask_mail import Mail, Message
 
 
 app = Flask(__name__)
+
+@app.errorhandler(Exception)
+def handle_error(e):
+    app.logger.exception("A global unhandled exception occurred.")
+    return jsonify({
+        "error": "An unexpected server error occurred.",
+        "details": f"Error type: {type(e).__name__}."
+    }), 500
+
+# Wrap the Flask app as ASGI
+asgi_app = WsgiToAsgi(app)
+
 
 
 # --- NEW: Flask-SQLAlchemy Configuration ---
@@ -70,19 +83,6 @@ mail = Mail(app)
 # --- END NEW: Flask-Mail Configuration ---
 
 # app.py (Add this globally, after your Flask app object is created)
-
-@app.errorhandler(Exception)
-def handle_error(e):
-    """Global handler for any uncaught exception, ensuring a JSON response."""
-    # Log the error for debugging purposes
-    app.logger.exception("A global unhandled exception occurred in request handler.")
-    
-    # Return a structured Flask response object
-    return jsonify({
-        "error": "An unexpected server error occurred.",
-        "details": f"Error type: {type(e).__name__}. This may be an ASGI threading issue."
-    }), 500
-
 
 # Configure logging for the Flask app
 logging.basicConfig(level=logging.INFO) # Simplified logging setup
