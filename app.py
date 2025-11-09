@@ -69,6 +69,20 @@ app.config['MAIL_DEFAULT_SENDER'] = 'info@promptsgenerator.ai' # Set default sen
 mail = Mail(app)
 # --- END NEW: Flask-Mail Configuration ---
 
+# app.py (Add this globally, after your Flask app object is created)
+
+@app.errorhandler(Exception)
+def handle_error(e):
+    """Global handler for any uncaught exception, ensuring a JSON response."""
+    # Log the error for debugging purposes
+    app.logger.exception("A global unhandled exception occurred in request handler.")
+    
+    # Return a structured Flask response object
+    return jsonify({
+        "error": "An unexpected server error occurred.",
+        "details": f"Error type: {type(e).__name__}. This may be an ASGI threading issue."
+    }), 500
+
 
 # Configure logging for the Flask app
 logging.basicConfig(level=logging.INFO) # Simplified logging setup
