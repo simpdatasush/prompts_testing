@@ -48,10 +48,6 @@ def handle_error(e):
         "details": f"Error type: {type(e).__name__}."
     }), 500
 
-# Wrap the Flask app as ASGI
-asgi_app = WsgiToAsgi(app)
-
-
 
 # --- NEW: Flask-SQLAlchemy Configuration ---
 # Configure SQLite database. This file will be created in your project directory.
@@ -2718,6 +2714,9 @@ with app.app_context():
         db.session.commit()
         app.logger.info("Default admin user 'admin' created with password 'adminpass'.")
 
+# --- ASGI wrapper (for Hypercorn or Render) ---
+# ✅ This should be BEFORE the main guard
+asgi_app = WsgiToAsgi(app)
 
 # --- Main App Run ---
 if __name__ == '__main__':
