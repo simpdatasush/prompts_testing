@@ -176,12 +176,6 @@ CATEGORY_PERSONAS = {
     "Other": ["General", "Custom", "Uncategorized"], # Default personas for the "Other" main category
 }
 
-# Global state to track IPs and request times (resets on app restart)
-REQUEST_HISTORY = defaultdict(list)
-RATE_LIMIT_THRESHOLD = 5  # Max 5 requests/sec for fast probes
-PATH_ENTROPY_THRESHOLD = 0.5 # A low score means unusual, varied path probing
-RISK_THRESHOLD = 0.8 # Score above this threshold will be blocked
-
 # https://ai.google.dev/gemini-api/docs/pricing#gemini-2.5-flash
 
 # --- Configure Google Gemini API ---
@@ -1145,7 +1139,89 @@ def mask_username(username):
     return username[:3] + '*' * (len(username) - 3)
 # --- END NEW HELPER ---
 
-# --- Flask Routes ---
+# -------------------------------------------------------------
+# --- AI DEFENDER UTILITIES (RISK SCORING) --------------------
+# -------------------------------------------------------------
+
+# Global state must be defined here, outside any function
+REQUEST_HISTORY = defaultdict(list)
+RATE_LIMIT_THRESHOLD = 5
+RISK_THRESHOLD = 0.8 
+
+def calculate_rate_score(ip_address):
+    """Scores requests based on volume (requests per second)."""
+    current_time = time.time()
+    
+    # Clean up history & add current request
+    REQUEST_HISTORY[ip_address] = [t for t in REQUEST_HISTORY[ip_address] if t > current_time - 1]
+    REQUEST_HISTORY[ip_address].append(current_time)
+    
+    request_count = len(REQUEST_HISTORY[ip_address])
+    
+    if request_count > RATE_LIMIT_THRESHOLD:
+        score = (request_count - RATE_LIMIT_THRESHOLD) / 5.0
+        return min(1.0, score)
+    return 0.0
+
+def calculate_user_agent_score(user_agent):
+    """Scores based on generic or suspicious User-Agent strings."""
+    if not user_agent:
+        return 0.8  # Very high risk
+        
+    generic_bots = [
+        'python-requests', 'go-http-client', 'curl', 
+        'bot', 'spider', 'crawler', 'headlesschrome'
+    ]
+    ua_lower = user_agent.lower()
+    
+    if any(keyword in ua_lower for keyword in generic_bots):
+        return 0.6  # High risk
+    if ua_lower == 'mozilla/5.0':
+        return 0.5
+        
+    return 0.0
+
+def get_request_risk_score(ip_address, user_agent):
+    """Calculates a single, combined risk score (0 to 1) for the request."""
+    
+    rate_score = calculate_rate_score(ip_address)
+    ua_score = calculate_user_agent_score(user_agent)
+    
+    return min(1.0, rate_score + ua_score)
+
+# -------------------------------------------------------------
+# --- AI DEFENDER DECORATOR -----------------------------------
+# -------------------------------------------------------------
+
+def ai_defender_required(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        # 1. Get client data
+        # Use X-Forwarded-For (standard on hosting platforms like Render/Heroku) 
+        # as the actual IP, falling back to remote_addr.
+        ip_address = request.headers.get('X-Forwarded-For', request.remote_addr).split(',')[0].strip()
+        user_agent = request.headers.get('User-Agent')
+        
+        # 2. Calculate risk score (Uses the helper function defined immediately above)
+        # Assumes get_request_risk_score(ip_address, user_agent) is defined globally.
+        risk_score = get_request_risk_score(ip_address, user_agent)
+        
+        # 3. Enforce defense logic
+        if risk_score > RISK_THRESHOLD:
+            app.logger.warning(f"AI Defender BLOCKED request from IP: {ip_address}. Score: {risk_score:.2f}")
+            
+            # Return a generic 403 Forbidden response. 
+            # This conceals the defender's presence and prevents LLM token usage.
+            return jsonify({
+                "error": "Access denied due to suspicious or excessive request activity.",
+                "code": "403_DEFENDER"
+            }), 403
+        
+        # If the score is low, proceed to the original function
+        app.logger.info(f"AI Defender approved request. Score: {risk_score:.2f}")
+        return f(*args, **kwargs)
+    return decorated_function
+
 
 # UPDATED: Landing page route to fetch more news AND jobs
 @app.route('/')
@@ -2260,46 +2336,6 @@ def generate_unique_username_suggestions(base_username, num_suggestions=3):
             suggestions.append(generic_username)
     return suggestions
 
-
-# --- Scoring  Functions (Add these to app.py near other s) ---
-
-def calculate_rate_score(ip_address):
-    """Scores based on requests per second."""
-    current_time = time.time()
-    
-    # Clean up old requests (> 1 second old)
-    REQUEST_HISTORY[ip_address] = [t for t in REQUEST_HISTORY[ip_address] if t > current_time - 1]
-    REQUEST_HISTORY[ip_address].append(current_time)
-    
-    request_count = len(REQUEST_HISTORY[ip_address])
-    
-    if request_count > RATE_LIMIT_THRESHOLD:
-        # Score is proportional to the excess rate
-        score = min(1.0, (request_count - RATE_LIMIT_THRESHOLD) / RATE_LIMIT_THRESHOLD)
-        return score
-    return 0.0
-
-# Note: This is a simplified concept. Real entropy checks are much more complex.
-def calculate_user_agent_score(user_agent):
-    """Scores based on missing or generic user agents."""
-    if not user_agent or user_agent.lower() in ['python-requests', 'go-http-client', 'curl', 'mozilla/5.0']:
-        return 0.6  # High risk for generic programmatic access
-    return 0.0
-
-def get_request_risk_score(ip_address, user_agent):
-    """Calculates a combined risk score for the current request."""
-    
-    # Base Risk Score
-    score = 0.0
-    
-    # Score 1: Rate Limiting
-    score += calculate_rate_score(ip_address)
-    
-    # Score 2: Bot/Generic User-Agent Check
-    score += calculate_user_agent_score(user_agent)
-    
-    # Max score is 1.0
-    return min(1.0, score)
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
