@@ -200,7 +200,7 @@ def get_dynamic_model_name(prompt_instruction: str) -> str:
     prompt_length = len(prompt_instruction)
     
     # Tier 3: Very Complex (>2700 chars) -> Use Perplexity Sonar Pro
-    if prompt_length > 900:
+    if prompt_length > 2700:
         model_name = 'sonar-pro'
     
     # Tier 2: Moderately Complex (900 to 2700 chars) -> Use Gemini 2.5 Flash
