@@ -7,7 +7,7 @@
 import asyncio
 import os
 import google.generativeai as genai
-from flask import Flask, render_template, request, jsonify, make_response, redirect, url_for, flash, send_file
+from flask import Flask, render_template, request, jsonify, make_response, redirect, url_for, flash, send_file, request
 from asgiref.wsgi import WsgiToAsgi
 import logging
 from datetime import datetime, timedelta # Import timedelta for time calculations
@@ -174,6 +174,12 @@ CATEGORY_PERSONAS = {
     "Travel & Culture": ["Itineraries", "Local tips", "Cultural do’s and don’ts", "Other"],
     "Other": ["General", "Custom", "Uncategorized"], # Default personas for the "Other" main category
 }
+
+# Global state to track IPs and request times (resets on app restart)
+REQUEST_HISTORY = defaultdict(list)
+RATE_LIMIT_THRESHOLD = 5  # Max 5 requests/sec for fast probes
+PATH_ENTROPY_THRESHOLD = 0.5 # A low score means unusual, varied path probing
+RISK_THRESHOLD = 0.8 # Score above this threshold will be blocked
 
 # https://ai.google.dev/gemini-api/docs/pricing#gemini-2.5-flash
 
@@ -1228,6 +1234,7 @@ def llm_benchmark():
 
 @app.route('/generate', methods=['POST'])
 @login_required # Protect this route
+@ai_defender_required # <-- NEW DEFENDER
 async def generate(): # CHANGED FROM ASYNC
     user = current_user # Get the current user object
     now = datetime.utcnow() # Use utcnow for consistency with database default
@@ -1354,6 +1361,7 @@ async def generate(): # CHANGED FROM ASYNC
 # --- NEW: Reverse Prompt Endpoint ---
 @app.route('/reverse_prompt', methods=['POST'])
 @login_required
+@ai_defender_required # <-- NEW DEFENDER
 async def reverse_prompt(): # CHANGED FROM ASYNC
     user = current_user
     now = datetime.utcnow()
@@ -1440,6 +1448,7 @@ async def reverse_prompt(): # CHANGED FROM ASYNC
 
 @app.route('/search_perplexity', methods=['POST'])
 @login_required
+@ai_defender_required # <-- NEW DEFENDER
 async def search_perplexity():
     # Expects JSON data: {"prompt_text": "the published prompt content"}
     user = current_user # Get current user object
@@ -1484,6 +1493,7 @@ async def search_perplexity():
 # NEW: Endpoint to test a prompt against the LLM and return a sample response
 @app.route('/test_llm_response', methods=['POST'])
 @login_required
+@ai_defender_required # <-- NEW DEFENDER
 async def test_llm_response(): # CHANGED to async def
     user = current_user
     now = datetime.utcnow()
@@ -2257,6 +2267,69 @@ def generate_unique_username_suggestions(base_username, num_suggestions=3):
     return suggestions
 
 
+# --- Scoring  Functions (Add these to app.py near other s) ---
+
+def calculate_rate_score(ip_address):
+    """Scores based on requests per second."""
+    current_time = time.time()
+    
+    # Clean up old requests (> 1 second old)
+    REQUEST_HISTORY[ip_address] = [t for t in REQUEST_HISTORY[ip_address] if t > current_time - 1]
+    REQUEST_HISTORY[ip_address].append(current_time)
+    
+    request_count = len(REQUEST_HISTORY[ip_address])
+    
+    if request_count > RATE_LIMIT_THRESHOLD:
+        # Score is proportional to the excess rate
+        score = min(1.0, (request_count - RATE_LIMIT_THRESHOLD) / RATE_LIMIT_THRESHOLD)
+        return score
+    return 0.0
+
+# Note: This is a simplified concept. Real entropy checks are much more complex.
+def calculate_user_agent_score(user_agent):
+    """Scores based on missing or generic user agents."""
+    if not user_agent or user_agent.lower() in ['python-requests', 'go-http-client', 'curl', 'mozilla/5.0']:
+        return 0.6  # High risk for generic programmatic access
+    return 0.0
+
+def get_request_risk_score(ip_address, user_agent):
+    """Calculates a combined risk score for the current request."""
+    
+    # Base Risk Score
+    score = 0.0
+    
+    # Score 1: Rate Limiting
+    score += calculate_rate_score(ip_address)
+    
+    # Score 2: Bot/Generic User-Agent Check
+    score += calculate_user_agent_score(user_agent)
+    
+    # Max score is 1.0
+    return min(1.0, score)
+
+def ai_defender_required(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        # 1. Get client data
+        ip_address = request.headers.get('X-Forwarded-For', request.remote_addr).split(',')[0].strip()
+        user_agent = request.headers.get('User-Agent')
+        
+        # 2. Calculate risk score
+        risk_score = get_request_risk_score(ip_address, user_agent)
+        
+        # 3. Enforce defense logic
+        if risk_score > RISK_THRESHOLD:
+            app.logger.warning(f"AI Defender BLOCKED request from IP: {ip_address}. Score: {risk_score:.2f}")
+            # Return a generic error to conceal the defender's presence
+            return jsonify({
+                "error": "Access denied due to suspicious or excessive request activity.",
+                "code": "403_DEFENDER"
+            }), 403
+        
+        app.logger.info(f"AI Defender approved request. Score: {risk_score:.2f}")
+        return f(*args, **kwargs)
+    return decorated_function
+
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if current_user.is_authenticated:
@@ -2409,6 +2482,7 @@ def update_user_access(user_id):
 # NEW: API endpoint for external clients using API keys to generate prompts
 @app.route('/api/v1/generate', methods=['POST'])
 @api_key_required
+@ai_defender_required # <-- NEW DEFENDER
 async def api_generate(user):
     """
     API endpoint to generate polished, creative, and technical prompts.
@@ -2538,6 +2612,7 @@ async def api_generate(user):
 # NEW: API endpoint for reverse prompting
 @app.route('/api/v1/reverse', methods=['POST'])
 @api_key_required
+@ai_defender_required # <-- NEW DEFENDER
 async def api_reverse_prompt(user):
     """
     API endpoint to infer a prompt from a given text or code.
