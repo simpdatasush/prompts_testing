@@ -1191,13 +1191,6 @@ def landing():
                            gifts=gifts,
                            current_user=current_user)
 
-# UPDATED: Route to view a specific news item (using NewsItem model)
-@app.route('/view_news/<int:news_id>')
-def view_news(news_id):
-    item = NewsItem.query.get_or_404(news_id)
-    return render_template('shared_content_landing.html', item=item, item_type='news')
-
-
 # UPDATED: Route to view a specific job listing (using JobListing model)
 @app.route('/view_job/<int:job_id>')
 def view_job(job_id):
@@ -2307,29 +2300,6 @@ def get_request_risk_score(ip_address, user_agent):
     
     # Max score is 1.0
     return min(1.0, score)
-
-def ai_defender_required(f):
-    @wraps(f)
-    def decorated_function(*args, **kwargs):
-        # 1. Get client data
-        ip_address = request.headers.get('X-Forwarded-For', request.remote_addr).split(',')[0].strip()
-        user_agent = request.headers.get('User-Agent')
-        
-        # 2. Calculate risk score
-        risk_score = get_request_risk_score(ip_address, user_agent)
-        
-        # 3. Enforce defense logic
-        if risk_score > RISK_THRESHOLD:
-            app.logger.warning(f"AI Defender BLOCKED request from IP: {ip_address}. Score: {risk_score:.2f}")
-            # Return a generic error to conceal the defender's presence
-            return jsonify({
-                "error": "Access denied due to suspicious or excessive request activity.",
-                "code": "403_DEFENDER"
-            }), 403
-        
-        app.logger.info(f"AI Defender approved request. Score: {risk_score:.2f}")
-        return f(*args, **kwargs)
-    return decorated_function
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
