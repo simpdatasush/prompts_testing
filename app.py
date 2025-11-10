@@ -7,7 +7,7 @@
 import asyncio
 import os
 import google.generativeai as genai
-from flask import Flask, render_template, request, jsonify, make_response, redirect, url_for, flash, send_file, request
+from flask import Flask, render_template, request, jsonify, make_response, redirect, url_for, flash, send_file
 from asgiref.wsgi import WsgiToAsgi
 import logging
 from datetime import datetime, timedelta # Import timedelta for time calculations
@@ -22,7 +22,6 @@ import time # For latency tracking
 import requests # For Perplexity API HTTP calls (if we stick to that instead of the SDK) 
 # If using the provided SDK:
 from perplexity import Perplexity, APIError as PerplexityAPIError
-from collections import defaultdict
 
 # --- NEW IMPORTS FOR AUTHENTICATION ---
 from flask_sqlalchemy import SQLAlchemy
@@ -200,12 +199,12 @@ def get_dynamic_model_name(prompt_instruction: str) -> str:
     """
     prompt_length = len(prompt_instruction)
     
-    # Tier 3: Very Complex (>2700 chars) -> Use Perplexity Sonar Pro
-    if prompt_length > 2700:
+    # Tier 3: Very Complex (>900 chars) -> Use Perplexity Sonar Pro
+    if prompt_length > 900:
         model_name = 'sonar-pro'
     
-    # Tier 2: Moderately Complex (900 to 2700 chars) -> Use Gemini 2.5 Flash
-    elif prompt_length >= 900:
+    # Tier 2: Moderately Complex (300 to 900 chars) -> Use Gemini 2.5 Flash
+    elif prompt_length >= 300:
         model_name = 'gemini-2.5-flash'
         
     # Tier 1: Simple/Cost-Effective (<300 chars) -> Use Gemini 2.0 Flash
@@ -1139,89 +1138,7 @@ def mask_username(username):
     return username[:3] + '*' * (len(username) - 3)
 # --- END NEW HELPER ---
 
-# -------------------------------------------------------------
-# --- AI DEFENDER UTILITIES (RISK SCORING) --------------------
-# -------------------------------------------------------------
-
-# Global state must be defined here, outside any function
-REQUEST_HISTORY = defaultdict(list)
-RATE_LIMIT_THRESHOLD = 5
-RISK_THRESHOLD = 0.8 
-
-def calculate_rate_score(ip_address):
-    """Scores requests based on volume (requests per second)."""
-    current_time = time.time()
-    
-    # Clean up history & add current request
-    REQUEST_HISTORY[ip_address] = [t for t in REQUEST_HISTORY[ip_address] if t > current_time - 1]
-    REQUEST_HISTORY[ip_address].append(current_time)
-    
-    request_count = len(REQUEST_HISTORY[ip_address])
-    
-    if request_count > RATE_LIMIT_THRESHOLD:
-        score = (request_count - RATE_LIMIT_THRESHOLD) / 5.0
-        return min(1.0, score)
-    return 0.0
-
-def calculate_user_agent_score(user_agent):
-    """Scores based on generic or suspicious User-Agent strings."""
-    if not user_agent:
-        return 0.8  # Very high risk
-        
-    generic_bots = [
-        'python-requests', 'go-http-client', 'curl', 
-        'bot', 'spider', 'crawler', 'headlesschrome'
-    ]
-    ua_lower = user_agent.lower()
-    
-    if any(keyword in ua_lower for keyword in generic_bots):
-        return 0.6  # High risk
-    if ua_lower == 'mozilla/5.0':
-        return 0.5
-        
-    return 0.0
-
-def get_request_risk_score(ip_address, user_agent):
-    """Calculates a single, combined risk score (0 to 1) for the request."""
-    
-    rate_score = calculate_rate_score(ip_address)
-    ua_score = calculate_user_agent_score(user_agent)
-    
-    return min(1.0, rate_score + ua_score)
-
-# -------------------------------------------------------------
-# --- AI DEFENDER DECORATOR -----------------------------------
-# -------------------------------------------------------------
-
-def ai_defender_required(f):
-    @wraps(f)
-    def decorated_function(*args, **kwargs):
-        # 1. Get client data
-        # Use X-Forwarded-For (standard on hosting platforms like Render/Heroku) 
-        # as the actual IP, falling back to remote_addr.
-        ip_address = request.headers.get('X-Forwarded-For', request.remote_addr).split(',')[0].strip()
-        user_agent = request.headers.get('User-Agent')
-        
-        # 2. Calculate risk score (Uses the helper function defined immediately above)
-        # Assumes get_request_risk_score(ip_address, user_agent) is defined globally.
-        risk_score = get_request_risk_score(ip_address, user_agent)
-        
-        # 3. Enforce defense logic
-        if risk_score > RISK_THRESHOLD:
-            app.logger.warning(f"AI Defender BLOCKED request from IP: {ip_address}. Score: {risk_score:.2f}")
-            
-            # Return a generic 403 Forbidden response. 
-            # This conceals the defender's presence and prevents LLM token usage.
-            return jsonify({
-                "error": "Access denied due to suspicious or excessive request activity.",
-                "code": "403_DEFENDER"
-            }), 403
-        
-        # If the score is low, proceed to the original function
-        app.logger.info(f"AI Defender approved request. Score: {risk_score:.2f}")
-        return f(*args, **kwargs)
-    return decorated_function
-
+# --- Flask Routes ---
 
 # UPDATED: Landing page route to fetch more news AND jobs
 @app.route('/')
@@ -1267,6 +1184,13 @@ def landing():
                            gifts=gifts,
                            current_user=current_user)
 
+# UPDATED: Route to view a specific news item (using NewsItem model)
+@app.route('/view_news/<int:news_id>')
+def view_news(news_id):
+    item = NewsItem.query.get_or_404(news_id)
+    return render_template('shared_content_landing.html', item=item, item_type='news')
+
+
 # UPDATED: Route to view a specific job listing (using JobListing model)
 @app.route('/view_job/<int:job_id>')
 def view_job(job_id):
@@ -1304,7 +1228,6 @@ def llm_benchmark():
 
 @app.route('/generate', methods=['POST'])
 @login_required # Protect this route
-@ai_defender_required # <-- NEW DEFENDER
 async def generate(): # CHANGED FROM ASYNC
     user = current_user # Get the current user object
     now = datetime.utcnow() # Use utcnow for consistency with database default
@@ -1431,7 +1354,6 @@ async def generate(): # CHANGED FROM ASYNC
 # --- NEW: Reverse Prompt Endpoint ---
 @app.route('/reverse_prompt', methods=['POST'])
 @login_required
-@ai_defender_required # <-- NEW DEFENDER
 async def reverse_prompt(): # CHANGED FROM ASYNC
     user = current_user
     now = datetime.utcnow()
@@ -1518,7 +1440,6 @@ async def reverse_prompt(): # CHANGED FROM ASYNC
 
 @app.route('/search_perplexity', methods=['POST'])
 @login_required
-@ai_defender_required # <-- NEW DEFENDER
 async def search_perplexity():
     # Expects JSON data: {"prompt_text": "the published prompt content"}
     user = current_user # Get current user object
@@ -1563,7 +1484,6 @@ async def search_perplexity():
 # NEW: Endpoint to test a prompt against the LLM and return a sample response
 @app.route('/test_llm_response', methods=['POST'])
 @login_required
-@ai_defender_required # <-- NEW DEFENDER
 async def test_llm_response(): # CHANGED to async def
     user = current_user
     now = datetime.utcnow()
@@ -2489,7 +2409,6 @@ def update_user_access(user_id):
 # NEW: API endpoint for external clients using API keys to generate prompts
 @app.route('/api/v1/generate', methods=['POST'])
 @api_key_required
-@ai_defender_required # <-- NEW DEFENDER
 async def api_generate(user):
     """
     API endpoint to generate polished, creative, and technical prompts.
@@ -2619,7 +2538,6 @@ async def api_generate(user):
 # NEW: API endpoint for reverse prompting
 @app.route('/api/v1/reverse', methods=['POST'])
 @api_key_required
-@ai_defender_required # <-- NEW DEFENDER
 async def api_reverse_prompt(user):
     """
     API endpoint to infer a prompt from a given text or code.
