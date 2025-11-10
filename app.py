@@ -22,6 +22,7 @@ import time # For latency tracking
 import requests # For Perplexity API HTTP calls (if we stick to that instead of the SDK) 
 # If using the provided SDK:
 from perplexity import Perplexity, APIError as PerplexityAPIError
+from collections import defaultdict
 
 # --- NEW IMPORTS FOR AUTHENTICATION ---
 from flask_sqlalchemy import SQLAlchemy
