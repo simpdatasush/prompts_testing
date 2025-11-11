@@ -83,7 +83,7 @@ logging.basicConfig(level=logging.INFO) # Simplified logging setup
 
 
 # --- Cooldown and Daily Limit Configuration ---
-COOLDOWN_SECONDS = 60 # 60 seconds cooldown as requested
+COOLDOWN_SECONDS = 100 # 100 seconds cooldown as requested
 FREE_DAILY_LIMIT = 3 # New default for free users
 PAID_DAILY_LIMIT = 10 # New default for paid users
 PAYMENT_LINK = "https://buymeacoffee.com/simpaisush"
