@@ -588,6 +588,112 @@ def perform_perplexity_search(query_text: str):
         return {"error": f"An unexpected error occurred: {str(e)}"}
 # --- END CORRECTED Perplexity Search API Function ---
 
+# app.py (Near existing LLM helper functions like ask_gemini_for_text_prompt)
+
+def classify_request_intent_with_llm(ip_address, user_agent, path, request_body):
+    """
+    Uses Gemini 2.5 Flash to classify request intent (0, 0.5, or 1) based on metadata and body.
+    Returns a float score or defaults to 0.0 on error.
+    """
+    
+    metadata = f"""
+    IP: {ip_address}
+    User-Agent: {user_agent}
+    Path: {path}
+    Body Sample (First 200 chars): {request_body[:200]}
+    """
+    
+    system_instruction = (
+        "You are an expert Cybersecurity Intent Analyzer. Your task is to classify "
+        "the intent of the incoming web request based on the provided metadata and body sample. "
+        "Respond ONLY with a single digit: '0', '0.5', or '1', where: "
+        "0 = Safe Human/Legitimate App; 0.5 = Generic Crawler/SEO Tool; 1 = Malicious/Abusive Probe. "
+        "Base your decision primarily on User-Agent, repetitive patterns, and any security probing in the Body."
+    )
+    
+    user_prompt = f"Analyze the following web request metadata and provide the risk score (0, 0.5, or 1):\n{metadata}"
+    
+    classification_model = genai.GenerativeModel('gemini-2.5-flash') 
+    
+    try:
+        response = classification_model.generate_content(
+            contents=[{"role": "user", "parts": [{"text": system_instruction + user_prompt}]}],
+            generation_config={"temperature": 0.0, "max_output_tokens": 1}
+        )
+        score_text = response.text.strip()
+        
+        # Robustly handle the response and convert to float
+        if score_text in ['0', '0.5', '1']:
+            return float(score_text)
+        else:
+            app.logger.warning(f"LLM Classification returned unexpected value: {score_text}")
+            return 0.5 # Default to moderate risk on unparsable output
+            
+    except Exception as e:
+        app.logger.error(f"LLM Defender failed to classify request: {e}")
+        return 0.0 # Fail safe: treat as low risk if the defender itself crashes
+
+# app.py (Place this after the classify_request_intent_with_llm function)
+# Define your thresholds
+LLM_WARNING_THRESHOLD = 0.5 
+LLM_SUSPEND_THRESHOLD = 0.8 
+
+# Define whitelisting (Only internal traffic should be whitelisted, not client IPs)
+WHITELISTED_IPS = ['127.0.0.1', '::1'] 
+WHITELISTED_DOMAINS = ['prompts-testing-v1-0.onrender.com', 'localhost']
+
+# NOTE: This decorator MUST be async to use 'await asyncio.to_thread'
+def ai_defender_required(f):
+    @wraps(f)
+    async def decorated_function(*args, **kwargs):
+        # 1. Extract Necessary Request Data
+        ip_address = request.headers.get('X-Forwarded-For', request.remote_addr).split(',')[0].strip()
+        user_agent = request.headers.get('User-Agent')
+        request_host = request.host.split(':')[0].strip()
+        path = request.path
+        
+        # Attempt to get the request body for deeper analysis (important for post requests)
+        try:
+            request_body = request.get_data(as_text=True)
+        except:
+            request_body = ""
+
+        # --- IMMEDIATE WHITELIST CHECK ---
+        if ip_address in WHITELISTED_IPS or request_host in WHITELISTED_DOMAINS:
+            return await f(*args, **kwargs)
+
+        # 2. RUN LLM CLASSIFICATION NON-BLOCKING
+        risk_score = await asyncio.to_thread(classify_request_intent_with_llm, 
+                                            ip_address, user_agent, path, request_body)
+        
+        # 3. ENFORCE ACTION TIERS
+        
+        # --- HARD BLOCK / SUSPENSION TIER (Score >= 0.8) ---
+        if risk_score >= LLM_SUSPEND_THRESHOLD:
+            app.logger.warning(f"AI Defender SUSPEND: IP: {ip_address}. Score: {risk_score}")
+            
+            # SUSPENSION LOGIC (Execute only if authenticated and not admin)
+            if current_user.is_authenticated and not current_user.is_admin:
+                # Use your run_db_operation_safely helper here:
+                # await asyncio.to_thread(run_db_operation_safely, db.session.add, current_user) 
+                # await asyncio.to_thread(run_db_operation_safely, db.session.commit)
+                pass # Replace with actual suspension code
+                
+            return jsonify({"error": "Access permanently denied. Your account has been suspended due to detected malicious activity.", "code": "403_SUSPENDED"}), 403
+
+        # --- WARNING / SOFT BLOCK TIER (Score >= 0.5) ---
+        elif risk_score >= LLM_WARNING_THRESHOLD:
+            app.logger.warning(f"AI Defender WARN: IP: {ip_address}. Score: {risk_score}")
+            # Return a warning message without suspension
+            return jsonify({"error": "WARNING: Abnormal request patterns detected. Continued abuse may lead to account suspension.", "code": "429_WARNING"}), 429
+            
+        # 4. SAFE TIER
+        app.logger.info(f"AI Defender approved request. Score: {risk_score}")
+        return await f(*args, **kwargs)
+        
+    return decorated_function
+
+# Remember to apply this decorator to your high-value routes: /generate, /reverse_prompt, etc.
 
 # --- Gemini API interaction function (Synchronous wrapper for text_model) ---
 # NOTE: This function now requires the specific model_name be passed in from the router.
@@ -1228,6 +1334,7 @@ def llm_benchmark():
 
 @app.route('/generate', methods=['POST'])
 @login_required # Protect this route
+@ai_defender_required
 async def generate(): # CHANGED FROM ASYNC
     user = current_user # Get the current user object
     now = datetime.utcnow() # Use utcnow for consistency with database default
@@ -1354,6 +1461,7 @@ async def generate(): # CHANGED FROM ASYNC
 # --- NEW: Reverse Prompt Endpoint ---
 @app.route('/reverse_prompt', methods=['POST'])
 @login_required
+@ai_defender_required
 async def reverse_prompt(): # CHANGED FROM ASYNC
     user = current_user
     now = datetime.utcnow()
@@ -1440,6 +1548,7 @@ async def reverse_prompt(): # CHANGED FROM ASYNC
 
 @app.route('/search_perplexity', methods=['POST'])
 @login_required
+@ai_defender_required
 async def search_perplexity():
     # Expects JSON data: {"prompt_text": "the published prompt content"}
     user = current_user # Get current user object
@@ -1484,6 +1593,7 @@ async def search_perplexity():
 # NEW: Endpoint to test a prompt against the LLM and return a sample response
 @app.route('/test_llm_response', methods=['POST'])
 @login_required
+@ai_defender_required
 async def test_llm_response(): # CHANGED to async def
     user = current_user
     now = datetime.utcnow()
@@ -2409,6 +2519,7 @@ def update_user_access(user_id):
 # NEW: API endpoint for external clients using API keys to generate prompts
 @app.route('/api/v1/generate', methods=['POST'])
 @api_key_required
+@ai_defender_required
 async def api_generate(user):
     """
     API endpoint to generate polished, creative, and technical prompts.
@@ -2538,6 +2649,7 @@ async def api_generate(user):
 # NEW: API endpoint for reverse prompting
 @app.route('/api/v1/reverse', methods=['POST'])
 @api_key_required
+@ai_defender_required
 async def api_reverse_prompt(user):
     """
     API endpoint to infer a prompt from a given text or code.
