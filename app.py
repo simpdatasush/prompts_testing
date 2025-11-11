@@ -731,8 +731,8 @@ def ask_gemini_for_text_prompt(prompt_instruction, model_name, max_output_tokens
 # --- Gemini API interaction function (Synchronous wrapper for structured_gen_model) ---
 def ask_gemini_for_structured_prompt(prompt_instruction, generation_config=None, max_output_tokens=8192):
 
-    # We enforce Gemini 2.5 Flash for all structured/multimedia tasks for reliability.
-    model_name = 'gemini-2.5-flash'
+    # We enforce Gemini 2.0 Flash for all structured/multimedia tasks for reliability.
+    model_name = 'gemini-2.0-flash'
     model = genai.GenerativeModel(model_name)
     
     # --- FIX: Initialize current_generation_config to ensure it's defined in scope ---
