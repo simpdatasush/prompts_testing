@@ -205,11 +205,11 @@ def get_dynamic_model_name(prompt_instruction: str) -> str:
     
     # Tier 2: Moderately Complex (900 to 2700 chars) -> Use Gemini 2.5 Flash
     elif prompt_length >= 900:
-        model_name = 'gemini-2.5-flash'
+        model_name = 'gemini-2.0-flash'
         
     # Tier 1: Simple/Cost-Effective (<300 chars) -> Use Gemini 2.0 Flash
     else:
-        model_name = 'gemini-2.0-flash'
+        model_name = 'gemini-2.5-flash'
 
     app.logger.info(f"LLM Selected: {model_name} (Prompt length: {prompt_length})")
     return model_name
