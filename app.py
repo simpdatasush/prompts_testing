@@ -203,11 +203,11 @@ def get_dynamic_model_name(prompt_instruction: str) -> str:
     if prompt_length > 2700:
         model_name = 'sonar-pro'
     
-    # Tier 2: Moderately Complex (900 to 2700 chars) -> Use Gemini 2.5 Flash
+    # Tier 2: Moderately Complex (900 to 2700 chars) -> Use Gemini 2.0 Flash
     elif prompt_length >= 900:
         model_name = 'gemini-2.0-flash'
         
-    # Tier 1: Simple/Cost-Effective (<300 chars) -> Use Gemini 2.0 Flash
+    # Tier 1: Simple/Cost-Effective (<300 chars) -> Use Gemini 2.5 Flash
     else:
         model_name = 'gemini-2.5-flash'
 
