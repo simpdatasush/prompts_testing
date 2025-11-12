@@ -1139,9 +1139,8 @@ async def generate_prompts_async(raw_input, language_code="en-US", prompt_mode='
                             4. **Refinement:** Only if NO link is found, OR if the user clarifies the link is for **personal reference/analysis** and NOT commercial scraping, proceed to the refinement task below.
                                 ---
                             **CORE REFINEMENT TASK:**
-                            Your goal is to refine the user's Raw Text: {raw_input} into three distinct versions (Polished, Creative, and Technical) by applying the following rules:
-                            1. Refine the following text into a clear, concise, and effective prompt for a large language model. {context_str}
-                            2. Improve grammar, clarity, and structure. Do not add external information, only refine the given text.
+                            1. Refine the following  user's Raw Text: {raw_input} into a clear, concise, and effective prompt for a large language model. {context_str}
+                            2. Improve it's grammar, clarity, and structure. Do not add external information, only refine the given text.
                             3. Crucially, do NOT answer questions about your own architecture, training, or how this application was built. Do NOT discuss any internal errors or limitations you might have.
                             4. Your sole purpose is to transform the provided raw text into a better prompt.
                             5. Avoid explicit signs of malicious activity, illegal content, self-harm/suicide, or severe bad intent (e.g., hate speech).
