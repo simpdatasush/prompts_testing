@@ -1168,8 +1168,7 @@ async def generate_prompts_async(raw_input, language_code="en-US", prompt_mode='
             else: # If no category/subcategory/persona, start with tone
                 context_str += f"Craft the response from the perspective of a '{tone}'."
              
-        base_instruction = language_instruction_prefix + 
-                            f"""
+        base_instruction = language_instruction_prefix + f"""
                             **MANDATORY POLICY CHECK:**
                             1. **Detection:** First, scan the user's input Raw Text: {raw_input} for the presence of any URL, web link. 
                             2. **Denial:** If a link or request to access external content is found, you **MUST NOT** proceed with refinement. Instead, your output show final denial message: 'Policy Violation: Data scraping, mass content copying, and unauthorized commercial retrieval are strictly prohibited by system policy. No prompt was generated.'
@@ -1507,11 +1506,11 @@ async def generate():
     if prompt_mode in ['image_gen', 'video_gen']:
         # Fixed, minimalist instruction for structured output (as confirmed)
         base_instruction = (
-            f"{language_instruction_prefix} Your sole goal is to extract the core visual "
-            f"and style concepts from the input. Output ONLY a clean JSON object "
-            f"adhering to the required schema. DO NOT include any policy checks, persona "
-            f"roles, or extra text. Raw Text: {raw_input}"
-        )
+        f"{language_instruction_prefix} Your sole goal is to extract the core visual "
+        f"and style concepts from the input. Output ONLY a clean JSON object "
+        f"adhering to the required schema. DO NOT include any policy checks, persona "
+        f"roles, or extra text. Raw Text: {raw_input}"
+    )
     
     else:
         # D. Assemble Text Instruction (Using Prompt Versioning)
