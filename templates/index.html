@@ -796,6 +796,13 @@ text-align: right; /* Align metadata to the right */
 <option value="">Select a persona</option>
 </select>
 </div>
+</div>
+<div id="text-tone-selector" class="col-md-6 mb-3">
+<label for="tone_select" class="form-label">Tone:</label>
+<select id="tone_select" class="form-control" disabled>
+<option value="">Select a tone</option>
+</select>
+</div>
 <div class="col-12 mt-2">
 <p class="text-muted" style="font-size: 0.9rem;">
 <strong>Important Note:</strong> The personas will be tied to the main category selected.
@@ -806,12 +813,37 @@ Use the Category filter and either the Subcategory or Persona filter.
 </div>
 </div>
 <div class="prompt-input-section card">
-<div class="card-body">
-<form id="promptForm">
-<div class="d-flex justify-content-between align-items-center mb-3">
-<label for="prompt_input" class="form-label mb-0">Enter your raw prompt idea (or paste text/code for reverse prompting):</label>
+    <div class="card-body">
+        <form id="promptForm">
+            
+            <div class="row g-3 mb-4">
+                <div class="col-md-3">
+                    <label for="tone-selector" class="form-label">Tone</label>
+                    <select class="form-select" id="tone-selector">
+                        <option value="">(Optional) Select Tone</option> </select>
+                </div>
+                
+                </div>
+
+            <div class="row mb-3">
+                
+                <div class="col-md-3">
+                    <label for="version-selector" class="form-label">Prompt Version</label>
+                    <select class="form-select" id="version-selector">
+                        <option value="">Loading versions...</option> </select>
+                </div>
+                
+                <div class="col-md-9">
+                    <label for="raw-input" class="form-label">Provide Raw Text</label>
+                    <textarea class="form-control" id="raw-input" name="raw_input" rows="8" placeholder="e.g., Write a story about a robot who wants to be a chef."></textarea>
+                </div>
+            </div>
+
+            <div class="d-grid gap-2">
+                </div>
+        </form>
+    </div>
 </div>
-<textarea id="prompt_input" name="prompt_input" class="form-control" rows="8" placeholder="e.g., Write a story about a robot who wants to be a chef."></textarea>
 
 <div class="d-flex justify-content-between align-items-center mt-3 flex-wrap">
 <div class="input-controls">
@@ -2014,6 +2046,49 @@ updateAllButtonStates(); // Re-check status to re-enable buttons
 }
 });
 
+// index.html (Inside your <script> tags)
+
+async function loadDynamicOptions() {
+    try {
+        const response = await fetch('/api/v1/get_options');
+        const data = await response.json();
+        
+        const toneSelector = document.getElementById('tone-selector');
+        const versionSelector = document.getElementById('version-selector');
+
+        // --- Populate Tone Selector ---
+        data.tones.forEach(tone => {
+            const option = document.createElement('option');
+            option.value = tone;
+            option.textContent = tone;
+            toneSelector.appendChild(option);
+        });
+        
+        // --- Populate Prompt Version Selector ---
+        versionSelector.innerHTML = ''; // Clear the initial placeholder
+        
+        data.prompt_versions.forEach(version => {
+            const option = document.createElement('option');
+            option.value = version;
+            option.textContent = version;
+            
+            // Set the latest version as default selected
+            if (version === 'SuperPrompter v1.1') { 
+                option.selected = true;
+            }
+            
+            versionSelector.appendChild(option);
+        });
+
+    } catch (error) {
+        console.error('Failed to load dynamic options:', error);
+        // User may need a manual reload or error message here
+    }
+}
+
+// Ensure this function runs when the page loads
+window.onload = loadDynamicOptions;    
+    
 // Event listeners for save buttons
 document.querySelectorAll('.save-button').forEach(button => {
 button.addEventListener('click', async function() {
