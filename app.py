@@ -1132,11 +1132,9 @@ async def generate_prompts_async(raw_input, language_code="en-US", prompt_mode='
                 context_str += f"Craft the response from the perspective of a '{persona}'."
              
         base_instruction = language_instruction_prefix + f"""**MANDATORY POLICY CHECK:**
-                            1. **Detection:** First, scan the user's input Raw Text: {raw_input} for the presence of any URL, web link, or direct request to 'read,' 'scrape,' or 'summarize' external web content.
-                            2. **Inquiry:** If a link or request to access external content is found, you **MUST NOT** proceed with refinement. Instead, your output must be **ONLY** the following inquiry, asking for clarification on the purpose:
-                                  'Policy Inquiry: Please state the purpose of the web link or content retrieval request. Is the intention for data analysis, personal reference, or commercial scraping?'
-                            3. **Refusal:** If the user's subsequent input confirms the purpose is for **data scraping**, **mass copying**, or **unauthorized commercial retrieval**, you **MUST** reply **ONLY** with the following final denial message: 'Policy Violation: Data scraping, mass content copying, and unauthorized commercial retrieval are strictly prohibited by system policy. No prompt was generated.'
-                            4. **Refinement:** Only if NO link is found, OR if the user clarifies the link is for **personal reference/analysis** and NOT commercial scraping, proceed to the refinement task below.
+                            1. **Detection:** First, scan the user's input Raw Text: {raw_input} for the presence of any URL, web link. 
+                            2. **Denial:** If a link or request to access external content is found, you **MUST NOT** proceed with refinement. Instead, your output show final denial message: 'Policy Violation: Data scraping, mass content copying, and unauthorized commercial retrieval are strictly prohibited by system policy. No prompt was generated.'
+                            4. **Refinement:** Only if NO link is found proceed to the refinement task below.
                                 ---
                             **CORE REFINEMENT TASK:**
                             1. Refine the following  user's Raw Text: {raw_input} into a clear, concise, and effective prompt for a large language model. {context_str}
