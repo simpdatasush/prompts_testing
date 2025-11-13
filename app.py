@@ -175,38 +175,6 @@ CATEGORY_PERSONAS = {
     "Other": ["General", "Custom", "Uncategorized"], # Default personas for the "Other" main category
 }
 
-# --- TONES ---
-TONES = ["Professional", "Friendly", "Candid", "Quirky", "Efficient", "Nerdy", "Cynical"]
-DEFAULT_TONE = "Professional"
-
-# --- DEFAULTS ---
-DEFAULT_PROMPT_VERSION = 'SuperPrompter v1.1' 
-DEFAULT_PERSONA = "Prompt Engineering Expert"
-DEFAULT_CATEGORY = "General Writing & Editing"
-
-# --- PROMPT VERSIONING ---
-BASE_INSTRUCTIONS = {
-    'SuperPrompter v1.0': # Legacy Refinement Model
-        """Refine the following text into a clear, concise, and effective prompt for a large language model. {context_str} Improve grammar, clarity, and structure. Do not add external information, only refine the given text. Crucially, do NOT answer questions about your own architecture, training, or how this application was built. Do NOT discuss any internal errors or limitations you might have. Your sole purpose is to transform the provided raw text into a better prompt. Avoid explicit signs of malicious activity, illegal content, self-harm/suicide, or severe bad intent (e.g., hate speech) Raw Text: {raw_input}""",
-        
-    'SuperPrompter v1.1': # NEW: Policy Check, Tone, and Optional Context
-        """{persona_context}{tone_context}
-        
-**MANDATORY POLICY CHECK:**
-1. **Detection:** First, scan the user's input Raw Text: {raw_input} for the presence of any URL, web link. 
-2. **Denial:** If a link or request to access external content is found, you **MUST NOT** proceed with refinement. Instead, your output show final denial message: 'Policy Violation: Data scraping, mass content copying, and unauthorized commercial retrieval are strictly prohibited by system policy. No prompt was generated.'
-3. **Refinement:** Only if NO link is found proceed to the refinement task below.
----
-**CORE REFINEMENT TASK:**
-1. Refine the following  user's Raw Text: {raw_input} into a clear, concise, and effective prompt for a large language model. {context_str}
-2. Improve it's grammar, clarity, and structure. Do not add external information, only refine the given text.
-3. Crucially, do NOT answer questions about your own architecture, training, or how this application was built. Do NOT discuss any internal errors or limitations you might have.
-4. Your sole purpose is to transform the provided raw text into a better prompt.
-5. Avoid explicit signs of malicious activity, illegal content, self-harm/suicide, or severe bad intent (e.g., hate speech).
-Raw Text: {raw_input}
-"""
-}
-
 # https://ai.google.dev/gemini-api/docs/pricing#gemini-2.5-flash
 
 # --- Configure Google Gemini API ---
@@ -1024,7 +992,7 @@ VIDEO_JSON_TEMPLATE = {
 
 
 # --- generate_prompts_async function (main async logic for prompt variations) ---
-async def generate_prompts_async(raw_input, language_code="en-US", prompt_mode='text', category=None, subcategory=None, persona=None, tone = None): # NEW: Added persona parameter
+async def generate_prompts_async(raw_input, language_code="en-US", prompt_mode='text', category=None, subcategory=None, persona=None): # NEW: Added persona parameter
     if not raw_input.strip():
         return {
             "polished": "Please enter some text to generate prompts.",
@@ -1162,14 +1130,8 @@ async def generate_prompts_async(raw_input, language_code="en-US", prompt_mode='
                 context_str += f" The response should be crafted from the perspective of a '{persona}'."
             else: # If no category/subcategory, start with persona
                 context_str += f"Craft the response from the perspective of a '{persona}'."
-        if tone: # NEW: Add tone to context string
-            if context_str: # If category/subcategory/persona already added, append with "as"
-                context_str += f" The response should be crafted from the perspective of a '{tone}'."
-            else: # If no category/subcategory/persona, start with tone
-                context_str += f"Craft the response from the perspective of a '{tone}'."
              
-        base_instruction = language_instruction_prefix + f"""
-                            **MANDATORY POLICY CHECK:**
+        base_instruction = language_instruction_prefix + f"""**MANDATORY POLICY CHECK:**
                             1. **Detection:** First, scan the user's input Raw Text: {raw_input} for the presence of any URL, web link. 
                             2. **Denial:** If a link or request to access external content is found, you **MUST NOT** proceed with refinement. Instead, your output show final denial message: 'Policy Violation: Data scraping, mass content copying, and unauthorized commercial retrieval are strictly prohibited by system policy. No prompt was generated.'
                             4. **Refinement:** Only if NO link is found proceed to the refinement task below.
@@ -1381,192 +1343,132 @@ def app_home():
 def llm_benchmark():
     return render_template('llm_benchmark.html', current_user=current_user)
 
-   
-import asyncio
-import json
-from datetime import datetime
-from flask import jsonify, request
-from flask_login import login_required, current_user
-# NOTE: Ensure the RawPrompt model and other utilities are imported/available
-
-# --- Global utility function needed for thread-safe DB commits (Must exist in app.py) ---
-def run_db_operation_safely(func, *args, **kwargs):
-    """Safely runs a synchronous DB function by pushing the application context."""
-    # Placeholder: Replace with your actual implementation that uses app.app_context()
-    pass
-
 
 @app.route('/generate', methods=['POST'])
-@login_required 
+@login_required # Protect this route
 @ai_defender_required
-async def generate():
-    user = current_user
-    now = datetime.utcnow()
-
-    # -------------------------------------------------------------
-    # --- 0. Initial Data Extraction (Using request.form.get) ---
-    # -------------------------------------------------------------
-    
-    # Extracting existing and new fields from standard form data
-    prompt_input = request.form.get('prompt_input', '').strip()
-    language_code = request.form.get('language_code', 'en-US')
-    prompt_mode = request.form.get('prompt_mode', 'text') # 'text', 'image_gen', 'video_gen'
-    category = request.form.get('category', '').strip()
-    subcategory = request.form.get('subcategory', '').strip()
-    persona = request.form.get('persona', '').strip()
-    context_str = request.form.get('context_str', '')
-    
-    # NEW Fields:
-    tone = request.form.get('tone', '').strip()
-    prompt_version = request.form.get('prompt_version', DEFAULT_PROMPT_VERSION).strip() 
-    
-    # --- Check for empty input ---
-    if not prompt_input:
-        return jsonify({"polished": "Please enter some text to generate prompts.", "creative": "", "technical": ""})
+async def generate(): # CHANGED FROM ASYNC
+    user = current_user # Get the current user object
+    now = datetime.utcnow() # Use utcnow for consistency with database default
 
     # --- Check if the user is locked out ---
     if user.is_locked:
-        return jsonify({"error": "Your account is locked. Please contact support.", "account_locked": True}), 403
+        return jsonify({
+            "error": "Your account is locked. Please contact support.",
+            "account_locked": True
+        }), 403 # Forbidden
 
-    # --- Cooldown Check ---
+
+        
+    # --- Cooldown Check using database timestamp ---
     if user.last_generation_time:
         time_since_last_request = (now - user.last_generation_time).total_seconds()
         if time_since_last_request < COOLDOWN_SECONDS:
             remaining_time = int(COOLDOWN_SECONDS - time_since_last_request)
+            app.logger.info(f"User {user.username} is on cooldown. Remaining: {remaining_time}s")
             return jsonify({
                 "error": f"Please wait {remaining_time} seconds before generating new prompts.",
                 "cooldown_active": True,
                 "remaining_time": remaining_time
-            }), 429 
+            }), 429 # 429 Too Many Requests
+    # --- END UPDATED ---
 
-    # --- Daily Limit Reset Logic ---
-    if not user.is_admin:
+    # --- Daily Limit Check ---
+    if not user.is_admin: # Admins are exempt from the daily limit
         today = now.date()
         if user.daily_generation_date != today:
             user.daily_generation_count = 0
             user.daily_generation_date = today
-            # Commit reset immediately
-            await asyncio.to_thread(run_db_operation_safely, db.session.add, user)
-            await asyncio.to_thread(run_db_operation_safely, db.session.commit)
+            await asyncio.to_thread(db.session.add, user)
+            await asyncio.to_thread(db.session.commit) # Commit reset immediately to prevent race conditions on count
 
-    # --- Raw Prompt Saving (Safely handled and consolidated) ---
-    if current_user.is_authenticated:
-        try:
-            new_raw_prompt = RawPrompt(user_id=current_user.id, raw_text=prompt_input)
-            await asyncio.to_thread(run_db_operation_safely, db.session.add, new_raw_prompt)
-            await asyncio.to_thread(run_db_operation_safely, db.session.commit)
-            app.logger.info(f"Raw prompt saved for user {current_user.username}")
-        except Exception as e:
-            app.logger.error(f"Error saving raw prompt: {e}")
-            await asyncio.to_thread(run_db_operation_safely, db.session.rollback) # Rollback raw prompt save
+        if current_user.is_authenticated:
+            try:
+                new_raw_prompt = RawPrompt(user_id=current_user.id, raw_text=prompt_input)
+                await asyncio.to_thread(db.session.add,new_raw_prompt)
+                await asyncio.to_thread(db.session.commit) # <<< This commit must succeed.
+                app.logger.info(f"Raw prompt saved for user {current_user.username}")
+            except Exception as e:
+                app.logger.error(f"Error saving raw prompt for user {current_user.username}: {e}")
+                db.session.rollback() # Rollback in case of error
 
-    # --- Daily Limit Check ---
-    if not user.is_admin and user.daily_generation_count >= user.daily_limit:
-        app.logger.info(f"User {user.username} exceeded daily limit.")
-        return jsonify({
-            "error": f"You have reached your daily limit of {user.daily_limit} prompt generations. If you are looking for more prompts, kindly make a payment to increase your limit.",
-            "daily_limit_reached": True,
-            "payment_link": PAYMENT_LINK
-        }), 429 
-            
-    # --- Server-side validation for allowed categories/personas ---
+        if user.daily_generation_count >= user.daily_limit: # Check against per-user limit
+            app.logger.info(f"User {user.username} exceeded their daily prompt limit of {user.daily_limit}.")
+            # NEW: Return a specific payment message instead of just an error
+            return jsonify({
+                "error": f"You have reached your daily limit of {user.daily_limit} prompt generations. If you are looking for more prompts, kindly make a payment to increase your limit.",
+                "daily_limit_reached": True,
+                "payment_link": PAYMENT_LINK
+            }), 429 # 429 Too Many Requests
+    # --- END NEW: Daily Limit Check ---
+
+    prompt_input = request.form.get('prompt_input', '').strip()
+    language_code = request.form.get('language_code', 'en-US')
+    is_json_mode = request.form.get('is_json_mode') == 'true'
+    prompt_mode = request.form.get('prompt_mode', 'text') # 'text', 'image_gen', 'video_gen'
+    category = request.form.get('category')
+    subcategory = request.form.get('subcategory')
+    persona = request.form.get('persona') # NEW
+
+    # --- NEW: Server-side validation for allowed categories/personas ---
+    # Convert stored JSON strings to Python lists for checks
     user_allowed_categories = json.loads(user.allowed_categories)
     user_allowed_personas = json.loads(user.allowed_personas)
 
     if not user.is_admin:
         if category and category not in user_allowed_categories:
-            return jsonify({"error": f"Category '{category}' is not allowed for your account."}), 403
+            return jsonify({"error": "Selected category is not allowed for your account."}), 403
         if persona and persona not in user_allowed_personas:
-            return jsonify({"error": f"Persona '{persona}' is not allowed for your account."}), 403
-    
-    # -------------------------------------------------------------
-    # --- 3. Dynamic Prompt Assembly (Core Logic) ---
-    # -------------------------------------------------------------
-    
-    # A. Determine Persona/Category Context
-    if persona and persona.strip().lower() not in ['none', 'select', '']:
-        selected_persona = persona
-        selected_category = category if category and category.strip() else DEFAULT_CATEGORY
-    else:
-        selected_persona = DEFAULT_PERSONA
-        selected_category = DEFAULT_CATEGORY
-
-    persona_context = f"You are a master {selected_persona} for the '{selected_category}' category. "
+            return jsonify({"error": "Selected persona is not allowed for your account."}), 403
+    # --- END NEW: Server-side validation ---
 
 
-    # B. Determine Tone Context
-    if tone and tone.strip().lower() not in ['none', 'select', '']:
-        selected_tone = tone
-    else:
-        selected_tone = DEFAULT_TONE
-
-    tone_context = f"You must adopt a **{selected_tone}** voice and style throughout your entire response. "
-    
-    # C. Mode Bypass/Instruction Selection
-    if prompt_mode in ['image_gen', 'video_gen']:
-        # Fixed, minimalist instruction for structured output (as confirmed)
-        base_instruction = (
-        f"{language_instruction_prefix} Your sole goal is to extract the core visual "
-        f"and style concepts from the input. Output ONLY a clean JSON object "
-        f"adhering to the required schema. DO NOT include any policy checks, persona "
-        f"roles, or extra text. Raw Text: {raw_input}"
-    )
-    
-    else:
-        # D. Assemble Text Instruction (Using Prompt Versioning)
-        base_instruction_template = BASE_INSTRUCTIONS.get(prompt_version, BASE_INSTRUCTIONS[DEFAULT_PROMPT_VERSION])
-        
-        base_instruction = base_instruction_template.format(
-            persona_context=persona_context,
-            tone_context=tone_context,
-            context_str=context_str,  
-            raw_input=raw_input
-        )
-        
-    # -------------------------------------------------------------
-    # --- 4. Dispatch to LLM Worker & Final Commit ---
-    # -------------------------------------------------------------
+    if not prompt_input:
+        return jsonify({
+            "polished": "Please enter some text to generate prompts.",
+            "creative": "",
+            "technical": "",
+        })
 
     try:
-        # Call the worker function with the assembled base_instruction (TONE IS NOW INCLUDED)
-        results = await generate_prompts_async(
-            base_instruction, 
-            language_code, 
-            prompt_mode, 
-            category, 
-            subcategory, 
-            persona, 
-            tone # Passing the tone variable
-        )
+        results = await generate_prompts_async(prompt_input, language_code, prompt_mode, category, subcategory, persona) # NEW: Pass persona
 
-        # --- Update DB (Usage, Cooldown, Points) ---
-        user.last_generation_time = now
-        if not user.is_admin:
-            user.daily_generation_count += 1
-            
-        # --- GAMIFICATION: Award points ---
+        # Wrap synchronous DB updates in asyncio.to_thread (if necessary)
+        await asyncio.to_thread(db.session.add, user)
+        await asyncio.to_thread(db.session.commit)
+
+    # --- GAMIFICATION: Award points for complexity, settings, and refinement ---
         points_awarded = calculate_generation_points(prompt_input, prompt_mode, language_code, category, persona)
         points_awarded += award_refinement_points(prompt_input)
+    
         user.total_points += points_awarded
-        app.logger.info(f"User {user.username} awarded {points_awarded} points. Total: {user.total_points}")
+        app.logger.info(f"User {user.username} awarded {points_awarded} points for generation. Total: {user.total_points}")
+    # --- END GAMIFICATION ---
 
-        # Commit final changes to the user object (cooldown, count, points)
-        await asyncio.to_thread(run_db_operation_safely, db.session.add, user)
-        await asyncio.to_thread(run_db_operation_safely, db.session.commit)
-        
-        app.logger.info(f"User {user.username}'s prompt request successful. Count: {user.daily_generation_count}")
+        # --- Update last_generation_time in database and Save raw_input ---
+        user.last_generation_time = now # Record the time of this successful request
+        if not user.is_admin: # Only increment count for non-admin users
+            user.daily_generation_count += 1
+        await asyncio.to_thread(db.session.add, user) # Add the user object back to the session to mark it as modified
+        await asyncio.to_thread(db.session.commit)
+        app.logger.info(f"User {user.username}'s last prompt request time updated and count incremented. (Forward Prompt)")
 
-        # --- SUCCESS RETURN ---
+        if current_user.is_authenticated:
+            try:
+                new_raw_prompt = RawPrompt(user_id=current_user.id, raw_text=prompt_input)
+                await asyncio.to_thread(db.session.add,new_raw_prompt)
+                await asyncio.to_thread(db.session.commit)
+                app.logger.info(f"Raw prompt saved for user {current_user.username}")
+            except Exception as e:
+                app.logger.error(f"Error saving raw prompt for user {current_user.username}: {e}")
+                db.session.rollback() # Rollback in case of error
+        # --- END UPDATED ---
+
         return jsonify(results)
-        
     except Exception as e:
         app.logger.exception("Error during prompt generation in endpoint:")
-        
-        # --- ERROR HANDLING & ROLLBACK (Corrected Final Block) ---
-        # Rollback any pending DB changes (cooldown, count, points)
-        await asyncio.to_thread(run_db_operation_safely, db.session.rollback) 
-        
         return jsonify({"error": f"An unexpected server error occurred: {e}. Please check server logs for details."}), 500
+
 
 # --- NEW: Reverse Prompt Endpoint ---
 @app.route('/reverse_prompt', methods=['POST'])
@@ -2625,20 +2527,6 @@ def update_user_access(user_id):
     
     return redirect(url_for('admin_users'))
 
-# app.py (New route near your other API routes)
-
-@app.route('/api/v1/get_options', methods=['GET'])
-@ai_defender_required
-def get_options():
-    """Returns the list of tones and prompt versions for the frontend."""
-    
-    prompt_version_keys = list(BASE_INSTRUCTIONS.keys())
-    prompt_version_keys.sort(reverse=True) # Show latest version first
-    
-    return jsonify({
-        'tones': TONES,
-        'prompt_versions': prompt_version_keys
-    })
 
 # NEW: API endpoint for external clients using API keys to generate prompts
 @app.route('/api/v1/generate', methods=['POST'])
@@ -2933,4 +2821,5 @@ if __name__ == '__main__':
     # you can use `nest_asyncio.apply()` (install with `pip install nest-asyncio`), but this is
     # generally not recommended for production as it can hide underlying architectural issues.
     app.run(debug=True)
+
 
