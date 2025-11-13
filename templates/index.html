@@ -742,11 +742,11 @@ text-align: right; /* Align metadata to the right */
 {% endwith %}
 
 <div class="prompt-mode-selector">
-<label for="prompt_mode_select">Prompt Mode:</label>
+<label for="prompt_mode_select">Model :</label>
 <select id="prompt_mode_select" class="form-control">
-<option value="text">Text Prompting</option>
-<option value="image_gen">Image Creation</option>
-<option value="video_gen">Video Creation</option>
+<option value="text">Text Model</option>
+<option value="image_gen">Image Model</option>
+<option value="video_gen">Video Model</option>
 </select>
     {% if current_user.is_authenticated %}
     <div id="user_points_display" class="points-display">
