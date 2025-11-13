@@ -1707,9 +1707,9 @@ async function updateAllButtonStates() {
 const promptInput = document.getElementById('prompt_input').value.trim();
 const selectedLanguage = document.getElementById('lang_select').value;
 const promptMode = document.getElementById('prompt_mode_select').value; // Get current prompt mode
-    const selectedCategory = document.getElementById('category_select').value;
-    const selectedPersona = document.getElementById('persona_select').value;
-    const suggestedLLM = suggestBestLLM(promptInput, selectedCategory, selectedPersona); // NEW: Get LLM suggestion
+const selectedCategory = document.getElementById('category_select').value;
+const selectedPersona = document.getElementById('persona_select').value;
+const suggestedLLM = suggestBestLLM(promptInput, selectedCategory, selectedPersona); // NEW: Get LLM suggestion
 
 
 try {
@@ -1811,6 +1811,11 @@ const selectedCategory = document.getElementById('category_select').value;
 const selectedSubcategory = document.getElementById('subcategory_select').value;
 const selectedPersona = document.getElementById('persona_select').value; // NEW
 
+// --- INJECTION POINT A: Read Tone and Version from selectors ---
+const selectedTone = document.getElementById('tone-selector').value; // Get the tone value
+const selectedVersion = document.getElementById('version-selector').value; // Get the version value
+// -----------------------------------------------------------------
+
 // Clear previous outputs and token counts
 document.getElementById('polished_output').textContent = '';
 document.getElementById('creative_output').textContent = '';
@@ -1845,21 +1850,26 @@ cooldownTimerDisplay.style.display = 'none';
 console.log("Frontend: Sending request to /generate...");
 
 try {
-const formData = new FormData();
-formData.append('prompt_input', promptInput);
-formData.append('language_code', selectedLanguage);
-formData.append('is_json_mode', 'false'); // Always send false
-formData.append('prompt_mode', promptMode); // Send prompt mode
-formData.append('category', selectedCategory);
-formData.append('subcategory', selectedSubcategory);
-formData.append('persona', selectedPersona); // NEW
+        const formData = new FormData();
+        
+        // Existing appends:
+        formData.append('prompt_input', promptInput); // 
+        formData.append('language_code', selectedLanguage); // 
+        formData.append('is_json_mode', 'false'); // 
+        formData.append('prompt_mode', promptMode); // 
+        formData.append('category', selectedCategory); // 
+        formData.append('subcategory', selectedSubcategory); // 
+        formData.append('persona', selectedPersona); // 
 
+        // --- INJECTION POINT B: Append Tone and Version to formData ---
+        formData.append('tone', selectedTone);       // NEW: Tone
+        formData.append('prompt_version', selectedVersion); // NEW: Prompt Version
+        // --------------------------------------------------------------
 
-const response = await fetch('/generate', {
-method: 'POST',
-body: formData
+        const response = await fetch('/generate', {
+            method: 'POST',
+            body: formData // 
 });
-
 console.log("Frontend: Received response status:", response.status);
 console.log("Frontend: Response OK status:", response.ok);
 
@@ -2086,8 +2096,13 @@ async function loadDynamicOptions() {
     }
 }
 
-// Ensure this function runs when the page loads
-window.onload = loadDynamicOptions;    
+// NOTE: You must define DEFAULT_PROMPT_VERSION in your JS as well 
+// for the selection logic, or fetch it from the backend.
+const DEFAULT_PROMPT_VERSION = 'SuperPrompter v1.1'; 
+// Call this function when the page loads:
+// window.onload = loadDynamicOptions;  
+
+
     
 // Event listeners for save buttons
 document.querySelectorAll('.save-button').forEach(button => {
