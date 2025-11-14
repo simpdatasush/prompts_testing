@@ -994,7 +994,7 @@ VIDEO_JSON_TEMPLATE = {
 
 
 # --- generate_prompts_async function (main async logic for prompt variations) ---
-async def generate_prompts_async(raw_input, language_code="en-US", prompt_mode='text', category=None, subcategory=None, persona=None): # NEW: Added persona parameter
+async def generate_prompts_async(raw_input, language_code="en-US", prompt_mode='text', category=None, subcategory=None, persona=None, tone=None): # NEW: Added persona parameter
     if not raw_input.strip():
         return {
             "polished": "Please enter some text to generate prompts.",
@@ -1132,7 +1132,13 @@ async def generate_prompts_async(raw_input, language_code="en-US", prompt_mode='
                 context_str += f" The response should be crafted from the perspective of a '{persona}'."
             else: # If no category/subcategory, start with persona
                 context_str += f"Craft the response from the perspective of a '{persona}'."
-             
+                # 3. Add Tone Context (NEW)
+        if tone and tone.strip().lower() not in ['none', 'select', '']:
+            if context_str:
+                context_str += f" The response is also requested to have a '{tone}' tone."
+            else:
+                context_str += f"The response is requested to have a '{tone}' tone."
+                
         base_instruction = language_instruction_prefix + f"""**MANDATORY POLICY CHECK:**
                             1. **Detection:** First, scan the user's input Raw Text: {raw_input} for the presence of any URL, web link. 
                             2. **Denial:** If a link or request to access external content is found, you **MUST NOT** proceed with refinement. Instead, your output show final denial message: 'Policy Violation: Data scraping, mass content copying, and unauthorized commercial retrieval are strictly prohibited by system policy. No prompt was generated.'
@@ -1412,6 +1418,8 @@ async def generate(): # CHANGED FROM ASYNC
     category = request.form.get('category')
     subcategory = request.form.get('subcategory')
     persona = request.form.get('persona') # NEW
+    tone = request.form.get('tone')
+    
 
     # --- NEW: Server-side validation for allowed categories/personas ---
     # Convert stored JSON strings to Python lists for checks
