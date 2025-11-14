@@ -1668,6 +1668,7 @@ async def test_llm_response(): # CHANGED to async def
     category = data.get('category')
     subcategory = data.get('subcategory')
     persona = data.get('persona')
+    tone = data.get('tone')
 
     if not prompt_text:
         return jsonify({"error": "No prompt text provided for testing."}), 400
@@ -1696,7 +1697,7 @@ async def test_llm_response(): # CHANGED to async def
             context_str += f" The response should be from the perspective of a '{persona}'."
         else:
             context_str += f"Craft the response from the perspective of a '{persona}'."
-    if tone and tone.strip().lower() not in ['none', 'select', '']:
+    if tone:
         if context_str:
             context_str += f" The response is also requested to have a '{tone}' tone."
         else:
