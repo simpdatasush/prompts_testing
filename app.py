@@ -1137,7 +1137,7 @@ async def generate_prompts_async(raw_input, language_code="en-US", prompt_mode='
             else: # If no category/subcategory, start with persona
                 context_str += f"Craft the response from the perspective of a '{persona}'."
                 # 3. Add Tone Context (NEW)
-        if tone and tone.strip().lower() not in ['none', 'select', '']:
+        if tone:
             if context_str:
                 context_str += f" The response is also requested to have a '{tone}' tone."
             else:
