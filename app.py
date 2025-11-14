@@ -774,7 +774,7 @@ def ask_gemini_for_structured_prompt(prompt_instruction, generation_config=None,
         return filter_gemini_response(f"An unexpected error occurred: {str(e)}")
 
 # --- NEW GAMIFICATION HELPER FUNCTIONS ---
-def calculate_generation_points(raw_input, prompt_mode, language_code, category, persona):
+def calculate_generation_points(raw_input, prompt_mode, language_code, category, persona, tone):
     """Calculates points based on complexity and settings usage."""
     points = 0
     raw_length = len(raw_input)
@@ -804,6 +804,10 @@ def calculate_generation_points(raw_input, prompt_mode, language_code, category,
     # Persona Select (15 Points - awarded if selected)
     if persona:
         points += 15
+
+    # Persona Select (20 Points - awarded if selected)
+    if tone:
+        points += 20
         
     return points
 
@@ -1692,6 +1696,11 @@ async def test_llm_response(): # CHANGED to async def
             context_str += f" The response should be from the perspective of a '{persona}'."
         else:
             context_str += f"Craft the response from the perspective of a '{persona}'."
+    if tone and tone.strip().lower() not in ['none', 'select', '']:
+        if context_str:
+            context_str += f" The response is also requested to have a '{tone}' tone."
+        else:
+            context_str += f"The response is requested to have a '{tone}' tone."
 
     # Define the model and temperature to be used for the test response
     llm_model_name = "gemini-2.5-flash" # As defined globally
