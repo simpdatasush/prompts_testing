@@ -83,7 +83,7 @@ logging.basicConfig(level=logging.INFO) # Simplified logging setup
 
 
 # --- Cooldown and Daily Limit Configuration ---
-COOLDOWN_SECONDS = 100 # 100 seconds cooldown as requested
+COOLDOWN_SECONDS = 240 # 240 seconds cooldown as requested
 FREE_DAILY_LIMIT = 3 # New default for free users
 PAID_DAILY_LIMIT = 10 # New default for paid users
 PAYMENT_LINK = "https://buymeacoffee.com/simpaisush"
@@ -488,7 +488,7 @@ def filter_gemini_response(text):
         filtered_text = re.sub(r"\[violations \{.*?\}\s*\]", "", filtered_text, flags=re.DOTALL) # In case only violations are present
 
         if "google.api_core.exceptions" in filtered_text.lower() or "api_key" in filtered_text.lower():
-            return "There was an issue with the AI service. Please try again later."
+            return "SuperPrompter AI is being overloaded, please try after sometime."
         
         return filtered_text.strip()
 
@@ -1446,14 +1446,14 @@ async def generate(): # CHANGED FROM ASYNC
         })
 
     try:
-        results = await generate_prompts_async(prompt_input, language_code, prompt_mode, category, subcategory, persona) # NEW: Pass persona
+        results = await generate_prompts_async(prompt_input, language_code, prompt_mode, category, subcategory, persona, tone) # NEW: Pass persona
 
         # Wrap synchronous DB updates in asyncio.to_thread (if necessary)
         await asyncio.to_thread(db.session.add, user)
         await asyncio.to_thread(db.session.commit)
 
     # --- GAMIFICATION: Award points for complexity, settings, and refinement ---
-        points_awarded = calculate_generation_points(prompt_input, prompt_mode, language_code, category, persona)
+        points_awarded = calculate_generation_points(prompt_input, prompt_mode, language_code, category, persona, tone)
         points_awarded += award_refinement_points(prompt_input)
     
         user.total_points += points_awarded
