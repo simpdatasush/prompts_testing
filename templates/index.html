@@ -796,6 +796,15 @@ text-align: right; /* Align metadata to the right */
 <option value="">Select a persona</option>
 </select>
 </div>
+<div class="col-md-6 mb-3">
+    <label for="tone-selector" class="form-label">Tone:</label>
+    <select id="tone-selector" class="form-control">
+        <option value="">(Optional) Select Tone</option>
+        {% for tone in TONES %}
+        <option value="{{ tone }}">{{ tone }}</option>
+        {% endfor %}
+    </select>
+</div>
 <div class="col-12 mt-2">
 <p class="text-muted" style="font-size: 0.9rem;">
 <strong>Important Note:</strong> The personas will be tied to the main category selected.
@@ -1265,6 +1274,7 @@ const IS_ADMIN = {{ current_user.is_admin | tojson | default('false') }}; // NEW
 const LLM_NICHE_MAP = JSON.parse('{{ llm_niche_map | safe }}');
 const CATEGORIES_AND_SUBCATEGORIES = JSON.parse('{{ categories_and_subcategories | safe }}');
 const CATEGORY_PERSONAS = JSON.parse('{{ category_personas | safe }}');
+const TONES_LIST = JSON.parse('{{ TONES | tojson | default("[]") | safe }}');
 // --- END NEW Data Loading ---
 
 function populateCategories() {
