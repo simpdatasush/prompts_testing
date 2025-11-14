@@ -175,6 +175,8 @@ CATEGORY_PERSONAS = {
     "Other": ["General", "Custom", "Uncategorized"], # Default personas for the "Other" main category
 }
 
+TONES = ["Professional", "Friendly", "Candid", "Quirky", "Efficient", "Nerdy", "Cynical"]
+
 # https://ai.google.dev/gemini-api/docs/pricing#gemini-2.5-flash
 
 # --- Configure Google Gemini API ---
@@ -1335,7 +1337,8 @@ def app_home():
         allowed_personas=allowed_personas_list,
         llm_niche_map=json.dumps(LLM_NICHE_MAP),
         categories_and_subcategories=json.dumps(CATEGORIES_AND_SUBCATEGORIES),
-        category_personas=json.dumps(CATEGORY_PERSONAS)
+        category_personas=json.dumps(CATEGORY_PERSONAS),
+        TONES=TONES # <-- NEW: Pass the TONES list here                   
     )
  
 # NEW: LLM Benchmark Page Route
