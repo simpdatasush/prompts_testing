@@ -742,11 +742,11 @@ text-align: right; /* Align metadata to the right */
 {% endwith %}
 
 <div class="prompt-mode-selector">
-<label for="prompt_mode_select">Model:</label>
+<label for="prompt_mode_select">Model :</label>
 <select id="prompt_mode_select" class="form-control">
-<option value="text">Text Model</option>
-<option value="image_gen">Image Model</option>
-<option value="video_gen">Video Model</option>
+<option value="text">SPT (Text Model)</option>
+<option value="image_gen">SPT (Image Model)</option>
+<option value="video_gen">SPT (Video Model)</option>
 </select>
     {% if current_user.is_authenticated %}
     <div id="user_points_display" class="points-display">
@@ -796,12 +796,14 @@ text-align: right; /* Align metadata to the right */
 <option value="">Select a persona</option>
 </select>
 </div>
-</div>
-<div id="text-tone-selector" class="col-md-6 mb-3">
-<label for="tone_select" class="form-label">Tone:</label>
-<select id="tone_select" class="form-control" disabled>
-<option value="">Select a tone</option>
-</select>
+<div class="col-md-6 mb-3">
+    <label for="tone-selector" class="form-label">Tone:</label>
+    <select id="tone-selector" class="form-control">
+        <option value="">(Optional) Select Tone</option>
+        {% for tone in TONES %}
+        <option value="{{ tone }}">{{ tone }}</option>
+        {% endfor %}
+    </select>
 </div>
 <div class="col-12 mt-2">
 <p class="text-muted" style="font-size: 0.9rem;">
@@ -813,37 +815,12 @@ Use the Category filter and either the Subcategory or Persona filter.
 </div>
 </div>
 <div class="prompt-input-section card">
-    <div class="card-body">
-        <form id="promptForm">
-            
-            <div class="row g-3 mb-4">
-                <div class="col-md-3">
-                    <label for="tone-selector" class="form-label">Tone</label>
-                    <select class="form-select" id="tone-selector">
-                        <option value="">(Optional) Select Tone</option> </select>
-                </div>
-                
-                </div>
-
-            <div class="row mb-3">
-                
-                <div class="col-md-3">
-                    <label for="version-selector" class="form-label">Prompt Version</label>
-                    <select class="form-select" id="version-selector">
-                        <option value="">Loading versions...</option> </select>
-                </div>
-                
-                <div class="col-md-9">
-                    <label for="raw-input" class="form-label">Provide Raw Text</label>
-                    <textarea class="form-control" id="raw-input" name="raw_input" rows="8" placeholder="e.g., Write a story about a robot who wants to be a chef."></textarea>
-                </div>
-            </div>
-
-            <div class="d-grid gap-2">
-                </div>
-        </form>
-    </div>
+<div class="card-body">
+<form id="promptForm">
+<div class="d-flex justify-content-between align-items-center mb-3">
+<label for="prompt_input" class="form-label mb-0">Enter your raw prompt idea (or paste text/code for reverse prompting):</label>
 </div>
+<textarea id="prompt_input" name="prompt_input" class="form-control" rows="8" placeholder="e.g., Write a story about a robot who wants to be a chef."></textarea>
 
 <div class="d-flex justify-content-between align-items-center mt-3 flex-wrap">
 <div class="input-controls">
@@ -1297,6 +1274,7 @@ const IS_ADMIN = {{ current_user.is_admin | tojson | default('false') }}; // NEW
 const LLM_NICHE_MAP = JSON.parse('{{ llm_niche_map | safe }}');
 const CATEGORIES_AND_SUBCATEGORIES = JSON.parse('{{ categories_and_subcategories | safe }}');
 const CATEGORY_PERSONAS = JSON.parse('{{ category_personas | safe }}');
+const TONES_LIST = JSON.parse('{{ TONES | tojson | default("[]") | safe }}');
 // --- END NEW Data Loading ---
 
 function populateCategories() {
@@ -1707,9 +1685,9 @@ async function updateAllButtonStates() {
 const promptInput = document.getElementById('prompt_input').value.trim();
 const selectedLanguage = document.getElementById('lang_select').value;
 const promptMode = document.getElementById('prompt_mode_select').value; // Get current prompt mode
-const selectedCategory = document.getElementById('category_select').value;
-const selectedPersona = document.getElementById('persona_select').value;
-const suggestedLLM = suggestBestLLM(promptInput, selectedCategory, selectedPersona); // NEW: Get LLM suggestion
+    const selectedCategory = document.getElementById('category_select').value;
+    const selectedPersona = document.getElementById('persona_select').value;
+    const suggestedLLM = suggestBestLLM(promptInput, selectedCategory, selectedPersona); // NEW: Get LLM suggestion
 
 
 try {
@@ -1811,11 +1789,6 @@ const selectedCategory = document.getElementById('category_select').value;
 const selectedSubcategory = document.getElementById('subcategory_select').value;
 const selectedPersona = document.getElementById('persona_select').value; // NEW
 
-// --- INJECTION POINT A: Read Tone and Version from selectors ---
-const selectedTone = document.getElementById('tone-selector').value; // Get the tone value
-const selectedVersion = document.getElementById('version-selector').value; // Get the version value
-// -----------------------------------------------------------------
-
 // Clear previous outputs and token counts
 document.getElementById('polished_output').textContent = '';
 document.getElementById('creative_output').textContent = '';
@@ -1850,26 +1823,21 @@ cooldownTimerDisplay.style.display = 'none';
 console.log("Frontend: Sending request to /generate...");
 
 try {
-        const formData = new FormData();
-        
-        // Existing appends:
-        formData.append('prompt_input', promptInput); // 
-        formData.append('language_code', selectedLanguage); // 
-        formData.append('is_json_mode', 'false'); // 
-        formData.append('prompt_mode', promptMode); // 
-        formData.append('category', selectedCategory); // 
-        formData.append('subcategory', selectedSubcategory); // 
-        formData.append('persona', selectedPersona); // 
+const formData = new FormData();
+formData.append('prompt_input', promptInput);
+formData.append('language_code', selectedLanguage);
+formData.append('is_json_mode', 'false'); // Always send false
+formData.append('prompt_mode', promptMode); // Send prompt mode
+formData.append('category', selectedCategory);
+formData.append('subcategory', selectedSubcategory);
+formData.append('persona', selectedPersona); // NEW
 
-        // --- INJECTION POINT B: Append Tone and Version to formData ---
-        formData.append('tone', selectedTone);       // NEW: Tone
-        formData.append('prompt_version', selectedVersion); // NEW: Prompt Version
-        // --------------------------------------------------------------
 
-        const response = await fetch('/generate', {
-            method: 'POST',
-            body: formData // 
+const response = await fetch('/generate', {
+method: 'POST',
+body: formData
 });
+
 console.log("Frontend: Received response status:", response.status);
 console.log("Frontend: Response OK status:", response.ok);
 
@@ -2056,54 +2024,6 @@ updateAllButtonStates(); // Re-check status to re-enable buttons
 }
 });
 
-// index.html (Inside your <script> tags)
-
-async function loadDynamicOptions() {
-    try {
-        const response = await fetch('/api/v1/get_options');
-        const data = await response.json();
-        
-        const toneSelector = document.getElementById('tone-selector');
-        const versionSelector = document.getElementById('version-selector');
-
-        // --- Populate Tone Selector ---
-        data.tones.forEach(tone => {
-            const option = document.createElement('option');
-            option.value = tone;
-            option.textContent = tone;
-            toneSelector.appendChild(option);
-        });
-        
-        // --- Populate Prompt Version Selector ---
-        versionSelector.innerHTML = ''; // Clear the initial placeholder
-        
-        data.prompt_versions.forEach(version => {
-            const option = document.createElement('option');
-            option.value = version;
-            option.textContent = version;
-            
-            // Set the latest version as default selected
-            if (version === 'SuperPrompter v1.1') { 
-                option.selected = true;
-            }
-            
-            versionSelector.appendChild(option);
-        });
-
-    } catch (error) {
-        console.error('Failed to load dynamic options:', error);
-        // User may need a manual reload or error message here
-    }
-}
-
-// NOTE: You must define DEFAULT_PROMPT_VERSION in your JS as well 
-// for the selection logic, or fetch it from the backend.
-const DEFAULT_PROMPT_VERSION = 'SuperPrompter v1.1'; 
-// Call this function when the page loads:
-// window.onload = loadDynamicOptions;  
-
-
-    
 // Event listeners for save buttons
 document.querySelectorAll('.save-button').forEach(button => {
 button.addEventListener('click', async function() {
