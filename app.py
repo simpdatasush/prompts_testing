@@ -1220,35 +1220,6 @@ async def generate_prompts_async(raw_input, language_code="en-US", prompt_mode='
             "creative": creative_output,
             "technical": technical_output,
         }
-        try:
-            # 1. Define the specific prompt for sentiment analysis
-            sentiment_prompt = (
-                        f"Analyze the overall sentiment of the following raw text and return ONLY one word: "
-                        f"POSITIVE, NEGATIVE, or NEUTRAL. If the sentiment is ambiguous, return NEUTRAL. "
-                        f"Text: {raw_input}"
-                        )
-
-            # 2. Call a low-cost, fast model for quick sentiment classification
-            # NOTE: You must replace 'call_llm_low_cost' with your actual utility function call.
-            sentiment_result_raw = await call_llm_low_cost(sentiment_prompt) 
-
-            # 3. Clean and standardize the result
-            sentiment_label = sentiment_result_raw.upper().strip()
-        except Exception as e:
-            # If sentiment analysis fails (e.g., API error on the low-cost model)
-            # we log the error but still proceed with the main result.
-            app.logger.error(f"Failed to perform sentiment analysis: {e}")
-            sentiment_label = "N/A (Analysis Error)"
-            # ----------------------------------------------------------------------
-            # --- Final Return Statement ---
-            # ----------------------------------------------------------------------
-        # Ensure the result dictionary includes the sentiment label:
-        return {
-            'polished': polished_output,
-            'creative': creative_output,
-            'technical': technical_output,
-            'sentiment': sentiment_label # <-- NEW: Include the result
-        }
 
 # NOTE: If your function has a final 'return' statement inside an existing 
 # success block, ensure the sentiment analysis code is placed before that block, 
