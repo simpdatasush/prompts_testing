@@ -817,11 +817,21 @@ Use the Category filter and either the Subcategory or Persona filter.
 <div class="prompt-input-section card">
 <div class="card-body">
 <form id="promptForm">
-<div class="d-flex justify-content-between align-items-center mb-3">
+<div class="row mb-3">
+<div class="col-md-12">
+<div class="d-flex justify-content-between align-items-center mb-1">
 <label for="prompt_input" class="form-label mb-0">Enter your raw prompt idea (or paste text/code for reverse prompting):</label>
+<div id="sentiment_display" style="font-weight: bold; font-size: 0.9rem;"></div> 
 </div>
-<textarea id="prompt_input" name="prompt_input" class="form-control" rows="8" placeholder="e.g., Write a story about a robot who wants to be a chef."></textarea>
-
+<textarea class="form-control" id="prompt_input" name="prompt_input" rows="8" placeholder="e.g., Write a story about a robot who wants to be a chef."></textarea>
+</div>
+</div>
+<div class="d-grid gap-2">
+</div>
+</form>
+</div>
+</div>
+    
 <div class="d-flex justify-content-between align-items-center mt-3 flex-wrap">
 <div class="input-controls">
 <button type="button" id="voice_input_button" class="btn btn-outline-secondary mt-2 mt-md-0">🎤 Start Voice Input</button>
@@ -1891,6 +1901,46 @@ if (promptMode === 'image_gen' || promptMode === 'video_gen') {
          }
     // MODIFIED BLOCK END
 
+const data = await response.json(); // Data from the backend
+// Check if the backend returned a general error key
+if (data.error) { 
+    // Handle server-side API or policy errors reported in the JSON body
+
+    appOutput.textContent = getMessage("api_error", selectedLanguage, {error: data.error});
+    appOutput.className = 'mt-4 danger';
+    console.error("Backend error reported:", data.error);
+    
+} else {
+    // --- START: SUCCESS RESPONSE PROCESSING ---
+    
+    // 1. Populate the main prompt output fields
+    // Assuming 'promptMode' logic for multimedia/text mode handling is applied here:
+    // ... (Existing code to populate polished_output, creative_output, technical_output, based on mode) ...
+
+    // 2. Display the new Sentiment Analysis result (Wrapped in a safety block)
+    try {
+        const sentimentDisplay = document.getElementById('sentiment_display');
+        const sentiment = data.sentiment || 'N/A'; // Default to N/A if missing
+        
+        // Set color based on sentiment
+        let color = 'gray';
+        if (sentiment === 'POSITIVE') {
+            color = 'green';
+        } else if (sentiment === 'NEGATIVE') {
+            color = 'red';
+        } else if (sentiment === 'NEUTRAL') {
+            color = 'blue';
+        }
+
+        sentimentDisplay.textContent = `Sentiment: ${sentiment}`;
+        sentimentDisplay.style.color = color;
+
+    } catch (e) {
+        // Fallback if the sentiment element is missing or the logic fails
+        console.warn("Failed to display sentiment data:", e); 
+    }
+// NOTE: The outer catch block of the main submission function handles
+// network errors and unhandled exceptions.
 // Update token counts (using character count as a proxy)
 document.getElementById('polished_token_count').textContent = `${document.getElementById('polished_output').textContent.length} chars`;
 document.getElementById('creative_token_count').textContent = `${document.getElementById('creative_output').textContent.length} chars`;
@@ -1901,6 +1951,7 @@ appOutput.className = 'mt-4 success';
 fetchAndDisplayRawPrompts();
 // Cooldown and button states will be handled by updateAllButtonStates in finally block
 }
+
 
 } catch (error) {
 let errorMessage = getMessage("generation_failed", selectedLanguage);
