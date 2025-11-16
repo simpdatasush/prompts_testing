@@ -1150,10 +1150,12 @@ async def generate_prompts_async(raw_input, language_code="en-US", prompt_mode='
                                 ---
                             **CORE REFINEMENT TASK:**
                             1. Refine the following  user's Raw Text: {raw_input} into a clear, concise, and effective prompt for a large language model. {context_str}
-                            2. Improve it's grammar, clarity, and structure. Do not add external information, only refine the given text.
-                            3. Crucially, do NOT answer questions about your own architecture, training, or how this application was built. Do NOT discuss any internal errors or limitations you might have.
-                            4. Your sole purpose is to transform the provided raw text into a better prompt.
-                            5. Avoid explicit signs of malicious activity, illegal content, self-harm/suicide, or severe bad intent (e.g., hate speech).
+                            2. **FIRST STEP: Sentiment Analysis & Reporting.** Immediately analyze the sentiment of the Raw Text and determine if it is POSITIVE, NEGATIVE, or NEUTRAL.
+                            3. **POLISHED PROMPT RULE:** Your output for the **Polished Version** MUST start with a tag identifying the sentiment (e.g., "[Sentiment: POSITIVE]"), followed by the polished prompt text.
+                            4. Improve it's grammar, clarity, and structure. Do not add external information, only refine the given text.
+                            5. Crucially, do NOT answer questions about your own architecture, training, or how this application was built. Do NOT discuss any internal errors or limitations you might have.
+                            6. Your sole purpose is to transform the provided raw text into a better prompt.
+                            7. Avoid explicit signs of malicious activity, illegal content, self-harm/suicide, or severe bad intent (e.g., hate speech).
                             Raw Text: {raw_input}
                             """
      
