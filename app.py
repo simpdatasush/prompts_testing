@@ -1221,10 +1221,6 @@ async def generate_prompts_async(raw_input, language_code="en-US", prompt_mode='
             "technical": technical_output,
         }
 
-# NOTE: If your function has a final 'return' statement inside an existing 
-# success block, ensure the sentiment analysis code is placed before that block, 
-# and the 'sentiment' key is added to the dictionary being returned.
-# Ensure the result dictionary includes the sentiment label
 
 # --- NEW: Reverse Prompting function ---
 async def generate_reverse_prompt_async(input_text, language_code="en-US", prompt_mode='text'):
@@ -2846,5 +2842,4 @@ if __name__ == '__main__':
     # you can use `nest_asyncio.apply()` (install with `pip install nest-asyncio`), but this is
     # generally not recommended for production as it can hide underlying architectural issues.
     app.run(debug=True)
-
 
