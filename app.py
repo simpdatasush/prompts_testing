@@ -1244,9 +1244,9 @@ async def generate_prompts_async(raw_input, language_code="en-US", prompt_mode='
             # ----------------------------------------------------------------------
         # Ensure the result dictionary includes the sentiment label:
         return {
-            'polished': polished_prompt,
-            'creative': creative_prompt,
-            'technical': technical_prompt,
+            'polished': polished_output,
+            'creative': creative_output,
+            'technical': technical_output,
             'sentiment': sentiment_label # <-- NEW: Include the result
         }
 
