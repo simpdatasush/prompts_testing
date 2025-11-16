@@ -1712,6 +1712,7 @@ async def test_llm_response(): # CHANGED to async def
     llm_instruction = (
         f"Generate a concise sample response to the following prompt, as if you are the AI model "
         f"receiving this prompt. Keep the response brief and to the point, demonstrating how you would "
+        f"interpret and fulfill the prompt. **CRUCIALLY, YOUR TONE MUST BE ENERGETIC AND HIGHLY MOTIVATED & ALGORITHM FRIENDLY ** " # <--- NEW INSTRUCTION
         f"interpret and fulfill the prompt. The response MUST be entirely in {LANGUAGE_MAP.get(language_code, 'English')}. "
         f"Crucially, **DO NOT attempt to refine, rewrite, rephrase, or critique the input prompt**; only provide the requested answer or output based on the prompt's content. "
         f"{context_str}\n\nPrompt: {prompt_text}"
