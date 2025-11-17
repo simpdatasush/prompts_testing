@@ -2342,6 +2342,75 @@ def admin_library_prompts():
                            library_prompts=library_prompts,
                            title='Admin - Manage Library Prompts')
 
+@app.route('/admin/library_news', methods=['GET', 'POST'])
+@login_required
+# @admin_required # Recommend adding this if you have the decorator
+def admin_library_news():
+    form = AddNewsArticleForm()
+    
+    if form.validate_on_submit():
+        try:
+            # Handle optional date field conversion
+            date_to_use = datetime.strptime(form.date_published.data, '%Y-%m-%d') if form.date_published.data else datetime.utcnow()
+            
+            new_article = NewsArticle(
+                title=form.title.data,
+                summary=form.summary.data,
+                source_url=form.source_url.data,
+                date_published=date_to_use
+            )
+            db.session.add(new_article)
+            db.session.commit()
+            flash(f'News article "{form.title.data}" added successfully!', 'success')
+            return redirect(url_for('admin_library_news'))
+        except Exception as e:
+            db.session.rollback()
+            flash(f'Error adding article: {e}', 'danger')
+    
+    # Fetch existing news articles for display/management
+    news_articles = NewsArticle.query.order_by(NewsArticle.date_published.desc()).all()
+    
+    return render_template('admin_library_news.html', 
+                           form=form, 
+                           news_articles=news_articles,
+                           title='Admin - Manage News Articles')
+
+@app.route('/admin/library_jobs', methods=['GET', 'POST'])
+@login_required
+# @admin_required # Recommend adding this if you have the decorator
+def admin_library_jobs():
+    form = AddJobPostingForm()
+    
+    if form.validate_on_submit():
+        try:
+            # Handle optional date field conversion
+            date_to_use = datetime.strptime(form.date_posted.data, '%Y-%m-%d') if form.date_posted.data else datetime.utcnow()
+            
+            new_job = JobPosting(
+                title=form.title.data,
+                company=form.company.data,
+                location=form.location.data,
+                description_summary=form.description_summary.data,
+                job_url=form.job_url.data,
+                date_posted=date_to_use
+            )
+            db.session.add(new_job)
+            db.session.commit()
+            flash(f'Job "{form.title.data}" added successfully!', 'success')
+            return redirect(url_for('admin_library_jobs'))
+        except Exception as e:
+            db.session.rollback()
+            flash(f'Error adding job: {e}', 'danger')
+    
+    # Fetch existing jobs for display/management
+    job_postings = JobPosting.query.order_by(JobPosting.date_posted.desc()).all()
+    
+    return render_template('admin_library_jobs.html', 
+                           form=form, 
+                           job_postings=job_postings,
+                           title='Admin - Manage Job Postings')
+
+
 # --- Forgot Password Routes ---
 @app.route('/forgot_password', methods=['GET'])
 def forgot_password():
