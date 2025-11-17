@@ -42,7 +42,7 @@ class AddNewsArticleForm(FlaskForm):
 class AddJobPostingForm(FlaskForm):
     title = StringField('Job Title', validators=[DataRequired(), Length(max=255)])
     company = StringField('Company Name', validators=[DataRequired(), Length(max=100)])
-    location = StringField('Location', validators=[Optional(), Length(max=100)])
+    location = StringField('Location', validators=[DataRequired(), Length(max=100)])
     description_summary = TextAreaField('Description Summary', validators=[DataRequired()])
     # FIX: URL is now imported
     job_url = StringField('Job URL (Application Link)', validators=[DataRequired()]) 
