@@ -24,7 +24,7 @@ import requests # For Perplexity API HTTP calls (if we stick to that instead of 
 from perplexity import Perplexity, APIError as PerplexityAPIError
 # app.py (Near the top of the file)
 # Fix for the Import Error
-from forms import AddLibraryPromptForm, RegistrationForm # Add all forms here
+from forms import AddLibraryPromptForm, RegistrationForm, AddNewsArticleForm,  # Add all forms here
 from flask_login import login_required
 
 # --- NEW IMPORTS FOR AUTHENTICATION ---
