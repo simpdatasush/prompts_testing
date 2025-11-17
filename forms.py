@@ -32,7 +32,7 @@ class AddNewsArticleForm(FlaskForm):
     title = StringField('Article Title', validators=[DataRequired(), Length(max=255)])
     summary = TextAreaField('Summary/Snippet', validators=[DataRequired()])
     # FIX: URL is now imported
-    source_url = StringField('Source URL', validators=[DataRequired(), URL()]) 
+    source_url = StringField('Source URL', validators=[DataRequired()]) 
     date_published = StringField('Date Published (YYYY-MM-DD)', validators=[Optional()])
     submit = SubmitField('Add News Article')
 
@@ -45,6 +45,6 @@ class AddJobPostingForm(FlaskForm):
     location = StringField('Location', validators=[Optional(), Length(max=100)])
     description_summary = TextAreaField('Description Summary', validators=[DataRequired()])
     # FIX: URL is now imported
-    job_url = StringField('Job URL (Application Link)', validators=[DataRequired(), URL()]) 
+    job_url = StringField('Job URL (Application Link)', validators=[DataRequired()]) 
     date_posted = StringField('Date Posted (YYYY-MM-DD)', validators=[Optional()])
     submit = SubmitField('Add Job Posting')
