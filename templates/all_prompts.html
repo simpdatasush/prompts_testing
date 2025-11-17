@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Useful Prompts - SuperPrompter AI</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css">
+    <style>
+        /* --- Custom Pinkish-Blue Theme Variables from index.html --- */
+        :root {
+            --color-primary: #C3497C; /* Pinkish Red / Mauve */
+            --color-secondary: #5CA0DC; /* Soft Bright Blue */
+            --color-dark-bg: #311B92; /* Deep Purple Blue */
+            --color-text-dark: #2c3e50;
+            --color-text-muted: #777;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding-top: 70px; /* Space for fixed header */
+            background-color: #f8f9fa; 
+            color: var(--color-text-dark);
+            line-height: 1.6;
+        }
+
+        /* Header Style (Matching index page) */
+        .app-header {
+            background-color: var(--color-dark-bg);
+            color: #ffffff;
+            padding: 15px 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+            width: 100%;
+            position: fixed;
+            top: 0;
+            left: 0;
+            z-index: 1000;
+        }
+        .logo-section a {
+            color: #fff;
+            text-decoration: none;
+            font-size: 1.5rem;
+            font-weight: 600;
+        }
+
+        /* Main Content Styling */
+        .container {
+            padding-top: 30px;
+            padding-bottom: 50px;
+        }
+        .prompt-card {
+            border: 1px solid #dee2e6;
+            border-left: 5px solid var(--color-secondary); /* Blue accent on left */
+            margin-bottom: 20px;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+            background-color: #fff;
+            transition: transform 0.2s;
+        }
+        .prompt-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+        .prompt-title {
+            color: var(--color-primary); /* Pinkish-red title */
+            font-size: 1.3rem;
+            margin-bottom: 10px;
+            font-weight: 600;
+        }
+        .prompt-meta span {
+            font-size: 0.9rem;
+            color: var(--color-text-muted);
+            margin-right: 15px;
+        }
+        .prompt-description {
+            white-space: pre-wrap; /* Preserves formatting and line breaks */
+            background-color: #f4f6f9;
+            padding: 15px;
+            border-radius: 5px;
+            margin-top: 15px;
+            border: 1px dashed #ced4da;
+            font-family: monospace;
+            overflow-x: auto;
+        }
+    </style>
+</head>
+<body>
+    
+    <header class="app-header">
+        <div class="logo-section">
+            <a href="{{ url_for('app_home') }}">SuperPrompter AI</a>
+        </div>
+        <nav>
+            <a href="{{ url_for('all_prompts') }}" class="text-white mx-2">All Prompts</a>
+            </nav>
+    </header>
+
+    <div class="container">
+        <h1 class="text-center mb-5" style="color: var(--color-dark-bg);">⭐ Useful Prompts Library</h1>
+
+        {% if prompts %}
+            {% for prompt in prompts %}
+                <div class="prompt-card">
+                    <div class="prompt-meta mb-2">
+                        <span><i class="fas fa-calendar-alt"></i> Added: {{ prompt.date_added.strftime('%b %d, %Y') }}</span>
+                        {% if prompt.category %}
+                        <span><i class="fas fa-tag"></i> Category: <strong>{{ prompt.category }}</strong></span>
+                        {% endif %}
+                    </div>
+
+                    <h3 class="prompt-title">{{ prompt.title }}</h3>
+                    
+                    <div class="prompt-description">
+                        {{ prompt.description }}
+                    </div>
+                </div>
+            {% endfor %}
+        {% else %}
+            <div class="alert alert-info text-center">
+                No prompts have been added to the library yet. Check back soon!
+            </div>
+        {% endif %}
+    </div>
+
+    <footer class="footer">
+        </footer>
+    
+    <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/popper.js@1.16.1/dist/umd/popper.min.js"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+</body>
+</html>
