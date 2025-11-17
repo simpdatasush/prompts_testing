@@ -365,6 +365,23 @@ class ApiRequestLog(db.Model):
     def __repr__(self):
         return f"ApiRequestLog(user_id={self.user_id}, endpoint='{self.endpoint}', status_code={self.status_code})"
 
+# app.py (Insert near other database models)
+from datetime import datetime
+# Ensure db (SQLAlchemy object) is imported/defined
+
+class PromptLibrary(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    # The actual prompt text / use case title
+    title = db.Column(db.String(256), nullable=False) 
+    # The full description/prompt text
+    description = db.Column(db.Text, nullable=False) 
+    # Where to be used (e.g., Category: "Creative Writing")
+    category = db.Column(db.String(100), nullable=True) 
+    date_added = db.Column(db.DateTime, default=datetime.utcnow)
+
+    def __repr__(self):
+        return f"PromptLibrary('{self.title}', '{self.category}')"
+
 # --- Flask-Login User Loader ---
 @login_manager.user_loader
 def load_user(user_id):
@@ -1898,10 +1915,15 @@ def download_prompts_txt():
     response.headers["Content-type"] = "text/plain"
     return response
 
-# NEW: all_prompts Page Route
+# app.py (Insert near other routes)
+
 @app.route('/all_prompts')
-def llm_benchmark():
-    return render_template('all_prompts.html', current_user=current_user)
+def all_prompts():
+    # Fetch all prompts, ordered by date_added (newest first)
+    prompts = PromptLibrary.query.order_by(PromptLibrary.date_added.desc()).all()
+    
+    # Pass the list of prompts to the new template
+    return render_template('all_prompts.html', prompts=prompts)
 
 # NEW: Admin Prompts Management Routes (using SamplePrompt model)
 @app.route('/admin/prompts', methods=['GET'])
