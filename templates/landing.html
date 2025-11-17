@@ -344,34 +344,39 @@
         </div>
 
         <div class="row">
-            <div class="col-md-8">
-                <section class="prompts-section mb-5">
-                    <h2 class="section-title">Latest Prompts</h2>
-                    <div class="row">
-                    {% for prompt in sample_prompts %}
-                    <div class="col-md-6 col-lg-4">
-                    <div class="card">
-                    <div class="card-body">
-                    <h5 class="card-title">Prompt Example #{{ loop.index }}</h5>
-                    <div class="card-prompt-group">
-                    <strong>Raw Prompt:</strong>
-                    <pre>{{ prompt.raw_prompt | truncate(150) if prompt.raw_prompt else 'N/A' }}</pre>
-                    </div>
-                    <div class="card-prompt-group">
-                    <strong>{{ prompt.display_type.capitalize() }} Prompt:</strong>
-                    <pre>{{ prompt.display_prompt_text | truncate(150) }}</pre>
-                    </div>
-                    <p class="meta-info">Added: {{ prompt.timestamp.strftime('%Y-%m-%d %H:%M') }}</p>
-                    </div>
-                    </div>
-                    </div>
-                    {% else %}
-                    <div class="col-12">
-                    <p class="text-center text-muted">No sample prompts available yet. Check back soon!</p>
-                    </div>
-                    {% endfor %}
-                    </div>
-                </section>
+    <div class="col-md-8">
+        <section class="prompts-section mb-5">
+            
+            <h2 class="section-title">
+                <a href="{{ url_for('all_prompts') }}" style="color: inherit; text-decoration: none;">
+                    Latest Prompts <i class="fas fa-arrow-right"></i>
+                </a>
+            </h2>
+            <div class="row">
+            {% for prompt in sample_prompts %}
+            <div class="col-md-6 col-lg-4">
+            <div class="card">
+            <div class="card-body">
+            <h5 class="card-title">Prompt Example #{{ loop.index }}</h5>
+            <div class="card-prompt-group">
+            <strong>Raw Prompt:</strong>
+            <pre>{{ prompt.raw_prompt | truncate(150) if prompt.raw_prompt else 'N/A' }}</pre>
+            </div>
+            <div class="card-prompt-group">
+            <strong>{{ prompt.display_type.capitalize() }} Prompt:</strong>
+            <pre>{{ prompt.display_prompt_text | truncate(150) }}</pre>
+            </div>
+            <p class="meta-info">Added: {{ prompt.timestamp.strftime('%Y-%m-%d %H:%M') }}</p>
+            </div>
+            </div>
+            </div>
+            {% else %}
+            <div class="col-12">
+            <p class="text-center text-muted">No sample prompts available yet. Check back soon!</p>
+            </div>
+            {% endfor %}
+            </div>
+        </section>
 
                 <section class="news-section mb-5">
                     <h2 class="section-title">Latest News</h2>
