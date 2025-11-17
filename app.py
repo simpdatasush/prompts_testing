@@ -2253,8 +2253,6 @@ def repost_gift(gift_id):
 # app.py (Insert this new route, ensure you import login_required and admin_required)
 
 @app.route('/admin/library_prompts', methods=['GET', 'POST'])
-@login_required
-# Assuming you have an @admin_required decorator:
 @admin_required 
 def admin_library_prompts():
     form = AddLibraryPromptForm()
