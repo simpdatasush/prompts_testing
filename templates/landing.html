@@ -379,7 +379,11 @@
         </section>
 
                 <section class="news-section mb-5">
-                    <h2 class="section-title">Latest News</h2>
+                    <h2 class="section-title">
+                            <a href="{{ url_for('all_news') }}" style="color: inherit; text-decoration: none;">
+                            <i class="fas fa-newspaper"></i> Latest News <i class="fas fa-arrow-right"></i>
+                            </a>
+                    </h2>
                     <div class="row">
                     {% for item in news_items %}
                     <div class="col-md-6 col-lg-4">
