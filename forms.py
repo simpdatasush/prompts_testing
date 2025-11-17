@@ -24,3 +24,25 @@ class AddLibraryPromptForm(FlaskForm):
     # Category choices are dynamically set in the route
     category = SelectField('Category (Where to be used)', validators=[DataRequired()])
     submit = SubmitField('Add Prompt to Library')
+
+# -------------------------------------------------------------
+# 3. NEW: AddNewsArticleForm
+# -------------------------------------------------------------
+class AddNewsArticleForm(FlaskForm):
+    title = StringField('Article Title', validators=[DataRequired(), Length(max=255)])
+    summary = TextAreaField('Summary/Snippet', validators=[DataRequired()])
+    source_url = StringField('Source URL', validators=[DataRequired(), URL()])
+    date_published = StringField('Date Published (YYYY-MM-DD)', validators=[Optional()])
+    submit = SubmitField('Add News Article')
+
+# -------------------------------------------------------------
+# 4. NEW: AddJobPostingForm
+# -------------------------------------------------------------
+class AddJobPostingForm(FlaskForm):
+    title = StringField('Job Title', validators=[DataRequired(), Length(max=255)])
+    company = StringField('Company Name', validators=[DataRequired(), Length(max=100)])
+    location = StringField('Location', validators=[Optional(), Length(max=100)])
+    description_summary = TextAreaField('Description Summary', validators=[DataRequired()])
+    job_url = StringField('Job URL (Application Link)', validators=[DataRequired(), URL()])
+    date_posted = StringField('Date Posted (YYYY-MM-DD)', validators=[Optional()])
+    submit = SubmitField('Add Job Posting')
