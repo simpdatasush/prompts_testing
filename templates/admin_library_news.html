@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-sclae=1.0">
+    <title>{{ title }}</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css">
+    <style>
+        /* Reusing styles from admin_prompts.html */
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f0f2f5; color: #333; line-height: 1.6; display: flex; flex-direction: column; min-height: 100vh; }
+        .app-header { background-color: #343a40; color: #ffffff; padding: 15px 30px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15); }
+        .app-header .logo-section a { color: #fff; text-decoration: none; font-size: 1.5rem; font-weight: 600; }
+        .main-content { padding-top: 20px; flex-grow: 1; }
+        .table thead th { background-color: #e9ecef; }
+        .footer { background-color: #343a40; color: #ffffff; padding: 15px 0; text-align: center; margin-top: auto; }
+        .card-header { background-color: #5CA0DC !important; /* Soft Bright Blue */ }
+    </style>
+</head>
+<body>
+    <header class="app-header">
+        <div class="logo-section">
+            <a href="{{ url_for('app_home') }}">SuperPrompter AI (Admin)</a>
+        </div>
+        <nav>
+            <a href="{{ url_for('admin_prompts') }}" class="btn btn-secondary btn-sm mr-2">Generated Prompts</a>
+            <a href="{{ url_for('admin_library_prompts') }}" class="btn btn-secondary btn-sm mr-2">Library Prompts</a>
+            <a href="{{ url_for('admin_library_news') }}" class="btn btn-primary btn-sm mr-2">News Articles</a>
+            <a href="{{ url_for('admin_library_jobs') }}" class="btn btn-secondary btn-sm">Job Postings</a>
+            <a href="{{ url_for('logout') }}" class="btn btn-danger btn-sm ml-3">Logout</a>
+        </nav>
+    </header>
+
+    <div class="container main-content">
+        <h1 class="mb-4">Manage News Articles</h1>
+
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ category }}">{{ message }}</div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        <!-- Add New Article Form -->
+        <div class="card mb-5">
+            <div class="card-header text-white">
+                Add New News Article
+            </div>
+            <div class="card-body">
+                <form method="POST">
+                    {{ form.hidden_tag() }}
+                    <div class="form-group">
+                        {{ form.title.label(class="form-label") }}
+                        {{ form.title(class="form-control", placeholder="e.g., Google Announces Gemini Pro 2.5 Update") }}
+                    </div>
+                    <div class="form-group">
+                        {{ form.source_url.label(class="form-label") }}
+                        {{ form.source_url(class="form-control", placeholder="https://example.com/source-link") }}
+                    </div>
+                    <div class="form-group">
+                        {{ form.date_published.label(class="form-label") }}
+                        {{ form.date_published(class="form-control", placeholder="Optional: YYYY-MM-DD") }}
+                    </div>
+                    <div class="form-group">
+                        {{ form.summary.label(class="form-label") }}
+                        {{ form.summary(class="form-control", rows=4, placeholder="A short, concise summary of the article...") }}
+                    </div>
+                    <button type="submit" class="btn btn-success">
+                        <i class="fas fa-plus-circle"></i> {{ form.submit.label }}
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        <!-- List of Existing News Articles -->
+        <h2>Existing Articles ({{ news_articles|length }})</h2>
+        <table class="table table-bordered table-striped">
+            <thead>
+                <tr>
+                    <th>Title</th>
+                    <th>Source URL</th>
+                    <th>Published</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for article in news_articles %}
+                <tr>
+                    <td>{{ article.title }}</td>
+                    <td><a href="{{ article.source_url }}" target="_blank">{{ article.source_url | truncate(50) }}</a></td>
+                    <td>{{ article.date_published.strftime('%Y-%m-%d') }}</td>
+                    <td>
+                        <button class="btn btn-info btn-sm" data-toggle="modal" data-target="#viewModal"
+                            onclick="viewArticleDetails('{{ article.title | e }}', '{{ article.summary | e }}')">
+                            View Summary
+                        </button>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Modal for viewing summary details -->
+    <div class="modal fade" id="viewModal" tabindex="-1" role="dialog" aria-labelledby="viewModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg" role="document">
+            <div class="modal-content">
+                <div class="modal-header bg-info text-white">
+                    <h5 class="modal-title" id="viewModalLabel">Article Summary</h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <h6>Title:</h6>
+                    <p id="articleTitleContent" class="p-2 bg-light rounded"></p>
+                    <h6 class="mt-3">Summary:</h6>
+                    <p id="articleSummaryContent" class="p-2 bg-light rounded"></p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <!-- End Modal -->
+
+    <footer class="footer">
+        <div class="footer-content">
+            This is developed by Sushrut Kulkarni &nbsp; Email: <a href="mailto:info@promptsgenerator.ai">info@promptsgenerator.ai</a>
+        </div>
+    </footer>
+  
+    <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/popper.js@1.16.1/dist/umd/popper.min.js"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+    <script>
+        function viewArticleDetails(title, summary) {
+            $('#articleTitleContent').text(title);
+            $('#articleSummaryContent').text(summary);
+        }
+    </script>
+</body>
+</html>
