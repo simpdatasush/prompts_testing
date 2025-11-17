@@ -33,5 +33,18 @@ class AddNewsArticleForm(FlaskForm):
     summary = TextAreaField('Summary/Snippet', validators=[DataRequired()])
     # FIX: URL is now imported
     source_url = StringField('Source URL', validators=[DataRequired()]) 
-    date_published = StringField('Date Published (YYYY-MM-DD)])
+    date_published = StringField('Date Published (YYYY-MM-DD)')
     submit = SubmitField('Add News Article')
+
+# -------------------------------------------------------------
+# 4. AddJobPostingForm (Used by /admin/library_jobs)
+# -------------------------------------------------------------
+class AddJobPostingForm(FlaskForm):
+    title = StringField('Job Title', validators=[DataRequired(), Length(max=255)])
+    company = StringField('Company Name', validators=[DataRequired(), Length(max=100)])
+    location = StringField('Location', validators=[Optional(), Length(max=100)])
+    description_summary = TextAreaField('Description Summary', validators=[DataRequired()])
+    # FIX: URL is now imported
+    job_url = StringField('Job URL (Application Link)', validators=[DataRequired()]) 
+    date_posted = StringField('Date Posted (YYYY-MM-DD)')
+    submit = SubmitField('Add Job Posting')
