@@ -400,6 +400,22 @@ class NewsArticle(db.Model):
     def __repr__(self):
         return f"NewsArticle('{self.title}', '{self.source_url}')"
 
+# app.py (Insert near other database models)
+from datetime import datetime
+# Ensure db (SQLAlchemy object) is imported/defined
+
+class JobPosting(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    title = db.Column(db.String(256), nullable=False) 
+    company = db.Column(db.String(100), nullable=False)
+    location = db.Column(db.String(100), nullable=True)
+    description_summary = db.Column(db.Text, nullable=False) # A short description
+    job_url = db.Column(db.String(512), nullable=True) # External link to apply
+    date_posted = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    def __repr__(self):
+        return f"JobPosting('{self.title}', '{self.company}')"
+
 # --- Flask-Login User Loader ---
 @login_manager.user_loader
 def load_user(user_id):
@@ -1951,6 +1967,17 @@ def all_news():
     
     # Pass the list of articles to the new template
     return render_template('all_news.html', articles=articles)
+
+
+# app.py (Insert near other routes)
+
+@app.route('/all_jobs')
+def all_jobs():
+    # Fetch all job postings, ordered by date_posted (newest first)
+    jobs = JobPosting.query.order_by(JobPosting.date_posted.desc()).all()
+    
+    # Pass the list of jobs to the new template
+    return render_template('all_jobs.html', jobs=jobs)
 
 # NEW: Admin Prompts Management Routes (using SamplePrompt model)
 @app.route('/admin/prompts', methods=['GET'])
