@@ -1,19 +1,26 @@
-# forms.py (Insert this new form class)
-
 from flask_wtf import FlaskForm
-from wtforms import StringField, TextAreaField, SelectField, SubmitField
-from wtforms.validators import DataRequired, Length
+from wtforms import StringField, PasswordField, TextAreaField, SelectField, SubmitField
+from wtforms.validators import DataRequired, Email, EqualTo, Length 
 
+# -------------------------------------------------------------
+# 1. RegistrationForm (The missing class that caused the error)
+# -------------------------------------------------------------
+class RegistrationForm(FlaskForm):
+    username = StringField('Username', validators=[DataRequired(), Length(min=2, max=20)])
+    email = StringField('Email', validators=[DataRequired(), Email()])
+    password = PasswordField('Password', validators=[DataRequired(), Length(min=6)])
+    confirm_password = PasswordField(
+        'Confirm Password', 
+        validators=[DataRequired(), EqualTo('password', message='Passwords must match')]
+    )
+    submit = SubmitField('Register')
+
+# -------------------------------------------------------------
+# 2. AddLibraryPromptForm (The new class we added)
+# -------------------------------------------------------------
 class AddLibraryPromptForm(FlaskForm):
-    # This will be the main heading/use case shown on the /all_prompts page
     title = StringField('Prompt Title / Use Case', validators=[DataRequired(), Length(max=255)])
-    
-    # The full, detailed prompt text (The Prompt Description)
     description = TextAreaField('Detailed Prompt Text', validators=[DataRequired()])
-    
-    # Category (Where to be used) - Populate choices dynamically in the route
-    category = SelectField('Category (Where to be used)', validators=[DataRequired()], 
-                           choices=[('General', 'General'), ('Code', 'Code'), ('Creative', 'Creative'), ('Other', 'Other')]) 
-                           # NOTE: You must populate the real choices from CATEGORIES_AND_SUBCATEGORIES in the route.
-    
+    # Category choices are dynamically set in the route
+    category = SelectField('Category (Where to be used)', validators=[DataRequired()])
     submit = SubmitField('Add Prompt to Library')
