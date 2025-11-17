@@ -386,6 +386,20 @@ class PromptLibrary(db.Model):
     def __repr__(self):
         return f"PromptLibrary('{self.title}', '{self.category}')"
 
+# app.py (Insert near other database models)
+from datetime import datetime
+# Ensure db (SQLAlchemy object) is imported/defined
+
+class NewsArticle(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    title = db.Column(db.String(256), nullable=False) 
+    summary = db.Column(db.Text, nullable=False) # A short summary of the news
+    source_url = db.Column(db.String(512), nullable=True) # The external link to the full article
+    date_published = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    def __repr__(self):
+        return f"NewsArticle('{self.title}', '{self.source_url}')"
+
 # --- Flask-Login User Loader ---
 @login_manager.user_loader
 def load_user(user_id):
@@ -1927,6 +1941,16 @@ def all_prompts():
     
     # Pass the list of prompts to the new template
     return render_template('all_prompts.html', prompts=prompts)
+
+# app.py (Insert near other routes)
+
+@app.route('/all_news')
+def all_news():
+    # Fetch all articles, ordered by date_published (newest first)
+    articles = NewsArticle.query.order_by(NewsArticle.date_published.desc()).all()
+    
+    # Pass the list of articles to the new template
+    return render_template('all_news.html', articles=articles)
 
 # NEW: Admin Prompts Management Routes (using SamplePrompt model)
 @app.route('/admin/prompts', methods=['GET'])
