@@ -406,7 +406,11 @@
                 </section>
 
                 <section class="jobs-section mb-5">
-                    <h2 class="section-title">Job Listings</h2>
+                    <h2 class="section-title">
+                            <a href="{{ url_for('all_jobs') }}" style="color: inherit; text-decoration: none;">
+                            <i class="fas fa-briefcase"></i> Latest Jobs <i class="fas fa-arrow-right"></i>
+                            </a>
+                    </h2>
                     <div class="row">
                     {% for job in job_listings %}
                     <div class="col-md-6 col-lg-4">
