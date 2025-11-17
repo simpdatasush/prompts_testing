@@ -1866,7 +1866,6 @@ def award_share_points():
 
 # --- Database Initialization (Run once to create tables) ---
 # ...
-
 # --- Get Saved Prompts Endpoint (using SavedPrompt model) ---
 @app.route('/get_saved_prompts', methods=['GET'])
 @login_required
@@ -2250,6 +2249,44 @@ def repost_gift(gift_id):
         db.session.rollback()
         flash(f'Error reposting gift: {e}', 'danger')
     return redirect(url_for('admin_gifts'))
+
+# app.py (Insert this new route, ensure you import login_required and admin_required)
+
+@app.route('/admin/library_prompts', methods=['GET', 'POST'])
+@login_required
+# Assuming you have an @admin_required decorator:
+@admin_required 
+def admin_library_prompts():
+    form = AddLibraryPromptForm()
+    
+    # Dynamically populate category choices from the global dict (defined in app.py)
+    # Assumes CATEGORIES_AND_SUBCATEGORIES is globally accessible
+    category_choices = [(c, c) for c in CATEGORIES_AND_SUBCATEGORIES.keys()]
+    form.category.choices = [('', 'Select Category')] + category_choices
+    
+    if form.validate_on_submit():
+        try:
+            new_prompt = PromptLibrary(
+                title=form.title.data,
+                description=form.description.data,
+                category=form.category.data,
+                date_added=datetime.utcnow()
+            )
+            db.session.add(new_prompt)
+            db.session.commit()
+            flash(f'Prompt "{form.title.data}" added successfully to the library!', 'success')
+            return redirect(url_for('admin_library_prompts'))
+        except Exception as e:
+            db.session.rollback()
+            flash(f'Error adding prompt: {e}', 'danger')
+    
+    # Fetch existing library prompts for display/management below the form
+    library_prompts = PromptLibrary.query.order_by(PromptLibrary.date_added.desc()).all()
+    
+    return render_template('admin_library_prompts.html', 
+                           form=form, 
+                           library_prompts=library_prompts,
+                           title='Admin - Manage Library Prompts')
 
 # --- Forgot Password Routes ---
 @app.route('/forgot_password', methods=['GET'])
