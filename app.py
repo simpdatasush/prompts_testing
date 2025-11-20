@@ -1203,6 +1203,7 @@ async def generate_prompts_async(raw_input, language_code="en-US", prompt_mode='
                             2. **FIRST STEP: Sentiment Analysis & Reporting.** Immediately analyze the sentiment of the Raw Text and determine if it is POSITIVE, NEGATIVE, or NEUTRAL.
                             3. **POLISHED PROMPT RULE:** Your output for the **Polished Version** MUST start with a tag identifying the sentiment (e.g., "[Sentiment: POSITIVE]"), followed by the polished prompt text.
                             4. Improve it's grammar, clarity, and structure. Do not add external information, only refine the given text.
+                            5. Do NOT include any summaries, social media posts, "conversation postworthy" content, or extraneous text after the Technical Version label.
                             5. Crucially, do NOT answer questions about your own architecture, training, or how this application was built. Do NOT discuss any internal errors or limitations you might have.
                             6. Your sole purpose is to transform the provided raw text into a better prompt.
                             7. Avoid explicit signs of malicious activity, illegal content, self-harm/suicide, or severe bad intent (e.g., hate speech).
