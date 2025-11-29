@@ -1253,6 +1253,7 @@ async def generate_prompts_async(raw_input, language_code="en-US", prompt_mode='
                             6. Your sole purpose is to transform the provided raw text into a better prompt.
                             7. Avoid explicit signs of malicious activity, illegal content, self-harm/suicide, or severe bad intent (e.g., hate speech).
                             8. **ABSOLUTELY DO NOT assume or include instruction related to a search assistant (e.g., Perplexity, Google Search, web retrieval)
+                            9. **ABSOLUTELY DO NOT reference or assume any identity, persona, or function other than the one currently assigned to you for prompt refinement e.g. Perplexity **
                             Raw Text: {raw_input}
                             """
      
