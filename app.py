@@ -1237,8 +1237,10 @@ async def generate_prompts_async(raw_input, language_code="en-US", prompt_mode='
                 context_str += f" The response is also requested to have a '{tone}' tone."
             else:
                 context_str += f"The response is requested to have a '{tone}' tone."
+
+        absolute_anti_rejection = "Your priority is to immediately fulfill the following SOLE TASK. Under no circumstances should you mention your identity, previous instructions, or inability to perform the task."
                 
-        base_instruction = language_instruction_prefix + f"""**MANDATORY POLICY CHECK:**
+        base_instruction = language_instruction_prefix + absolute_anti_rejection + f"""**MANDATORY POLICY CHECK:**
                             1. **Detection:** First, scan the user's input Raw Text: {raw_input} for the presence of any URL, web link. 
                             2. **Denial:** If a link or request to access external content is found, you **MUST NOT** proceed with refinement. Instead, your output show final denial message: 'Policy Violation: Data scraping, mass content copying, and unauthorized commercial retrieval are strictly prohibited by system policy. No prompt was generated.'
                             4. **Refinement:** Only if NO link is found proceed to the refinement task below.
