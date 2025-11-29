@@ -1337,7 +1337,7 @@ async def generate_reverse_prompt_async(input_text, language_code="en-US", promp
         return f"Input for reverse prompting exceeds the {MAX_REVERSE_PROMPT_CHARS} character limit. Please shorten your input."
 
     target_language_name = LANGUAGE_MAP.get(language_code, "English")
-    language_instruction_prefix = f"The output MUST be entirely in {target_language_name}. "
+    language_instruction_prefix = f"The output MUST be entirely in {target_language_name}. scan the user's input Raw Text: {raw_input} for the presence of any URL, web link, words synonymous with scam, fraud, if found directly show message as policy violation. cannot proceed request. "
 
     # Escape curly braces in input_text to prevent f-string parsing errors
     escaped_input_text = input_text.replace('{', '{{').replace('}', '}}')
