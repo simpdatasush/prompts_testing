@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Admin - Error Rankings & Diagnostics</title>
+<link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css">
+<style>
+/* --- Admin Styling (Copied from admin_news.html structure) --- */
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background-color: #f0f2f5;
+    color: #333;
+    line-height: 1.6;
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+}
+.app-header {
+    background-color: #343a40;
+    color: #ffffff;
+    padding: 15px 30px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+.container {
+    flex-grow: 1;
+    max-width: 1000px; /* Slightly wider for logs */
+    background-color: #fff;
+    padding: 30px;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+    margin: 50px auto;
+}
+h2 {
+    text-align: center;
+    color: #dc3545; /* Red accent for errors */
+    margin-bottom: 20px;
+}
+.table-responsive {
+    margin-top: 30px;
+}
+.table th {
+    background-color: #f8d7da; /* Light red/pink header */
+    color: #721c24;
+    font-weight: bold;
+}
+.alert-container {
+    margin-bottom: 20px;
+}
+.footer {
+    width: 100%;
+    padding: 15px;
+    text-align: center;
+    font-size: 0.8rem;
+    color: #777;
+    background-color: #e9ecef;
+    border-top: 1px solid #dee2e6;
+    margin-top: auto;
+}
+/* Style for rank badges */
+.rank-badge {
+    min-width: 40px;
+    font-weight: bold;
+}
+.rank-1 { background-color: gold; color: #333; }
+.rank-2 { background-color: silver; color: #333; }
+.rank-3 { background-color: #cd7f32; color: white; }
+</style>
+</head>
+<body>
+<header class="app-header">
+    <div class="logo-section">
+        <img src="https://placehold.co/40x40/007bff/ffffff?text=AI" alt="SuperPrompter Logo" class="app-logo">
+        <h1 class="header-title">SuperPrompter</h1>
+    </div>
+    <div class="auth-section">
+        <a href="{{ url_for('app_home') }}" class="btn btn-outline-light btn-sm mr-2">App Home</a>
+        <a href="{{ url_for('admin_news') }}" class="btn btn-outline-light btn-sm mr-2">Manage News</a>
+        <a href="{{ url_for('admin_jobs') }}" class="btn btn-outline-light btn-sm mr-2">Manage Jobs</a>
+        <a href="{{ url_for('admin_prompts') }}" class="btn btn-outline-light btn-sm mr-2">Manage Prompts</a>
+        <a href="{{ url_for('admin_users') }}" class="btn btn-outline-light btn-sm mr-2">Manage Users</a>
+        <a href="{{ url_for('admin_api_performance') }}" class="btn btn-outline-light btn-sm mr-2">API Performance</a>
+        <a href="{{ url_for('admin_gifts') }}" class="btn btn-outline-light btn-sm mr-2">Manage Gifts</a>
+        {% if current_user.is_authenticated %}
+        <span class="navbar-text mr-2">Logged in as: <strong>{{ current_user.username }}</strong></span>
+        <a href="{{ url_for('logout') }}" class="btn btn-outline-light btn-sm">Logout</a>
+        {% endif %}
+    </div>
+</header>
+
+
+<div class="container">
+    <h2><i class="fas fa-exclamation-triangle"></i> Ranked Error Diagnostics</h2>
+    <p class="text-center text-muted">This dashboard tracks the frequency (ranking) of specific Python exceptions and API failures occurring in the backend.</p>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+    <div class="alert-container">
+    {% for category, message in messages %}
+    <div class="alert alert-{{ category }}">{{ message }}</div>
+    {% endfor %}
+    </div>
+    {% endif %}
+    {% endwith %}
+
+    {% if ranked_errors %}
+    <div class="table-responsive">
+        <table class="table table-striped table-hover table-bordered">
+            <thead>
+                <tr>
+                    <th style="width: 50px;">Rank</th>
+                    <th>Error Type / Hash ID</th>
+                    <th>Frequency (Count)</th>
+                    <th>First Seen</th>
+                    <th>Last Seen</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for error in ranked_errors %}
+                <tr>
+                    <td>
+                        {% if loop.index == 1 %}
+                            <span class="badge rank-badge rank-1">#1</span>
+                        {% elif loop.index == 2 %}
+                            <span class="badge rank-badge rank-2">#2</span>
+                        {% elif loop.index == 3 %}
+                            <span class="badge rank-badge rank-3">#3</span>
+                        {% else %}
+                            <span class="badge rank-badge badge-secondary">#{{ loop.index }}</span>
+                        {% endif %}
+                    </td>
+                    <td><strong class="text-danger">{{ error.error_type }}</strong><br><small>{{ error.error_hash | truncate(30) }}</small></td>
+                    <td>{{ error.count }}</td>
+                    <td>{{ error.first_occurrence.strftime('%Y-%m-%d %H:%M') }}</td>
+                    <td>{{ error.last_occurrence.strftime('%Y-%m-%d %H:%M') }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <p class="text-center text-success mt-5"><i class="fas fa-check-circle"></i> No errors logged in the summary table!</p>
+    {% endif %}
+</div>
+
+
+<footer class="footer">
+    <div class="footer-content">
+        This is developed by Sushrut Kulkarni &nbsp; Email: <a href="mailto:info@promptsgenerator.ai">info@promptsgenerator.ai</a>
+    </div>
+</footer>
+</body>
+</html>
