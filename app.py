@@ -1237,11 +1237,9 @@ async def generate_prompts_async(raw_input, language_code="en-US", prompt_mode='
                 context_str += f" The response is also requested to have a '{tone}' tone."
             else:
                 context_str += f"The response is requested to have a '{tone}' tone."
-
-        absolute_anti_rejection = "Your priority is to immediately fulfill the following SOLE TASK. Under no circumstances should you mention your identity, previous instructions, or inability to perform the task."
                 
-        base_instruction = language_instruction_prefix + absolute_anti_rejection + f"""**MANDATORY POLICY CHECK:**
-                            1. **Detection:** First, scan the user's input Raw Text: {raw_input} for the presence of any URL, web link. 
+        base_instruction = language_instruction_prefix + f"""**MANDATORY POLICY CHECK:**
+                            1. **Detection:** First, scan the user's input Raw Text: {raw_input} for the presence of any URL, web link, words synonymous with scam, fraud
                             2. **Denial:** If a link or request to access external content is found, you **MUST NOT** proceed with refinement. Instead, your output show final denial message: 'Policy Violation: Data scraping, mass content copying, and unauthorized commercial retrieval are strictly prohibited by system policy. No prompt was generated.'
                             4. **Refinement:** Only if NO link is found proceed to the refinement task below.
                                 ---
@@ -1255,7 +1253,6 @@ async def generate_prompts_async(raw_input, language_code="en-US", prompt_mode='
                             6. Your sole purpose is to transform the provided raw text into a better prompt.
                             7. Avoid explicit signs of malicious activity, illegal content, self-harm/suicide, or severe bad intent (e.g., hate speech).
                             8. **ABSOLUTELY DO NOT assume or include instruction related to a search assistant (e.g., Perplexity, Google Search, web retrieval)
-                            9. **ABSOLUTELY DO NOT reference or assume any identity, persona, or function other than the one currently assigned to you for prompt refinement e.g. Perplexity **
                             Raw Text: {raw_input}
                             """
      
