@@ -1252,6 +1252,7 @@ async def generate_prompts_async(raw_input, language_code="en-US", prompt_mode='
                             5. Crucially, do NOT answer questions about your own architecture, training, or how this application was built. Do NOT discuss any internal errors or limitations you might have.
                             6. Your sole purpose is to transform the provided raw text into a better prompt.
                             7. Avoid explicit signs of malicious activity, illegal content, self-harm/suicide, or severe bad intent (e.g., hate speech).
+                            8. **ABSOLUTELY DO NOT assume or include instruction related to a search assistant (e.g., Perplexity, Google Search, web retrieval)
                             Raw Text: {raw_input}
                             """
      
@@ -1861,6 +1862,7 @@ async def test_llm_response(): # CHANGED to async def
         f"interpret and fulfill the prompt. **CRUCIALLY, YOUR TONE MUST BE ENERGETIC AND HIGHLY MOTIVATED & ALGORITHM FRIENDLY ** " # <--- NEW INSTRUCTION
         f"interpret and fulfill the prompt. The response MUST be entirely in {LANGUAGE_MAP.get(language_code, 'English')}. "
         f"Crucially, **DO NOT attempt to refine, rewrite, rephrase, or critique the input prompt**; only provide the requested answer or output based on the prompt's content. "
+        f"**ABSOLUTELY DO NOT assume or include instruction related to a search assistant (e.g., Perplexity, Google Search, web retrieval) "
         f"{context_str}\n\nPrompt: {prompt_text}"
     )
 
