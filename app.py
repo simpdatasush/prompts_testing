@@ -1102,7 +1102,7 @@ async def generate_prompts_async(raw_input, language_code="en-US", prompt_mode='
         }
 
     target_language_name = LANGUAGE_MAP.get(language_code, "English")
-    language_instruction_prefix = f"The output MUST be entirely in {target_language_name}. "
+    language_instruction_prefix = f"The output MUST be entirely in {target_language_name}, scan the user's input Raw Text: {raw_input} for the presence of any URL, web link, words synonymous with scam, fraud, if found directly show message as policy violation. cannot proceed request. "
     
     generation_config = {
         "temperature": 0.1 # Default temperature for all generations
