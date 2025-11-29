@@ -416,6 +416,19 @@ class JobPosting(db.Model):
     def __repr__(self):
         return f"JobPosting('{self.title}', '{self.company}')"
 
+# app.py (New ErrorLogSummary model)
+
+class ErrorLogSummary(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    error_hash = db.Column(db.String(64), unique=True, nullable=False)  # Unique hash of the error type
+    error_type = db.Column(db.String(100), nullable=False)             # E.g., 'ResourceExhausted', 'NameError'
+    first_occurrence = db.Column(db.DateTime, default=datetime.utcnow)
+    last_occurrence = db.Column(db.DateTime, default=datetime.utcnow)
+    count = db.Column(db.Integer, default=1)
+
+    def __repr__(self):
+        return f"ErrorSummary('{self.error_type}', Count: {self.count}')"
+
 # --- Flask-Login User Loader ---
 @login_manager.user_loader
 def load_user(user_id):
@@ -490,6 +503,38 @@ async def generate_content_with_retry(model, prompt_parts, generation_config=Non
 
     raise Exception(f"Failed to generate content after {max_retries} retries.")
 
+# app.py (New helper function placed near log_llm_response)
+def aggregate_error(error_message, error_type='Unknown Error'):
+    """Checks for existing error type in the summary table and increments count, or creates a new entry."""
+    
+    # Use the error type string to generate a predictable hash
+    error_hash = hashlib.sha256(error_type.encode('utf-8')).hexdigest()
+    now = datetime.utcnow()
+    
+    try:
+        # Search the database for the unique hash
+        summary_entry = ErrorLogSummary.query.filter_by(error_hash=error_hash).first()
+        
+        if summary_entry:
+            # Update existing entry
+            summary_entry.count += 1
+            summary_entry.last_occurrence = now
+            db.session.add(summary_entry)
+        else:
+            # Create new entry
+            new_entry = ErrorLogSummary(
+                error_hash=error_hash,
+                error_type=error_type,
+                first_occurrence=now,
+                last_occurrence=now,
+                count=1
+            )
+            db.session.add(new_entry)
+            
+        # NOTE: The commit must happen in the calling route's exception block for transaction safety.
+        
+    except Exception as e:
+        app.logger.error(f"FATAL: Error during error aggregation process: {e}")
 
 # --- Response Filtering Function (from provided docx) ---
 def filter_gemini_response(text):
@@ -1534,8 +1579,31 @@ async def generate(): # CHANGED FROM ASYNC
 
         return jsonify(results)
     except Exception as e:
+        # --- EXCEPTION HANDLING BLOCK STARTS HERE ---
         app.logger.exception("Error during prompt generation in endpoint:")
-        return jsonify({"error": f"An unexpected server error occurred: {e}. Please check server logs for details."}), 500
+        
+        # Capture error type and output details
+        error_output = f"An unexpected server error occurred: {e}"
+        error_type = type(e).__name__ 
+
+        # 1. Aggregate the error count
+        aggregate_error(error_output, error_type=error_type)
+        
+        # 2. Rollback user stats (which were potentially staged but not committed)
+        db.session.rollback() 
+        
+        # 3. Log failure (using the generic model for the failed forward prompt)
+        log_llm_response(current_user.id, 'generate_FAIL', prompt_mode, prompt_input, error_output, model_name='dynamic')
+        
+        # 4. Commit the failure log and error summary update
+        try:
+            db.session.commit()
+        except Exception as commit_e:
+            app.logger.error(f"Failed to commit FAILURE log for user {current_user.id}: {commit_e}")
+
+        # 5. Return filtered error message
+        filtered_error_message = filter_gemini_response(f"An unexpected server error occurred: {e}. Please check server logs for details.")
+        return jsonify({"error": filtered_error_message}), 500
 
 
 # --- NEW: Reverse Prompt Endpoint ---
@@ -1620,8 +1688,35 @@ async def reverse_prompt(): # CHANGED FROM ASYNC
         return jsonify({"inferred_prompt": inferred_prompt})
     except Exception as e:
         app.logger.exception("Error during reverse prompt generation in endpoint:")
-        return jsonify({"error": f"An unexpected server error occurred: {e}. Please check server logs for details."}), 500
+        
+        # --- LOGGING FAILURE AND ROLLBACK ---
+        
+        # 1. Rollback any pending user stat/point changes
+        db.session.rollback() 
 
+        # 2. Log the failure
+        error_output = f"An unexpected server error occurred during reverse prompt: {e}"
+        error_type = type(e).__name__
+        aggregate_error(error_output, error_type=error_type) # Aggregate error for ranking
+        
+        log_llm_response(
+            user.id, 
+            'reverse_prompt_FAIL', 
+            prompt_mode, 
+            input_text, 
+            error_output, 
+            model_name='N/A'
+        )
+
+        # 3. Commit only the failure log and error summary
+        try:
+            db.session.commit() 
+        except Exception as commit_e:
+            app.logger.error(f"Failed to commit FAILURE log/summary for user {user.id}: {commit_e}")
+
+        # 4. Return filtered error message
+        filtered_error_message = filter_gemini_response(f"An unexpected server error occurred during reverse prompt: {e}. Please check server logs for details.")
+        return jsonify({"error": filtered_error_message}), 500
 
 # --- NEW: Route to Handle Perplexity Search Request from Frontend ---
 # app.py (Modified /search_perplexity route)
@@ -1800,8 +1895,28 @@ async def test_llm_response(): # CHANGED to async def
             "temperature": llm_temperature
         })
     except Exception as e:
+        # --- EXCEPTION HANDLING BLOCK STARTS HERE ---
         app.logger.exception("Error during LLM sample response generation:")
-        # Ensure error message is filtered before sending to frontend
+        
+        error_output = f"An unexpected server error occurred during sample response generation: {e}"
+        error_type = type(e).__name__
+        
+        # 1. Aggregate the error count
+        aggregate_error(error_output, error_type=error_type)
+        
+        # 2. Rollback user stats
+        db.session.rollback() 
+        
+        # 3. Log the failure
+        log_llm_response(current_user.id, 'test_llm_response_FAIL', prompt_mode, prompt_text, error_output, model_name='N/A')
+        
+        # 4. Commit failure logs and error summary update
+        try:
+            db.session.commit()
+        except Exception as commit_e:
+            app.logger.error(f"Failed to commit FAILURE log for user {current_user.id}: {commit_e}")
+
+        # 5. Return filtered error message
         filtered_error_message = filter_gemini_response(f"An unexpected server error occurred during sample response generation: {e}. Please check server logs for details.")
         return jsonify({"error": filtered_error_message}), 500
 
@@ -2738,6 +2853,15 @@ def update_user_access(user_id):
     
     return redirect(url_for('admin_users'))
 
+# app.py (New route for Admin display)
+@app.route('/admin/error_rankings', methods=['GET'])
+@admin_required
+def admin_error_rankings():
+    # Query all errors, ordered by count (highest to lowest)
+    ranked_errors = ErrorLogSummary.query.order_by(ErrorLogSummary.count.desc()).all()
+    
+    # You would then pass this data to an admin template for display
+    return render_template('admin_rankings.html', ranked_errors=ranked_errors, current_user=current_user)
 
 # NEW: API endpoint for external clients using API keys to generate prompts
 @app.route('/api/v1/generate', methods=['POST'])
