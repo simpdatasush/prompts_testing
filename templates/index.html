@@ -708,26 +708,29 @@ text-align: right; /* Align metadata to the right */
 <a href="{{ url_for('admin_gifts') }}" class="btn btn-outline-light btn-sm mr-2">Manage Gifts</a>
 <a href="{{ url_for('admin_users') }}" class="btn btn-outline-light btn-sm mr-2">Manage Users</a>
 <a href="{{ url_for('admin_api_performance') }}" class="btn btn-outline-light btn-sm mr-2">API Performance</a>
+    <a href="{{ url_for('prompt_poller_view') }}" class="btn btn-outline-light btn-sm mr-2">Prompt Poller</a>
+    <a href="{{ url_for('llm_benchmark') }}" class="btn btn-outline-light btn-sm mr-2">LLM Benchmarks</a>
 <span class="navbar-text mr-2">Logged in as: <strong>{{ current_user.username }}</strong></span>
 <a href="{{ url_for('logout') }}" class="btn btn-outline-light btn-sm">Logout</a>
 {% elif current_user.is_authenticated %}
-    <button id="theme_switcher_btn" class="btn btn-outline-light btn-sm mr-2" onclick="toggleTheme()">
-        <i class="fas fa-sun"></i> <span>Light Mode</span>
-    </button>
+<button id="theme_switcher_btn" class="btn btn-outline-light btn-sm mr-2" onclick="toggleTheme()">
+<i class="fas fa-sun"></i> <span>Light Mode</span>
+</button>
+    <a href="{{ url_for('prompt_poller_view') }}" class="btn btn-outline-light btn-sm mr-2">Prompt Poller</a>
 <a href="{{ url_for('llm_benchmark') }}" class="btn btn-outline-light btn-sm mr-2">LLM Benchmarks</a>
 <a href="https://buymeacoffee.com/simpaisush" target="_blank" class="subscribe-btn mr-2">Subscribe</a>
 <span class="navbar-text mr-2">Welcome, <strong class="username">{{ current_user.username }}</strong>!</span>
 <a href="{{ url_for('logout') }}" class="btn btn-outline-light btn-sm">Logout</a>
 {% else %}
-    <button id="theme_switcher_btn_guest" class="btn btn-outline-light btn-sm mr-2" onclick="toggleTheme()">
-        <i class="fas fa-sun"></i> <span>Light Mode</span>
-    </button>
+<button id="theme_switcher_btn_guest" class="btn btn-outline-light btn-sm mr-2" onclick="toggleTheme()">
+<i class="fas fa-sun"></i> <span>Light Mode</span>
+</button>
+    <a href="{{ url_for('prompt_poller_view') }}" class="btn btn-outline-light btn-sm mr-2">Prompt Poller</a>
 <a href="{{ url_for('llm_benchmark') }}" class="btn btn-outline-light btn-sm mr-2">LLM Benchmarks</a>
 <a href="{{ url_for('login') }}" class="btn btn-outline-light btn-sm mr-2">Login</a>
 <a href="{{ url_for('register') }}" class="btn btn-light btn-sm">Register</a>
 {% endif %}
 </div>
-</header>
 
 
 <div class="main-content-wrapper">
