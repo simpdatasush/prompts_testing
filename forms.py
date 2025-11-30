@@ -1,6 +1,6 @@
 from flask_wtf import FlaskForm
-from wtforms import StringField, PasswordField, TextAreaField, SelectField, SubmitField
-from wtforms.validators import DataRequired, Email, EqualTo, Length 
+from wtforms import StringField, PasswordField, TextAreaField, SelectField, SubmitField, DateField, IntegerField
+from wtforms.validators import DataRequired, Email, EqualTo, Length, Optional, NumberRange
 
 # -------------------------------------------------------------
 # 1. RegistrationForm (The missing class that caused the error)
