@@ -309,26 +309,23 @@
             <h1 class="header-title">SuperPrompter</h1>
         </div>
         <div class="auth-section">
-{% if current_user.is_authenticated %}
-<a href="{{ url_for('app_home') }}" class="btn btn-outline-light btn-sm mr-2">App Home</a>
-    <a href="{{ url_for('prompt_poller_view') }}" class="btn btn-outline-light btn-sm mr-2">Prompt Poller</a>
-<a href="{{ url_for('llm_benchmark') }}" class="btn btn-outline-light btn-sm mr-2">LLM Benchmarks</a>
-{% if current_user.is_admin %}
-<a href="{{ url_for('admin_prompts') }}" class="btn btn-outline-light btn-sm mr-2">Manage Prompts</a>
-<a href="{{ url_for('admin_news') }}" class="btn btn-outline-light btn-sm mr-2">Manage News</a>
-<a href="{{ url_for('admin_jobs') }}" class="btn btn-outline-light btn-sm mr-2">Manage Jobs</a>
-        <a href="{{ url_for('admin_gifts') }}" class="btn btn-outline-light btn-sm mr-2">Manage Gifts</a>
-        <a href="{{ url_for('admin_polls') }}" class="btn btn-outline-light btn-sm mr-2">Manage Polls</a>
-{% endif %}
-<span class="navbar-text mr-2">Logged in as: <strong>{{ current_user.username }}</strong></span>
-<a href="{{ url_for('logout') }}" class="btn btn-outline-light btn-sm">Logout</a>
-{% else %}
-    <a href="{{ url_for('prompt_poller_view') }}" class="btn btn-outline-light btn-sm mr-2">Prompt Poller</a>
-<a href="{{ url_for('llm_benchmark') }}" class="btn btn-outline-light btn-sm mr-2">LLM Benchmarks</a>
-<a href="{{ url_for('login') }}" class="btn btn-outline-light btn-sm mr-2">Login</a>
-<a href="{{ url_for('register') }}" class="btn btn-light btn-sm">Register</a>
-{% endif %}
-</div>
+            {% if current_user.is_authenticated %}
+                <a href="{{ url_for('app_home') }}" class="btn btn-outline-light btn-sm mr-2">App Home</a>
+                <a href="{{ url_for('llm_benchmark') }}" class="btn btn-outline-light btn-sm mr-2">LLM Benchmarks</a>
+                {% if current_user.is_admin %}
+                    <a href="{{ url_for('admin_prompts') }}" class="btn btn-outline-light btn-sm mr-2">Manage Prompts</a>
+                    <a href="{{ url_for('admin_news') }}" class="btn btn-outline-light btn-sm mr-2">Manage News</a>
+                    <a href="{{ url_for('admin_jobs') }}" class="btn btn-outline-light btn-sm mr-2">Manage Jobs</a>
+                    <a href="{{ url_for('admin_gifts') }}" class="btn btn-outline-light btn-sm mr-2">Manage Gifts</a>
+                {% endif %}
+                <span class="navbar-text mr-2">Logged in as: <strong>{{ current_user.username }}</strong></span>
+                <a href="{{ url_for('logout') }}" class="btn btn-outline-light btn-sm">Logout</a>
+            {% else %}
+                <a href="{{ url_for('llm_benchmark') }}" class="btn btn-outline-light btn-sm mr-2">LLM Benchmarks</a>
+                <a href="{{ url_for('login') }}" class="btn btn-outline-light btn-sm mr-2">Login</a>
+                <a href="{{ url_for('register') }}" class="btn btn-light btn-sm">Register</a>
+            {% endif %}
+        </div>
     </header>
 
 
@@ -486,3 +483,4 @@
     <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
 </body>
 </html>
+
