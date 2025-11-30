@@ -429,37 +429,6 @@ class ErrorLogSummary(db.Model):
     def __repr__(self):
         return f"ErrorSummary('{self.error_type}', Count: {self.count}')"
 
-# app.py (New Models placed near other database models)
-
-class PollQuestion(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    question_text = db.Column(db.String(500), nullable=False)
-    option_A_text = db.Column(db.String(100), nullable=False)
-    option_B_text = db.Column(db.String(100), nullable=False)
-    category = db.Column(db.String(50), nullable=True) # e.g., AI Policy, Tech Futures
-    closing_date = db.Column(db.Date, nullable=True) 
-    total_volume = db.Column(db.Float, default=0.0) # Mock volume/investment
-    is_active = db.Column(db.Boolean, default=True)
-    timestamp = db.Column(db.DateTime, default=datetime.utcnow)
-    
-    # Relationship to store votes
-    votes = db.relationship('PollVote', backref='question', lazy=True)
-
-    def __repr__(self):
-        return f"PollQuestion('{self.question_text[:30]}')"
-
-class PollVote(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
-    question_id = db.Column(db.Integer, db.ForeignKey('poll_question.id'), nullable=False)
-    selected_option = db.Column(db.String(1), nullable=False) # 'A' or 'B'
-    timestamp = db.Column(db.DateTime, default=datetime.utcnow)
-
-    def __repr__(self):
-        return f"PollVote(User: {self.user_id}, Q: {self.question_id}, Option: {self.selected_option})"
-
-# NOTE: You MUST delete site.db and restart your application after adding these models.
-
 # --- Flask-Login User Loader ---
 @login_manager.user_loader
 def load_user(user_id):
@@ -1487,84 +1456,6 @@ def llm_benchmark():
     return render_template('llm_benchmark.html', current_user=current_user)
 
 # app.py (New public route added near /llm_benchmark)
-
-@app.route('/prompt_poller')
-def prompt_poller_view():
-    # This route is public. Data fetching logic is in a separate API call below.
-    return render_template('prompt_poller.html', current_user=current_user)
-
-
-@app.route('/get_polls', methods=['GET'])
-def get_polls():
-    """Fetches active polls and calculates current vote percentages."""
-    
-    polls = PollQuestion.query.filter_by(is_active=True).order_by(PollQuestion.timestamp.desc()).all()
-    polls_data = []
-
-    for poll in polls:
-        total_votes = len(poll.votes)
-        
-        # Calculate vote counts
-        votes_a = len([v for v in poll.votes if v.selected_option == 'A'])
-        votes_b = total_votes - votes_a
-        
-        # Calculate percentages
-        percent_a = round((votes_a / total_votes) * 100, 1) if total_votes else 50.0
-        percent_b = round((votes_b / total_votes) * 100, 1) if total_votes else 50.0
-        
-        # Check if current user has voted (Only works if user is logged in)
-        user_voted = False
-        if current_user.is_authenticated:
-            user_voted = PollVote.query.filter_by(user_id=current_user.id, question_id=poll.id).first() is not None
-        
-        polls_data.append({
-            'id': poll.id,
-            'question': poll.question_text,
-            'option_A': poll.option_A_text,
-            'option_B': poll.option_B_text,
-            'percent_A': percent_a,
-            'percent_B': percent_b,
-            'total_volume': poll.total_volume,
-            'user_voted': user_voted,
-            'is_open': poll.closing_date is None or poll.closing_date >= datetime.utcnow().date(),
-        })
-
-    return jsonify(polls_data)
-
-# app.py (New private route for voting)
-
-@app.route('/submit_vote', methods=['POST'])
-@login_required # ONLY registered users can vote
-def submit_vote():
-    data = request.get_json()
-    question_id = data.get('question_id')
-    selection = data.get('selection') # 'A' or 'B'
-    
-    # Validation and error handling
-    if not question_id or selection not in ['A', 'B']:
-        return jsonify({'success': False, 'message': 'Invalid poll data.'}), 400
-
-    poll = PollQuestion.query.get(question_id)
-    if not poll or not poll.is_active or (poll.closing_date and poll.closing_date < datetime.utcnow().date()):
-        return jsonify({'success': False, 'message': 'Poll is closed or invalid.'}), 400
-        
-    # Check if user already voted
-    if PollVote.query.filter_by(user_id=current_user.id, question_id=question_id).first():
-        return jsonify({'success': False, 'message': 'You have already voted on this poll.'}), 409 # Conflict
-
-    try:
-        new_vote = PollVote(
-            user_id=current_user.id,
-            question_id=question_id,
-            selected_option=selection
-        )
-        db.session.add(new_vote)
-        db.session.commit()
-        return jsonify({'success': True, 'message': 'Vote recorded.'})
-    except Exception as e:
-        db.session.rollback()
-        return jsonify({'success': False, 'message': f'Database error: {e}'}), 500
-
 
 @app.route('/generate', methods=['POST'])
 @login_required # Protect this route
