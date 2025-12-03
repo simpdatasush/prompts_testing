@@ -865,6 +865,7 @@ Upload an image containing handwritten text. The AI will attempt to recognize it
 <button class="save-button btn btn-sm btn-primary" data-prompt-type="polished"><i class="fas fa-save"></i> Save</button>
 <button class="btn btn-sm btn-info share-button" data-llm-share="x" data-prompt-element-id="polished_output" title="Share on X"><i class="fab fa-x-twitter"></i></button>
 <button class="btn btn-sm btn-info share-button" data-llm-share="linkedin" data-prompt-element-id="polished_output" title="Share on LinkedIn"><i class="fab fa-linkedin-in"></i></button>
+<button class="btn btn-sm btn-info share-button" data-llm-share="slack" data-prompt-element-id="polished_output" title="Share on Slack"><i class="fab fa-slack"></i></button>
 </div>
 </div>
 </div>
@@ -885,6 +886,7 @@ Upload an image containing handwritten text. The AI will attempt to recognize it
 <button class="save-button btn btn-sm btn-primary" data-prompt-type="creative"><i class="fas fa-save"></i> Save</button>
 <button class="btn btn-sm btn-info share-button" data-llm-share="x" data-prompt-element-id="creative_output" title="Share on X"><i class="fab fa-x-twitter"></i></button>
 <button class="btn btn-sm btn-info share-button" data-llm-share="linkedin" data-prompt-element-id="creative_output" title="Share on LinkedIn"><i class="fab fa-linkedin-in"></i></button>
+<button class="btn btn-sm btn-info share-button" data-llm-share="slack" data-prompt-element-id="creative_output" title="Share on Slack"><i class="fab fa-slack"></i></button>
 </div>
 </div>
 </div>
@@ -905,6 +907,7 @@ Upload an image containing handwritten text. The AI will attempt to recognize it
 <button class="save-button btn btn-sm btn-primary" data-prompt-type="technical"><i class="fas fa-save"></i> Save</button>
 <button class="btn btn-sm btn-info share-button" data-llm-share="x" data-prompt-element-id="technical_output" title="Share on X"><i class="fab fa-x-twitter"></i></button>
 <button class="btn btn-sm btn-info share-button" data-llm-share="linkedin" data-prompt-element-id="technical_output" title="Share on LinkedIn"><i class="fab fa-linkedin-in"></i></button>
+<button class="btn btn-sm btn-info share-button" data-llm-share="slack" data-prompt-element-id="technical_output" title="Share on Slack"><i class="fab fa-slack"></i></button>
 </div>
 </div>
 </div>
@@ -2106,7 +2109,12 @@ const appUrl = window.location.origin;
 // The URL parameter is mandatory and creates the link preview.
 // We rely on the user to paste the generated text manually for maximum effect.
 url = `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(appUrl)}`;
-} else {
+}else if (platform === 'slack') {
+    // NEW: Slack Web Share (allows pre-populating text)
+    const appUrl = window.location.origin;
+    url = `https://slack.com/share/text?text=${encodeURIComponent(shareText)}&url=${encodeURIComponent(appUrl)}`;
+} 
+else {
 return;
 }
 
