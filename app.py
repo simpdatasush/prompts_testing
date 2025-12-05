@@ -2398,13 +2398,6 @@ def repost_ai_app(app_id):
     return redirect(url_for('admin_ai_apps'))
 
 
-# app.py (New public view routes)
-@app.route('/library_ai_apps')
-def library_ai_apps():
-    apps = AiApp.query.order_by(AiApp.timestamp.desc()).all()
-    # Assuming standard header will be rendered with current_user
-    return render_template('library_ai_apps.html', apps=apps, current_user=current_user)
-
 # --- Change Password Route ---
 @app.route('/change_password', methods=['GET', 'POST'])
 @login_required
