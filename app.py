@@ -2397,6 +2397,12 @@ def repost_ai_app(app_id):
         flash(f'Error reposting AI Application: {e}', 'danger')
     return redirect(url_for('admin_ai_apps'))
 
+@app.route('/library_ai_apps')
+def library_ai_apps():
+    # Fetch ALL AI App records
+    apps = AiApp.query.order_by(AiApp.timestamp.desc()).all() 
+    # Render the public viewing template
+    return render_template('library_ai_apps.html', apps=apps, current_user=current_user)
 
 # --- Change Password Route ---
 @app.route('/change_password', methods=['GET', 'POST'])
