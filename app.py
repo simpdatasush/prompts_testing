@@ -24,7 +24,7 @@ import requests # For Perplexity API HTTP calls (if we stick to that instead of 
 from perplexity import Perplexity, APIError as PerplexityAPIError
 # app.py (Near the top of the file)
 # Fix for the Import Error
-from forms import AddLibraryPromptForm, RegistrationForm, AddNewsArticleForm, AddJobPostingForm  # Add all forms here
+from forms import AddLibraryPromptForm, RegistrationForm, AddNewsArticleForm, AddJobPostingForm, AddAIAppForm  # Add all forms here
 from flask_login import login_required
 
 # --- NEW IMPORTS FOR AUTHENTICATION ---
@@ -428,6 +428,19 @@ class ErrorLogSummary(db.Model):
 
     def __repr__(self):
         return f"ErrorSummary('{self.error_type}', Count: {self.count}')"
+
+class AIApp(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(256), nullable=False)
+    developer = db.Column(db.String(100), nullable=False)
+    summary = db.Column(db.Text, nullable=False)
+    app_url = db.Column(db.String(512), nullable=True)
+    category = db.Column(db.String(100), nullable=True)
+    date_launched = db.Column(db.DateTime, default=datetime.utcnow) 
+    date_added = db.Column(db.DateTime, default=datetime.utcnow)
+
+    def __repr__(self):
+        return f"AIApp('{self.name}', '{self.developer}')"
 
 # --- Flask-Login User Loader ---
 @login_manager.user_loader
@@ -1396,6 +1409,7 @@ def landing():
     job_listings = JobListing.query.order_by(JobListing.timestamp.desc()).limit(6).all()
     # NEW: Fetch latest 3 SamplePrompts for the landing page
     sample_prompts = SamplePrompt.query.order_by(SamplePrompt.timestamp.desc()).limit(3).all()
+    ai_apps_listings = AIApp.query.order_by(AIApp.date_added.desc()).limit(6).all()
 
     # 1. Fetch Top 5 Users for Leaderboard
     top_users = User.query.with_entities(User.username, User.total_points).order_by(User.total_points.desc()).limit(5).all()
@@ -1429,6 +1443,7 @@ def landing():
                            sample_prompts=display_prompts, 
                            leaderboard_data=leaderboard_data,
                            gifts=gifts,
+                           ai_apps_listings=ai_apps_listings, # NEW: Pass AI Apps
                            current_user=current_user)
 
 # UPDATED: Route to view a specific news item (using NewsItem model)
@@ -2337,6 +2352,63 @@ def repost_job(job_id):
         flash(f'Error reposting job listing: {e}', 'danger')
         app.logger.error(f"Error reposting job listing: {e}")
     return redirect(url_for('admin_jobs'))
+
+# ___app.py__ (New AI App Admin and Public Routes - Insert near line 4890)
+
+@app.route('/admin/library_ai_apps', methods=['GET', 'POST'])
+@login_required
+@admin_required
+def admin_library_ai_apps():
+    form = AddAIAppForm()
+
+    if form.validate_on_submit():
+        try:
+            date_to_use = datetime.strptime(form.date_launched.data, '%Y-%m-%d') if form.date_launched.data else datetime.utcnow()
+
+            new_app = AIApp(
+                name=form.name.data,
+                developer=form.developer.data,
+                summary=form.summary.data,
+                app_url=form.app_url.data,
+                category=form.category.data,
+                date_launched=date_to_use,
+                date_added=datetime.utcnow()
+            )
+            db.session.add(new_app)
+            db.session.commit()
+            flash(f'AI App "{form.name.data}" added successfully!', 'success')
+            return redirect(url_for('admin_library_ai_apps'))
+        except Exception as e:
+            db.session.rollback()
+            flash(f'Error adding AI App: {e}', 'danger')
+
+    ai_apps = AIApp.query.order_by(AIApp.date_added.desc()).all()
+
+    return render_template('admin_library_ai_apps.html',
+                           form=form,
+                           ai_apps=ai_apps,
+                           title='Admin - Manage AI Apps')
+
+@app.route('/admin/library_ai_apps/delete/<int:app_id>', methods=['POST'])
+@admin_required
+def delete_ai_app(app_id):
+    ai_app = AIApp.query.get_or_404(app_id)
+    try:
+        db.session.delete(ai_app)
+        db.session.commit()
+        flash('AI App deleted successfully!', 'success')
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Error deleting AI App: {e}', 'danger')
+        app.logger.error(f"Error deleting AI App: {e}")
+    return redirect(url_for('admin_library_ai_apps'))
+
+# --- Public Route for All AI Apps ---
+@app.route('/all_ai_apps')
+def all_ai_apps():
+    # Fetch all apps, ordered by date_added (newest first)
+    apps = AIApp.query.order_by(AIApp.date_added.desc()).all()
+    return render_template('all_ai_apps.html', apps=apps, current_user=current_user)
 
 
 # --- Change Password Route ---
