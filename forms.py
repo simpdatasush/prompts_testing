@@ -48,3 +48,20 @@ class AddJobPostingForm(FlaskForm):
     job_url = StringField('Job URL (Application Link)', validators=[DataRequired()]) 
     date_posted = StringField('Date Posted (YYYY-MM-DD)')
     submit = SubmitField('Add Job Posting')
+
+# -------------------------------------------------------------
+# 5. AddAIAppForm (NEW CLASS FOR LATEST AI APPS)
+# -------------------------------------------------------------
+class AddAIAppForm(FlaskForm):
+    name = StringField('App Name', validators=[DataRequired(), Length(max=255)])
+    developer = StringField('Developer/Company', validators=[DataRequired(), Length(max=100)])
+    summary = TextAreaField('Short Summary', validators=[DataRequired()])
+    app_url = StringField('App URL (Website/Store)', validators=[DataRequired()])
+    category = SelectField('Category (e.g., Image Gen, Text Editor)', validators=[DataRequired()], 
+                            choices=[('ImageGen', 'Image Generation'), 
+                                     ('TextGen', 'Text Generation'),
+                                     ('Audio', 'Audio/Voice'),
+                                     ('Data', 'Data Analysis'),
+                                     ('Other', 'Other')]) # Simple fixed choices
+    date_launched = StringField('Launch Date (YYYY-MM-DD)', validators=[Optional()])
+    submit = SubmitField('Add AI App')
