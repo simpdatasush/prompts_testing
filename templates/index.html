@@ -702,12 +702,11 @@ text-align: right; /* Align metadata to the right */
 </div>
 <div class="auth-section">
 {% if current_user.is_authenticated and current_user.is_admin %}
-<a href="{{ url_for('admin_prompts') }}" class="btn btn-outline-light btn-sm mr-2">Prompts</a>
-<a href="{{ url_for('admin_news') }}" class="btn btn-outline-light btn-sm mr-2">News</a>
-<a href="{{ url_for('admin_jobs') }}" class="btn btn-outline-light btn-sm mr-2">Jobs</a>
-<a href="{{ url_for('admin_gifts') }}" class="btn btn-outline-light btn-sm mr-2">Gifts</a>
-<a href="{{ url_for('admin_ai_apps') }}" class="btn btn-outline-light btn-sm mr-2">Apps</a>
-<a href="{{ url_for('admin_users') }}" class="btn btn-outline-light btn-sm mr-2">Users</a>
+<a href="{{ url_for('admin_prompts') }}" class="btn btn-outline-light btn-sm mr-2">Manage Prompts</a>
+<a href="{{ url_for('admin_news') }}" class="btn btn-outline-light btn-sm mr-2">Manage News</a>
+<a href="{{ url_for('admin_jobs') }}" class="btn btn-outline-light btn-sm mr-2">Manage Jobs</a>
+<a href="{{ url_for('admin_gifts') }}" class="btn btn-outline-light btn-sm mr-2">Manage Gifts</a>
+<a href="{{ url_for('admin_users') }}" class="btn btn-outline-light btn-sm mr-2">Manage Users</a>
 <a href="{{ url_for('admin_api_performance') }}" class="btn btn-outline-light btn-sm mr-2">API Performance</a>
 <span class="navbar-text mr-2">Logged in as: <strong>{{ current_user.username }}</strong></span>
 <a href="{{ url_for('logout') }}" class="btn btn-outline-light btn-sm">Logout</a>
@@ -2626,3 +2625,4 @@ button.disabled = false;
 </script>
 </body>
 </html>
+
