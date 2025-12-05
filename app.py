@@ -1372,6 +1372,14 @@ def mask_username(username):
 
 # --- Flask Routes ---
 
+# app.py (Near your other error handlers)
+
+@app.errorhandler(404)
+def not_found_error(error):
+    # Log the path that wasn't found
+    app.logger.error(f"404 Not Found Error: Requested Path was {request.path}")
+    return jsonify({"error": f"The requested URL {request.path} was not found on the server."}), 404
+
 # UPDATED: Landing page route to fetch more news AND jobs
 @app.route('/')
 def landing():
