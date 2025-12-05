@@ -432,6 +432,56 @@
                     {% endfor %}
                     </div>
                 </section>
+        <section class="jobs-section mb-5">
+                </section>
+            
+            <section class="ai-apps-section mb-5">
+                <h2 class="section-title">
+                    <a href="{{ url_for('library_ai_apps') }}" style="color: inherit; text-decoration: none;">
+                        Latest AI Apps <i class="fas fa-arrow-right"></i>
+                    </a>
+                </h2>
+                <div class="row">
+                {% for app in latest_apps %}
+                <div class="col-md-6 col-lg-4">
+                <div class="card">
+                <div class="card-body">
+                <h5 class="card-title">{{ app.title }}</h5>
+                <p class="card-text">{{ app.description | truncate(150) }}</p>
+                <a href="{{ app.url }}" target="_blank" class="card-link">Visit App <i class="fas fa-external-link-alt"></i></a>
+                <p class="meta-info">Added: {{ app.timestamp.strftime('%Y-%m-%d %H:%M') }}</p>
+                </div>
+                </div>
+                </div>
+                {% else %}
+                <div class="col-12"><p class="text-center text-muted">No AI apps listed yet.</p></div>
+                {% endfor %}
+                </div>
+            </section>
+
+            <section class="ai-features-section mb-5">
+                <h2 class="section-title">
+                    <a href="{{ url_for('library_ai_app_features') }}" style="color: inherit; text-decoration: none;">
+                        Latest AI App Features <i class="fas fa-arrow-right"></i>
+                    </a>
+                </h2>
+                <div class="row">
+                {% for feature in latest_features %}
+                <div class="col-md-6 col-lg-4">
+                <div class="card">
+                <div class="card-body">
+                <h5 class="card-title">{{ feature.app_name }} Update</h5>
+                <p class="card-text">{{ feature.feature_summary | truncate(150) }}</p>
+                <p class="meta-info">Release Date: {{ feature.release_date.strftime('%Y-%m-%d') if feature.release_date else 'N/A' }}</p>
+                <p class="meta-info">Added: {{ feature.timestamp.strftime('%Y-%m-%d %H:%M') }}</p>
+                </div>
+                </div>
+                </div>
+                {% else %}
+                <div class="col-12"><p class="text-center text-muted">No AI feature updates listed yet.</p></div>
+                {% endfor %}
+                </div>
+            </section>
                 
             </div> <div class="col-md-4">
                 <div class="card mb-4 bg-light p-3">
