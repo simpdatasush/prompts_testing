@@ -1435,6 +1435,10 @@ def view_prompt(prompt_id):
     item = SamplePrompt.query.get_or_404(prompt_id)
     return render_template('shared_content_landing.html', item=item, item_type='prompt')
 
+@app.route('/')
+def index():
+    return redirect(url_for('app_home'))
+
 # Renamed original index route to /app_home
 @app.route('/app_home')
 @login_required # REQUIRE LOGIN FOR APP HOME PAGE
