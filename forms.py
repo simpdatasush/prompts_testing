@@ -61,12 +61,3 @@ class AddAiAppForm(FlaskForm):
     description = TextAreaField('Description/Summary', validators=[DataRequired()])
     app_url = StringField('App URL (Official Link)', validators=[DataRequired()]) 
     submit = SubmitField('Add AI Application')
-
-# -------------------------------------------------------------
-# 7. AddAiAppFeatureForm (For Admin AI App Feature Management)
-# -------------------------------------------------------------
-class AddAiAppFeatureForm(FlaskForm):
-    app_name = StringField('Application Name (e.g., Claude, Midjourney)', validators=[DataRequired(), Length(max=100)])
-    feature_summary = TextAreaField('Feature Summary/Detail', validators=[DataRequired()])
-    release_date = StringField('Release Date (YYYY-MM-DD)', validators=[Optional()])
-    submit = SubmitField('Add App Feature')
