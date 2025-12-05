@@ -429,6 +429,30 @@ class ErrorLogSummary(db.Model):
     def __repr__(self):
         return f"ErrorSummary('{self.error_type}', Count: {self.count}')"
 
+# app.py (New models added near JobListing and NewsItem)
+
+class AiApp(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    title = db.Column(db.String(200), nullable=False)
+    description = db.Column(db.Text, nullable=True)
+    url = db.Column(db.String(500), nullable=False)
+    timestamp = db.Column(db.DateTime, default=datetime.utcnow)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+
+    def __repr__(self):
+        return f"AiApp('{self.title}')"
+
+class AiAppFeature(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    app_name = db.Column(db.String(100), nullable=False) # E.g., 'Gemini', 'Claude'
+    feature_summary = db.Column(db.Text, nullable=False)
+    release_date = db.Column(db.Date, nullable=True)
+    timestamp = db.Column(db.DateTime, default=datetime.utcnow)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+
+    def __repr__(selfs):
+        return f"AiAppFeature('{self.app_name}', '{self.release_date}')"
+
 # --- Flask-Login User Loader ---
 @login_manager.user_loader
 def load_user(user_id):
@@ -1381,6 +1405,9 @@ def landing():
     job_listings = JobListing.query.order_by(JobListing.timestamp.desc()).limit(6).all()
     # NEW: Fetch latest 3 SamplePrompts for the landing page
     sample_prompts = SamplePrompt.query.order_by(SamplePrompt.timestamp.desc()).limit(3).all()
+    # NEW: Fetch latest AI App Data
+    latest_apps = AiApp.query.order_by(AiApp.timestamp.desc()).limit(6).all()
+    latest_features = AiAppFeature.query.order_by(AiAppFeature.timestamp.desc()).limit(6).all()
 
     # 1. Fetch Top 5 Users for Leaderboard
     top_users = User.query.with_entities(User.username, User.total_points).order_by(User.total_points.desc()).limit(5).all()
@@ -1414,6 +1441,8 @@ def landing():
                            sample_prompts=display_prompts, 
                            leaderboard_data=leaderboard_data,
                            gifts=gifts,
+                           latest_apps=latest_apps,      # NEW
+                           latest_features=latest_features, # NEW
                            current_user=current_user)
 
 # UPDATED: Route to view a specific news item (using NewsItem model)
@@ -2319,6 +2348,149 @@ def repost_job(job_id):
         app.logger.error(f"Error reposting job listing: {e}")
     return redirect(url_for('admin_jobs'))
 
+# app.py (New Admin Routes - AI App Management)
+
+# --- Admin AI App Routes (CRUD for AiApp model) ---
+@app.route('/admin/ai_apps', methods=['GET'])
+@admin_required
+def admin_ai_apps():
+    apps = AiApp.query.order_by(AiApp.timestamp.desc()).all()
+    return render_template('admin_ai_apps.html', apps=apps, current_user=current_user)
+
+@app.route('/admin/ai_apps/add', methods=['POST'])
+@admin_required
+def add_ai_app():
+    title = request.form.get('title')
+    description = request.form.get('description')
+    url = request.form.get('url')
+
+    if not title or not url:
+        flash('Title and URL are required for the AI Application.', 'danger')
+        return redirect(url_for('admin_ai_apps'))
+
+    try:
+        new_app = AiApp(
+            title=title,
+            description=description,
+            url=url,
+            user_id=current_user.id
+        )
+        db.session.add(new_app)
+        db.session.commit()
+        flash('AI Application added successfully!', 'success')
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Error adding AI Application: {e}', 'danger')
+        app.logger.error(f"Error adding AI Application: {e}")
+    return redirect(url_for('admin_ai_apps'))
+
+@app.route('/admin/ai_apps/delete/<int:app_id>', methods=['POST'])
+@admin_required
+def delete_ai_app(app_id):
+    app_item = AiApp.query.get_or_404(app_id)
+    try:
+        db.session.delete(app_item)
+        db.session.commit()
+        flash('AI Application deleted successfully!', 'success')
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Error deleting AI Application: {e}', 'danger')
+    return redirect(url_for('admin_ai_apps'))
+
+@app.route('/admin/ai_apps/repost/<int:app_id>', methods=['POST'])
+@admin_required
+def repost_ai_app(app_id):
+    app_item = AiApp.query.get_or_404(app_id)
+    try:
+        app_item.timestamp = datetime.utcnow()
+        db.session.commit()
+        flash('AI Application reposted successfully (timestamp updated)!', 'success')
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Error reposting AI Application: {e}', 'danger')
+    return redirect(url_for('admin_ai_apps'))
+
+
+# --- Admin AI App Feature Routes (CRUD for AiAppFeature model) ---
+@app.route('/admin/ai_app_features', methods=['GET'])
+@admin_required
+def admin_ai_app_features():
+    features = AiAppFeature.query.order_by(AiAppFeature.timestamp.desc()).all()
+    return render_template('admin_ai_app_features.html', features=features, current_user=current_user)
+
+@app.route('/admin/ai_app_features/add', methods=['POST'])
+@admin_required
+def add_ai_app_feature():
+    app_name = request.form.get('app_name')
+    feature_summary = request.form.get('feature_summary')
+    release_date_str = request.form.get('release_date')
+
+    published_date = None
+    if release_date_str:
+        try:
+            published_date = datetime.strptime(release_date_str, '%Y-%m-%d').date()
+        except ValueError:
+            flash('Invalid release date format. Please use YYYY-MM-DD.', 'danger')
+            return redirect(url_for('admin_ai_app_features'))
+
+    if not app_name or not feature_summary:
+        flash('Application Name and Feature Summary are required.', 'danger')
+        return redirect(url_for('admin_ai_app_features'))
+
+    try:
+        new_feature = AiAppFeature(
+            app_name=app_name,
+            feature_summary=feature_summary,
+            release_date=published_date,
+            user_id=current_user.id
+        )
+        db.session.add(new_feature)
+        db.session.commit()
+        flash('AI App Feature added successfully!', 'success')
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Error adding feature: {e}', 'danger')
+        app.logger.error(f"Error adding feature: {e}")
+    return redirect(url_for('admin_ai_app_features'))
+
+@app.route('/admin/ai_app_features/delete/<int:feature_id>', methods=['POST'])
+@admin_required
+def delete_ai_app_feature(feature_id):
+    feature = AiAppFeature.query.get_or_404(feature_id)
+    try:
+        db.session.delete(feature)
+        db.session.commit()
+        flash('AI App Feature deleted successfully!', 'success')
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Error deleting feature: {e}', 'danger')
+    return redirect(url_for('admin_ai_app_features'))
+
+@app.route('/admin/ai_app_features/repost/<int:feature_id>', methods=['POST'])
+@admin_required
+def repost_ai_app_feature(feature_id):
+    feature = AiAppFeature.query.get_or_404(feature_id)
+    try:
+        feature.timestamp = datetime.utcnow()
+        db.session.commit()
+        flash('AI App Feature reposted successfully (timestamp updated)!', 'success')
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Error reposting feature: {e}', 'danger')
+    return redirect(url_for('admin_ai_app_features'))
+
+# app.py (New public view routes)
+@app.route('/library_ai_apps')
+def library_ai_apps():
+    apps = AiApp.query.order_by(AiApp.timestamp.desc()).all()
+    # Assuming standard header will be rendered with current_user
+    return render_template('library_ai_apps.html', apps=apps, current_user=current_user)
+
+@app.route('/library_ai_app_features')
+def library_ai_app_features():
+    features = AiAppFeature.query.order_by(AiAppFeature.timestamp.desc()).all()
+    # Assuming standard header will be rendered with current_user
+    return render_template('library_ai_app_features.html', features=features, current_user=current_user)
 
 # --- Change Password Route ---
 @app.route('/change_password', methods=['GET', 'POST'])
