@@ -7,7 +7,7 @@
 import asyncio
 import os
 import google.generativeai as genai
-from flask import Flask, render_template, request, jsonify, make_response, redirect, url_for, flash, send_file
+from flask import Flask, render_template, request, jsonify, make_response, redirect, url_for, flash, send_file, send_from_directory
 from asgiref.wsgi import WsgiToAsgi
 import logging
 from datetime import datetime, timedelta # Import timedelta for time calculations
@@ -1379,6 +1379,13 @@ def not_found_error(error):
     # Log the path that wasn't found
     app.logger.error(f"404 Not Found Error: Requested Path was {request.path}")
     return jsonify({"error": f"The requested URL {request.path} was not found on the server."}), 404
+
+# app.py (Add this route)
+@app.route('/favicon.ico')
+def favicon():
+    # Looks for 'favicon.ico' inside the 'static' directory
+    return send_from_directory(os.path.join(app.root_path, 'static'),
+                               'favicon.ico', mimetype='image/vnd.microsoft.icon')
 
 # UPDATED: Landing page route to fetch more news AND jobs
 @app.route('/')
