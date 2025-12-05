@@ -48,16 +48,3 @@ class AddJobPostingForm(FlaskForm):
     job_url = StringField('Job URL (Application Link)', validators=[DataRequired()]) 
     date_posted = StringField('Date Posted (YYYY-MM-DD)')
     submit = SubmitField('Add Job Posting')
-
-# forms.py (New forms added at the end)
-
-# ... (Existing forms retained) ...
-
-# -------------------------------------------------------------
-# 6. AddAiAppForm (For Admin AI App Management)
-# -------------------------------------------------------------
-class AddAiAppForm(FlaskForm):
-    title = StringField('Application Name', validators=[DataRequired(), Length(max=200)])
-    description = TextAreaField('Description/Summary', validators=[DataRequired()])
-    app_url = StringField('App URL (Official Link)', validators=[DataRequired()]) 
-    submit = SubmitField('Add AI Application')
