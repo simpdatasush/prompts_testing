@@ -84,3 +84,22 @@ class AddAIBookForm(FlaskForm):
                                      ('Other', 'Other')]) # Simple fixed choices
     date_published = StringField('Published Date (YYYY-MM-DD)', validators=[Optional()])
     submit = SubmitField('Add AI Book')
+
+# __forms.py__ (Append the new form after AddAIBookForm)
+
+# -------------------------------------------------------------
+# 7. AddAIGadgetForm (NEW CLASS FOR LATEST AI GADGETS)
+# -------------------------------------------------------------
+class AddAIGadgetForm(FlaskForm):
+    name = StringField('Product Name', validators=[DataRequired(), Length(max=255)])
+    manufacturer = StringField('Manufacturer', validators=[DataRequired(), Length(max=100)])
+    summary = TextAreaField('Short Summary of Features', validators=[DataRequired()])
+    purchase_url = StringField('Purchase URL', validators=[DataRequired()])
+    category = SelectField('Category', validators=[DataRequired()], 
+                            choices=[('Wearable', 'Wearable Tech'), 
+                                     ('Home', 'Smart Home'),
+                                     ('Hardware', 'Specialized Hardware (e.g., chips)'),
+                                     ('Robotics', 'Robotics/Automation'),
+                                     ('Other', 'Other')]) 
+    date_released = StringField('Release Date (YYYY-MM-DD)', validators=[Optional()])
+    submit = SubmitField('Add AI Gadget')
