@@ -24,7 +24,7 @@ import requests # For Perplexity API HTTP calls (if we stick to that instead of 
 from perplexity import Perplexity, APIError as PerplexityAPIError
 # app.py (Near the top of the file)
 # Fix for the Import Error
-from forms import AddLibraryPromptForm, RegistrationForm, AddNewsArticleForm, AddJobPostingForm, AddAIAppForm, AddAIBookForm  # Add all forms here
+from forms import AddLibraryPromptForm, RegistrationForm, AddNewsArticleForm, AddJobPostingForm, AddAIAppForm, AddAIBookForm, AddAIGadgetForm  # Add all forms here
 from flask_login import login_required
 
 # --- NEW IMPORTS FOR AUTHENTICATION ---
@@ -456,6 +456,19 @@ class AIBook(db.Model):
     def __repr__(self):
         return f"AIBook('{self.title}', '{self.author}')"
 
+class AIGadget(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(256), nullable=False)
+    manufacturer = db.Column(db.String(100), nullable=False)
+    summary = db.Column(db.Text, nullable=False)
+    purchase_url = db.Column(db.String(512), nullable=True)
+    category = db.Column(db.String(100), nullable=True)
+    date_released = db.Column(db.DateTime, default=datetime.utcnow) 
+    date_added = db.Column(db.DateTime, default=datetime.utcnow)
+
+    def __repr__(self):
+        return f"AIGadget('{self.name}', '{self.manufacturer}')"
+
 # --- Flask-Login User Loader ---
 @login_manager.user_loader
 def load_user(user_id):
@@ -883,7 +896,7 @@ def ask_gemini_for_structured_prompt(prompt_instruction, generation_config=None,
         return raw_gemini_text
     except ValueError as e:
         app.logger.error(f"DEBUG: Unexpected ValueError from Gemini API (structured_gen_model - {model_name}): {e}", exc_info=True)
-        return filter_gemini_response(f"AI structured generation failed due to an issue: {str(e)}")
+        return filter_gemini_response(f"SuperPrompter AI is being overloaded, please try after sometime.")
     except google_api_exceptions.ResourceExhausted as e: # Explicitly catch 429 ResourceExhausted
         app.logger.error(f"DEBUG: Gemini API ResourceExhausted error: {e}", exc_info=True)
         # Custom friendly message for the user
@@ -893,7 +906,7 @@ def ask_gemini_for_structured_prompt(prompt_instruction, generation_config=None,
         return filter_gemini_response(f"SuperPrompter AI is being overloaded, please try after sometime.")
     except Exception as e:
         app.logger.error(f"DEBUG: Unexpected Error calling Gemini API (structured_gen_model - {model_name}): {e}", exc_info=True)
-        return filter_gemini_response(f"An unexpected error occurred: {str(e)}")
+        return filter_gemini_response(f"SuperPrompter AI is being overloaded, please try after sometime.")
 
 # --- NEW GAMIFICATION HELPER FUNCTIONS ---
 def calculate_generation_points(raw_input, prompt_mode, language_code, category, persona, tone):
@@ -1418,13 +1431,14 @@ def favicon():
 @app.route('/')
 def landing():
     # Fetch latest 6 news items for the landing page
-    news_items = NewsItem.query.order_by(NewsItem.timestamp.desc()).limit(6).all()
+    news_items = NewsItem.query.order_by(NewsItem.timestamp.desc()).limit(3).all()
     # Fetch latest 6 job listings for the landing page
-    job_listings = JobListing.query.order_by(JobListing.timestamp.desc()).limit(6).all()
+    job_listings = JobListing.query.order_by(JobListing.timestamp.desc()).limit(3).all()
     # NEW: Fetch latest 3 SamplePrompts for the landing page
     sample_prompts = SamplePrompt.query.order_by(SamplePrompt.timestamp.desc()).limit(3).all()
     ai_apps_listings = AIApp.query.order_by(AIApp.date_added.desc()).limit(6).all()
     ai_books_listings = AIBook.query.order_by(AIBook.date_added.desc()).limit(6).all()
+    ai_gadgets_listings = AIGadget.query.order_by(AIGadget.date_added.desc()).limit(6).all()
 
     # 1. Fetch Top 5 Users for Leaderboard
     top_users = User.query.with_entities(User.username, User.total_points).order_by(User.total_points.desc()).limit(5).all()
@@ -1460,6 +1474,7 @@ def landing():
                            gifts=gifts,
                            ai_apps_listings=ai_apps_listings, # NEW: Pass AI Apps
                            ai_books_listings=ai_books_listings,
+                           ai_gadgets_listings=ai_gadgets_listings, # NEW: Pass AI Gadgets
                            current_user=current_user)
 
 # UPDATED: Route to view a specific news item (using NewsItem model)
@@ -2484,6 +2499,65 @@ def all_ai_books():
     # Fetch all books, ordered by date_added (newest first)
     books = AIBook.query.order_by(AIBook.date_added.desc()).all()
     return render_template('all_ai_books.html', apps=books, current_user=current_user)
+
+# ___app.py__ (New AI Gadget Admin and Public Routes - Insert near admin_library_ai_books)
+
+# ... (admin_library_ai_books and delete_ai_book routes) ...
+
+@app.route('/admin/library_ai_gadgets', methods=['GET', 'POST'])
+@login_required
+@admin_required
+def admin_library_ai_gadgets():
+    form = AddAIGadgetForm()
+
+    if form.validate_on_submit():
+        try:
+            date_to_use = datetime.strptime(form.date_released.data, '%Y-%m-%d') if form.date_released.data else datetime.utcnow()
+
+            new_gadget = AIGadget(
+                name=form.name.data,
+                manufacturer=form.manufacturer.data,
+                summary=form.summary.data,
+                purchase_url=form.purchase_url.data,
+                category=form.category.data,
+                date_released=date_to_use,
+                date_added=datetime.utcnow()
+            )
+            db.session.add(new_gadget)
+            db.session.commit()
+            flash(f'AI Gadget "{form.name.data}" added successfully to the library!', 'success')
+            return redirect(url_for('admin_library_ai_gadgets'))
+        except Exception as e:
+            db.session.rollback()
+            flash(f'Error adding AI Gadget: {e}', 'danger')
+
+    ai_gadgets = AIGadget.query.order_by(AIGadget.date_added.desc()).all()
+
+    return render_template('admin_library_ai_gadgets.html',
+                           form=form,
+                           ai_gadgets=ai_gadgets,
+                           title='Admin - Manage AI Gadgets')
+
+@app.route('/admin/library_ai_gadgets/delete/<int:gadget_id>', methods=['POST'])
+@admin_required
+def delete_ai_gadget(gadget_id):
+    ai_gadget = AIGadget.query.get_or_404(gadget_id)
+    try:
+        db.session.delete(ai_gadget)
+        db.session.commit()
+        flash('AI Gadget deleted successfully!', 'success')
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Error deleting AI Gadget: {e}', 'danger')
+        app.logger.error(f"Error deleting AI Gadget: {e}")
+    return redirect(url_for('admin_library_ai_gadgets'))
+
+# --- Public Route for All AI Gadgets ---
+@app.route('/all_ai_gadgets')
+def all_ai_gadgets():
+    # Fetch all gadgets, ordered by date_added (newest first)
+    gadgets = AIGadget.query.order_by(AIGadget.date_added.desc()).all()
+    return render_template('all_ai_gadgets.html', apps=gadgets, current_user=current_user) # Reusing 'apps' variable name for template simplicity
 
 ## Add new route here 
 
