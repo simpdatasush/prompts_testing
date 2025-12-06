@@ -544,6 +544,34 @@
         {% endfor %}
     </div>
 </section>
+
+        </section> <section class="ai-finance-section mb-5">
+    <h2 class="section-title">
+        <a href="{{ url_for('all_ai_finance') }}" style="color: inherit; text-decoration: none;">
+            <i class="fas fa-dollar-sign"></i> AI Finance & VC <i class="fas fa-arrow-right"></i>
+        </a>
+    </h2>
+    <div class="row">
+        {% for finance in ai_finance_listings %}
+        <div class="col-md-6 col-lg-4">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">{{ finance.headline }}</h5>
+                    <h6 class="card-subtitle mb-2 text-muted">{{ finance.firm }} - {{ finance.focus_area }}</h6>
+                    <p class="card-text">{{ finance.summary | truncate(150) }}</p>
+                    <a href="{{ finance.source_url }}" target="_blank" class="card-link">View Source <i class="fas fa-external-link-alt"></i></a>
+                    <p class="meta-info">Event Date: {{ finance.date_event.strftime('%Y-%m-%d') if finance.date_event else 'N/A' }}</p>
+                    <p class="meta-info">Added: {{ finance.date_added.strftime('%Y-%m-%d %H:%M') }}</p>
+                </div>
+            </div>
+        </div>
+        {% else %}
+        <div class="col-12">
+            <p class="text-center text-muted">No AI Finance/VC items added yet. Check back soon!</p>
+        </div>
+        {% endfor %}
+    </div>
+</section>
                 
             </div> <div class="col-md-4">
                 <div class="card mb-4 bg-light p-3">
