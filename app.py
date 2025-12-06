@@ -24,7 +24,7 @@ import requests # For Perplexity API HTTP calls (if we stick to that instead of 
 from perplexity import Perplexity, APIError as PerplexityAPIError
 # app.py (Near the top of the file)
 # Fix for the Import Error
-from forms import AddLibraryPromptForm, RegistrationForm, AddNewsArticleForm, AddJobPostingForm, AddAIAppForm, AddAIBookForm, AddAIGadgetForm  # Add all forms here
+from forms import AddLibraryPromptForm, RegistrationForm, AddNewsArticleForm, AddJobPostingForm, AddAIAppForm, AddAIBookForm, AddAIGadgetForm, AddAIMediaForm  # Add all forms here
 from flask_login import login_required
 
 # --- NEW IMPORTS FOR AUTHENTICATION ---
@@ -468,6 +468,20 @@ class AIGadget(db.Model):
 
     def __repr__(self):
         return f"AIGadget('{self.name}', '{self.manufacturer}')"
+
+# app.py (NEW AIMedia Model)
+class AIMedia(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    title = db.Column(db.String(256), nullable=False)
+    creator = db.Column(db.String(100), nullable=False)
+    summary = db.Column(db.Text, nullable=False)
+    media_url = db.Column(db.String(512), nullable=True)
+    media_type = db.Column(db.String(100), nullable=True)
+    date_published = db.Column(db.DateTime, default=datetime.utcnow) 
+    date_added = db.Column(db.DateTime, default=datetime.utcnow)
+
+    def __repr__(self):
+        return f"AIMedia('{self.title}', '{self.creator}')"
 
 # --- Flask-Login User Loader ---
 @login_manager.user_loader
@@ -1439,6 +1453,7 @@ def landing():
     ai_apps_listings = AIApp.query.order_by(AIApp.date_added.desc()).limit(6).all()
     ai_books_listings = AIBook.query.order_by(AIBook.date_added.desc()).limit(6).all()
     ai_gadgets_listings = AIGadget.query.order_by(AIGadget.date_added.desc()).limit(6).all()
+    ai_media_listings = AIMedia.query.order_by(AIMedia.date_added.desc()).limit(6).all()
 
     # 1. Fetch Top 5 Users for Leaderboard
     top_users = User.query.with_entities(User.username, User.total_points).order_by(User.total_points.desc()).limit(5).all()
@@ -1474,7 +1489,8 @@ def landing():
                            gifts=gifts,
                            ai_apps_listings=ai_apps_listings, # NEW: Pass AI Apps
                            ai_books_listings=ai_books_listings,
-                           ai_gadgets_listings=ai_gadgets_listings, # NEW: Pass AI Gadgets
+                           ai_gadgets_listings=ai_gadgets_listings, # NEW: Pass AI Gadgets,
+                           ai_media_listings=ai_media_listings, # NEW: Pass AI Media
                            current_user=current_user)
 
 # UPDATED: Route to view a specific news item (using NewsItem model)
@@ -2558,6 +2574,66 @@ def all_ai_gadgets():
     # Fetch all gadgets, ordered by date_added (newest first)
     gadgets = AIGadget.query.order_by(AIGadget.date_added.desc()).all()
     return render_template('all_ai_gadgets.html', apps=gadgets, current_user=current_user) # Reusing 'apps' variable name for template simplicity
+
+
+# ___app.py__ (New AI Media Admin and Public Routes - Insert near admin_library_ai_gadgets)
+
+# ... (admin_library_ai_gadgets and delete_ai_gadget routes) ...
+
+@app.route('/admin/library_ai_media', methods=['GET', 'POST'])
+@login_required
+@admin_required
+def admin_library_ai_media():
+    form = AddAIMediaForm()
+
+    if form.validate_on_submit():
+        try:
+            date_to_use = datetime.strptime(form.date_published.data, '%Y-%m-%d') if form.date_published.data else datetime.utcnow()
+
+            new_media = AIMedia(
+                title=form.title.data,
+                creator=form.creator.data,
+                summary=form.summary.data,
+                media_url=form.media_url.data,
+                media_type=form.media_type.data,
+                date_published=date_to_use,
+                date_added=datetime.utcnow()
+            )
+            db.session.add(new_media)
+            db.session.commit()
+            flash(f'AI Media item "{form.title.data}" added successfully to the library!', 'success')
+            return redirect(url_for('admin_library_ai_media'))
+        except Exception as e:
+            db.session.rollback()
+            flash(f'Error adding AI Media item: {e}', 'danger')
+
+    ai_media = AIMedia.query.order_by(AIMedia.date_added.desc()).all()
+
+    return render_template('admin_library_ai_media.html',
+                           form=form,
+                           ai_media=ai_media,
+                           title='Admin - Manage AI Media')
+
+@app.route('/admin/library_ai_media/delete/<int:media_id>', methods=['POST'])
+@admin_required
+def delete_ai_media(media_id):
+    ai_media = AIMedia.query.get_or_404(media_id)
+    try:
+        db.session.delete(ai_media)
+        db.session.commit()
+        flash('AI Media item deleted successfully!', 'success')
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Error deleting AI Media item: {e}', 'danger')
+        app.logger.error(f"Error deleting AI Media item: {e}")
+    return redirect(url_for('admin_library_ai_media'))
+
+# --- Public Route for All AI Media ---
+@app.route('/all_ai_media')
+def all_ai_media():
+    # Fetch all media items, ordered by date_added (newest first)
+    media = AIMedia.query.order_by(AIMedia.date_added.desc()).all()
+    return render_template('all_ai_media.html', apps=media, current_user=current_user) # Reusing 'apps' variable name for template simplicity
 
 ## Add new route here 
 
