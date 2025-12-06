@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-sclae=1.0">
+<title>{{ title }}</title>
+<link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css">
+<style>
+/* Reusing styles from admin_prompts.html */
+body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f0f2f5; color: #333; line-height: 1.6; display: flex; flex-direction: column;
+min-height: 100vh; }
+.app-header { background-color: #343a40; color: #ffffff; padding: 15px 30px; display: flex; justify-content: space-between; align-items: center;
+box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15); }
+.app-header .logo-section a { color: #fff; text-decoration: none; font-size: 1.5rem; font-weight: 600; }
+.main-content { padding-top: 20px; flex-grow: 1; }
+.table thead th { background-color: #e9ecef; }
+.footer { background-color: #343a40; color: #ffffff; padding: 15px 0; text-align: center; margin-top: auto; }
+.card-header { background-color: #C3497C !important; /* Primary Pink Accent */ }
+</style>
+</head>
+<body>
+<header class="app-header">
+<div class="logo-section">
+<img src="https://placehold.co/40x40/007bff/ffffff?text=AI" alt="SuperPrompter Logo" class="app-logo">
+<h1 class="header-title">SuperPrompter</h1>
+</div>
+<nav>
+<a href="{{ url_for('admin_prompts') }}" class="btn btn-secondary btn-sm mr-2">Generated Prompts</a>
+<a href="{{ url_for('admin_library_prompts') }}" class="btn btn-secondary btn-sm mr-2">Library Prompts</a>
+<a href="{{ url_for('admin_library_news') }}" class="btn btn-secondary btn-sm mr-2">News Articles</a>
+<a href="{{ url_for('admin_library_jobs') }}" class="btn btn-secondary btn-sm mr-2">Job Postings</a>
+<a href="{{ url_for('admin_library_ai_apps') }}" class="btn btn-secondary btn-sm mr-2">AI Apps</a>
+<a href="{{ url_for('admin_library_ai_books') }}" class="btn btn-secondary btn-sm mr-2">AI Books</a>
+<a href="{{ url_for('admin_library_ai_gadgets') }}" class="btn btn-secondary btn-sm mr-2">AI Gadgets</a>
+<a href="{{ url_for('admin_library_ai_media') }}" class="btn btn-secondary btn-sm mr-2">AI Media</a>
+<a href="{{ url_for('admin_library_ai_finance') }}" class="btn btn-primary btn-sm mr-2">AI Finance</a> <a href="{{ url_for('logout') }}" class="btn btn-danger btn-sm ml-3">Logout</a>
+</nav>
+</header>
+
+<div class="container main-content">
+<h1 class="mb-4">Manage AI Finance & VC Items</h1>
+
+{% with messages = get_flashed_messages(with_categories=true) %}
+{% if messages %}
+{% for category, message in messages %}
+<div class="alert alert-{{ category }}">{{ message }}</div>
+{% endfor %}
+{% endif %}
+{% endwith %}
+
+<div class="card mb-5">
+<div class="card-header text-white">
+Add New AI Finance Item
+</div>
+<div class="card-body">
+<form method="POST">
+{{ form.hidden_tag() }}
+<div class="form-group">
+{{ form.headline.label(class="form-label") }}
+{{ form.headline(class="form-control", placeholder="e.g., Anthropic Raises $4B in Series D") }}
+</div>
+<div class="form-group">
+{{ form.firm.label(class="form-label") }}
+{{ form.firm(class="form-control", placeholder="e.g., Sequoia Capital, Goldman Sachs") }}
+</div>
+<div class="form-group">
+{{ form.source_url.label(class="form-label") }}
+{{ form.source_url(class="form-control", placeholder="https://news.example.com/vc-round") }}
+</div>
+<div class="form-group">
+{{ form.focus_area.label(class="form-label") }}
+{{ form.focus_area(class="form-control") }}
+</div>
+<div class="form-group">
+{{ form.date_event.label(class="form-label") }}
+{{ form.date_event(class="form-control", placeholder="Optional: YYYY-MM-DD") }}
+</div>
+<div class="form-group">
+{{ form.summary.label(class="form-label") }}
+{{ form.summary(class="form-control", rows=4, placeholder="A short, compelling summary of the news...") }}
+</div>
+<button type="submit" class="btn btn-success">
+<i class="fas fa-plus-circle"></i> {{ form.submit.label }}
+</button>
+</form>
+</div>
+</div>
+
+<h2>Existing AI Finance Items ({{ ai_finance|length }})</h2>
+<table class="table table-bordered table-striped">
+<thead>
+<tr>
+<th>Headline & Firm</th>
+<th>Focus Area</th>
+<th>URL</th>
+<th>Event Date</th>
+<th>Actions</th>
+</tr>
+</thead>
+<tbody>
+{% for finance in ai_finance %}
+<tr>
+<td>{{ finance.headline }}<br><small class="text-muted">{{ finance.firm }}</small></td>
+<td>{{ finance.focus_area }}</td>
+<td><a href="{{ finance.source_url }}" target="_blank">{{ finance.source_url | truncate(50) }}</a></td>
+<td>{{ finance.date_event.strftime('%Y-%m-%d') if finance.date_event else 'N/A' }}</td>
+<td>
+<button class="btn btn-info btn-sm" data-toggle="modal" data-target="#viewModal"
+onclick="viewFinanceDetails('{{ finance.headline | e }}', '{{ finance.summary | e }}')">
+View Summary
+</button>
+<form action="{{ url_for('delete_ai_finance', finance_id=finance.id) }}" method="POST" style="display:inline;">
+<button type="submit" class="btn btn-danger btn-sm" onclick="return confirm('Are you sure you want to delete this AI Finance item?');">Delete</button>
+</form>
+</td>
+</tr>
+{% endfor %}
+</tbody>
+</table>
+</div>
+
+<div class="modal fade" id="viewModal" tabindex="-1" role="dialog" aria-labelledby="viewModalLabel" aria-hidden="true">
+<div class="modal-dialog modal-lg" role="document">
+<div class="modal-content">
+<div class="modal-header bg-info text-white">
+<h5 class="modal-title" id="viewModalLabel">AI Finance Item Summary</h5>
+<button type="button" class="close" data-dismiss="modal" aria-label="Close">
+<span aria-hidden="true">&times;</span>
+</button>
+</div>
+<div class="modal-body">
+<h6>Headline:</h6>
+<p id="financeHeadlineContent" class="p-2 bg-light rounded"></p>
+<h6 class="mt-3">Summary:</h6>
+<p id="financeSummaryContent" class="p-2 bg-light rounded"></p>
+</div>
+<div class="modal-footer">
+<button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+</div>
+</div>
+</div>
+</div>
+<footer class="footer">
+<div class="footer-content">
+This is developed by Sushrut Kulkarni &nbsp; Email: <a href="mailto:info@promptsgenerator.ai">info@promptsgenerator.ai</a>
+</div>
+</footer>
+
+<script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/popper.js@1.16.1/dist/umd/popper.min.js"></script>
+<script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+<script>
+function viewFinanceDetails(headline, summary) {
+    $('#financeHeadlineContent').text(headline);
+    $('#financeSummaryContent').text(summary);
+}
+</script>
+</body>
+</html>
