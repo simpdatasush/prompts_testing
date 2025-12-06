@@ -122,3 +122,22 @@ class AddAIMediaForm(FlaskForm):
                                      ('Other', 'Other')]) 
     date_published = StringField('Published Date (YYYY-MM-DD)', validators=[Optional()])
     submit = SubmitField('Add AI Media')
+
+# __forms.py__ (Append the new form after AddAIMediaForm)
+
+# -------------------------------------------------------------
+# 9. AddAIFinanceForm (NEW CLASS FOR AI VENTURE CAPITAL / INVESTMENTS / FINANCE)
+# -------------------------------------------------------------
+class AddAIFinanceForm(FlaskForm):
+    headline = StringField('Headline/Company/Round', validators=[DataRequired(), Length(max=255)])
+    firm = StringField('VC Firm/Analyst/Source', validators=[DataRequired(), Length(max=100)])
+    summary = TextAreaField('Short Summary of Investment/Analysis', validators=[DataRequired()])
+    source_url = StringField('Source URL (News Article/Crunchbase/Report)', validators=[DataRequired()])
+    focus_area = SelectField('Investment/Focus Area', validators=[DataRequired()], 
+                            choices=[('Funding', 'Venture Funding'), 
+                                     ('Market', 'Market Analysis'),
+                                     ('M&A', 'Mergers & Acquisitions'),
+                                     ('Macro', 'Macro Economy & AI'),
+                                     ('Other', 'Other')]) 
+    date_event = StringField('Date of Event (YYYY-MM-DD)', validators=[Optional()])
+    submit = SubmitField('Add AI Finance Item')
