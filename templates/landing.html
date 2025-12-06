@@ -515,7 +515,35 @@
         </div>
         {% endfor %}
     </div>
-</section>        
+</section>
+
+        </section> <section class="ai-media-section mb-5">
+    <h2 class="section-title">
+        <a href="{{ url_for('all_ai_media') }}" style="color: inherit; text-decoration: none;">
+            <i class="fas fa-video"></i> Latest AI Media <i class="fas fa-arrow-right"></i>
+        </a>
+    </h2>
+    <div class="row">
+        {% for media in ai_media_listings %}
+        <div class="col-md-6 col-lg-4">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">{{ media.title }}</h5>
+                    <h6 class="card-subtitle mb-2 text-muted">{{ media.creator }} - {{ media.media_type }}</h6>
+                    <p class="card-text">{{ media.summary | truncate(150) }}</p>
+                    <a href="{{ media.media_url }}" target="_blank" class="card-link">Watch/Listen <i class="fas fa-external-link-alt"></i></a>
+                    <p class="meta-info">Published: {{ media.date_published.strftime('%Y-%m-%d') if media.date_published else 'N/A' }}</p>
+                    <p class="meta-info">Added: {{ media.date_added.strftime('%Y-%m-%d %H:%M') }}</p>
+                </div>
+            </div>
+        </div>
+        {% else %}
+        <div class="col-12">
+            <p class="text-center text-muted">No AI Media items added yet. Check back soon!</p>
+        </div>
+        {% endfor %}
+    </div>
+</section>
                 
             </div> <div class="col-md-4">
                 <div class="card mb-4 bg-light p-3">
