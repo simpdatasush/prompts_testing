@@ -103,3 +103,22 @@ class AddAIGadgetForm(FlaskForm):
                                      ('Other', 'Other')]) 
     date_released = StringField('Release Date (YYYY-MM-DD)', validators=[Optional()])
     submit = SubmitField('Add AI Gadget')
+
+# __forms.py__ (Append the new form after AddAIGadgetForm)
+
+# -------------------------------------------------------------
+# 8. AddAIMediaForm (NEW CLASS FOR LATEST AI VIDEOS / PODCASTS / MOVIES)
+# -------------------------------------------------------------
+class AddAIMediaForm(FlaskForm):
+    title = StringField('Media Title (Video/Podcast/Movie)', validators=[DataRequired(), Length(max=255)])
+    creator = StringField('Creator/Host/Studio', validators=[DataRequired(), Length(max=100)])
+    summary = TextAreaField('Short Summary of Content', validators=[DataRequired()])
+    media_url = StringField('Media URL (YouTube/Spotify/Link)', validators=[DataRequired()])
+    media_type = SelectField('Media Type', validators=[DataRequired()], 
+                            choices=[('Video', 'Video/Short Film'), 
+                                     ('Podcast', 'Podcast/Audio Series'),
+                                     ('Movie', 'Movie/Documentary'),
+                                     ('Livestream', 'Livestream'),
+                                     ('Other', 'Other')]) 
+    date_published = StringField('Published Date (YYYY-MM-DD)', validators=[Optional()])
+    submit = SubmitField('Add AI Media')
