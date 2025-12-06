@@ -24,7 +24,7 @@ import requests # For Perplexity API HTTP calls (if we stick to that instead of 
 from perplexity import Perplexity, APIError as PerplexityAPIError
 # app.py (Near the top of the file)
 # Fix for the Import Error
-from forms import AddLibraryPromptForm, RegistrationForm, AddNewsArticleForm, AddJobPostingForm, AddAIAppForm  # Add all forms here
+from forms import AddLibraryPromptForm, RegistrationForm, AddNewsArticleForm, AddJobPostingForm, AddAIAppForm, AddAIBookForm  # Add all forms here
 from flask_login import login_required
 
 # --- NEW IMPORTS FOR AUTHENTICATION ---
@@ -441,6 +441,20 @@ class AIApp(db.Model):
 
     def __repr__(self):
         return f"AIApp('{self.name}', '{self.developer}')"
+
+# app.py (NEW AIBook Model)
+class AIBook(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    title = db.Column(db.String(256), nullable=False)
+    author = db.Column(db.String(100), nullable=False)
+    summary = db.Column(db.Text, nullable=False)
+    purchase_url = db.Column(db.String(512), nullable=True)
+    topic = db.Column(db.String(100), nullable=True)
+    date_published = db.Column(db.DateTime, default=datetime.utcnow) 
+    date_added = db.Column(db.DateTime, default=datetime.utcnow)
+
+    def __repr__(self):
+        return f"AIBook('{self.title}', '{self.author}')"
 
 # --- Flask-Login User Loader ---
 @login_manager.user_loader
@@ -1410,6 +1424,7 @@ def landing():
     # NEW: Fetch latest 3 SamplePrompts for the landing page
     sample_prompts = SamplePrompt.query.order_by(SamplePrompt.timestamp.desc()).limit(3).all()
     ai_apps_listings = AIApp.query.order_by(AIApp.date_added.desc()).limit(6).all()
+    ai_books_listings = AIBook.query.order_by(AIBook.date_added.desc()).limit(6).all()
 
     # 1. Fetch Top 5 Users for Leaderboard
     top_users = User.query.with_entities(User.username, User.total_points).order_by(User.total_points.desc()).limit(5).all()
@@ -1444,6 +1459,7 @@ def landing():
                            leaderboard_data=leaderboard_data,
                            gifts=gifts,
                            ai_apps_listings=ai_apps_listings, # NEW: Pass AI Apps
+                           ai_books_listings=ai_books_listings,
                            current_user=current_user)
 
 # UPDATED: Route to view a specific news item (using NewsItem model)
@@ -2409,6 +2425,67 @@ def all_ai_apps():
     # Fetch all apps, ordered by date_added (newest first)
     apps = AIApp.query.order_by(AIApp.date_added.desc()).all()
     return render_template('all_ai_apps.html', apps=apps, current_user=current_user)
+
+# ___app.py__ (New AI Book Admin and Public Routes - Insert near admin_library_ai_apps)
+
+# ... (admin_library_ai_apps and delete_ai_app routes) ...
+
+@app.route('/admin/library_ai_books', methods=['GET', 'POST'])
+@login_required
+@admin_required
+def admin_library_ai_books():
+    form = AddAIBookForm()
+
+    if form.validate_on_submit():
+        try:
+            date_to_use = datetime.strptime(form.date_published.data, '%Y-%m-%d') if form.date_published.data else datetime.utcnow()
+
+            new_book = AIBook(
+                title=form.title.data,
+                author=form.author.data,
+                summary=form.summary.data,
+                purchase_url=form.purchase_url.data,
+                topic=form.topic.data,
+                date_published=date_to_use,
+                date_added=datetime.utcnow()
+            )
+            db.session.add(new_book)
+            db.session.commit()
+            flash(f'AI Book "{form.title.data}" added successfully to the library!', 'success')
+            return redirect(url_for('admin_library_ai_books'))
+        except Exception as e:
+            db.session.rollback()
+            flash(f'Error adding AI Book: {e}', 'danger')
+
+    ai_books = AIBook.query.order_by(AIBook.date_added.desc()).all()
+
+    return render_template('admin_library_ai_books.html',
+                           form=form,
+                           ai_books=ai_books,
+                           title='Admin - Manage AI Books')
+
+@app.route('/admin/library_ai_books/delete/<int:book_id>', methods=['POST'])
+@admin_required
+def delete_ai_book(book_id):
+    ai_book = AIBook.query.get_or_404(book_id)
+    try:
+        db.session.delete(ai_book)
+        db.session.commit()
+        flash('AI Book deleted successfully!', 'success')
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Error deleting AI Book: {e}', 'danger')
+        app.logger.error(f"Error deleting AI Book: {e}")
+    return redirect(url_for('admin_library_ai_books'))
+
+# --- Public Route for All AI Books ---
+@app.route('/all_ai_books')
+def all_ai_books():
+    # Fetch all books, ordered by date_added (newest first)
+    books = AIBook.query.order_by(AIBook.date_added.desc()).all()
+    return render_template('all_ai_books.html', apps=books, current_user=current_user)
+
+## Add new route here 
 
 
 # --- Change Password Route ---
