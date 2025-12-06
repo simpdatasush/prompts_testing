@@ -65,3 +65,22 @@ class AddAIAppForm(FlaskForm):
                                      ('Other', 'Other')]) # Simple fixed choices
     date_launched = StringField('Launch Date (YYYY-MM-DD)', validators=[Optional()])
     submit = SubmitField('Add AI App')
+
+# __forms.py__ (Append the new form after AddAIAppForm)
+
+# -------------------------------------------------------------
+# 6. AddAIBookForm (NEW CLASS FOR LATEST AI BOOKS)
+# -------------------------------------------------------------
+class AddAIBookForm(FlaskForm):
+    title = StringField('Book Title', validators=[DataRequired(), Length(max=255)])
+    author = StringField('Author', validators=[DataRequired(), Length(max=100)])
+    summary = TextAreaField('Short Summary/Synopsis', validators=[DataRequired()])
+    purchase_url = StringField('Purchase URL (Amazon/Publisher)', validators=[DataRequired()])
+    topic = SelectField('Primary Topic', validators=[DataRequired()], 
+                            choices=[('PromptEng', 'Prompt Engineering'), 
+                                     ('MLOps', 'ML/MLOps'),
+                                     ('Ethics', 'AI Ethics'),
+                                     ('GenAI', 'General Generative AI'),
+                                     ('Other', 'Other')]) # Simple fixed choices
+    date_published = StringField('Published Date (YYYY-MM-DD)', validators=[Optional()])
+    submit = SubmitField('Add AI Book')
