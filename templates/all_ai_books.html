@@ -88,6 +88,24 @@ margin-right: 15px;
 <div class="container">
 <h1 class="text-center mb-5" style="color: var(--color-dark-bg);">📚 Recommended AI Books</h1>
 
+<div class="row justify-content-center mb-5">
+    <div class="col-md-8">
+        <form id="searchForm" method="GET" action="{{ url_for('all_ai_books') }}">
+            <div class="input-group">
+                <input type="text" name="query" class="form-control" placeholder="Search by Title, Author, or Topic..." value="{{ request.args.get('query', '') }}">
+                <div class="input-group-append">
+                    <button class="btn btn-primary" type="submit" style="background-color: var(--color-primary); border-color: var(--color-primary);">
+                        <i class="fas fa-search"></i> Search
+                    </button>
+                    {% if request.args.get('query') %}
+                        <a href="{{ url_for('all_ai_books') }}" class="btn btn-outline-secondary">Clear</a>
+                    {% endif %}
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
 {% if apps %}
 {% for app in apps %}
 <div class="book-card">
