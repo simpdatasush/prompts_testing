@@ -710,8 +710,8 @@ def route_and_call_llm(raw_input, prompt_mode, instruction, max_output_tokens=81
         return ask_perplexity_for_text_prompt(instruction, model_name=model_name, max_output_tokens=max_output_tokens)
     
     else:
-        app.logger.error(f"Unknown model name selected: {model_name}. Defaulting to Gemini 2.0 Flash.")
-        return ask_gemini_for_text_prompt(instruction, model_name='gemini-2.0-flash', max_output_tokens=max_output_tokens)
+        app.logger.error(f"Unknown model name selected: {model_name}. Defaulting to Gemini 2.5 Flash.")
+        return ask_gemini_for_text_prompt(instruction, model_name='gemini-2.5-flash-lite', max_output_tokens=max_output_tokens)
 # --- End Master LLM Routing Function —
 
 # --- CORRECTED: Perplexity Search API Function ---
@@ -895,8 +895,8 @@ def ask_gemini_for_text_prompt(prompt_instruction, model_name, max_output_tokens
 # --- Gemini API interaction function (Synchronous wrapper for structured_gen_model) ---
 def ask_gemini_for_structured_prompt(prompt_instruction, generation_config=None, max_output_tokens=8192):
 
-    # We enforce Gemini 2.0 Flash for all structured/multimedia tasks for reliability.
-    model_name = 'gemini-2.0-flash'
+    # We enforce Gemini 2.5 Flash lite for all structured/multimedia tasks for reliability.
+    model_name = 'gemini-2.5-flash-lite'
     model = genai.GenerativeModel(model_name)
     
     # --- FIX: Initialize current_generation_config to ensure it's defined in scope ---
@@ -1425,7 +1425,7 @@ async def generate_reverse_prompt_async(input_text, language_code="en-US", promp
 
     app.logger.info(f"Sending reverse prompt instruction to Gemini (length: {len(prompt_instruction)} chars))")
 
-    reverse_prompt_result = await asyncio.to_thread(ask_gemini_for_text_prompt, prompt_instruction, model_name='gemini-2.0-flash', max_output_tokens=8912)
+    reverse_prompt_result = await asyncio.to_thread(ask_gemini_for_text_prompt, prompt_instruction, model_name='gemini-2.5-flash-lite', max_output_tokens=8912)
 
     return filter_gemini_response(reverse_prompt_result) # Apply filter here
 
@@ -1970,8 +1970,8 @@ async def test_llm_response(): # CHANGED to async def
         # Generate LLM response with a specific token limit (524 tokens as requested)
         # Use asyncio.to_thread to run the synchronous ask_gemini_for_text_prompt in a separate thread
         # --- FIX: Provide the required 'model_name' argument ---
-        # For testing/admin purposes, we default to the fastest, cheapest model: gemini-2.0-flash.
-        TEST_MODEL = 'gemini-2.0-flash'
+        # For testing/admin purposes, we default to the fastest, cheapest model: gemini-2.5-flash-lite.
+        TEST_MODEL = 'gemini-2.5-flash-lite'
         llm_response_text_raw = await asyncio.to_thread(ask_gemini_for_text_prompt, llm_instruction, model_name=TEST_MODEL, max_output_tokens=8192)
         
         # Apply filter_gemini_response to the LLM's raw text before returning
