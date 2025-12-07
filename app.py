@@ -209,13 +209,13 @@ def get_dynamic_model_name(prompt_instruction: str) -> str:
     if prompt_length > 4500:
         model_name = 'sonar-pro'
     
-    # Tier 2: Moderately Complex (900 to 4500 chars) -> Use Gemini 2.0 Flash
-    #if prompt_length >= 900:
-    #    model_name = 'gemini-2.0-flash'
-        
-    # Tier 1: Simple/Cost-Effective (<300 chars) -> Use Gemini 2.5 Flash
-    else:
+    # Tier 2: Moderately Complex (900 to 4500 chars) -> Use Gemini 2.5 Flash
+    elif prompt_length >= 1800:
         model_name = 'gemini-2.5-flash'
+        
+    # Tier 1: Simple/Cost-Effective (<300 chars) -> Use Gemini 2.5 Flash lite
+    else:
+        model_name = 'gemini-2.5-flash-lite'
 
     app.logger.info(f"LLM Selected: {model_name} (Prompt length: {prompt_length})")
     return model_name
