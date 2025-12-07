@@ -2547,11 +2547,38 @@ def delete_ai_book(book_id):
     return redirect(url_for('admin_library_ai_books'))
 
 # --- Public Route for All AI Books ---
+# ___app.py__ (Modified /all_ai_books route)
+
+# ... (Insert near other public routes) ...
+
 @app.route('/all_ai_books')
 def all_ai_books():
-    # Fetch all books, ordered by date_added (newest first)
-    books = AIBook.query.order_by(AIBook.date_added.desc()).all()
+    query = request.args.get('query')
+    
+    # Start with the base query
+    base_query = AIBook.query.order_by(AIBook.date_added.desc())
+
+    if query:
+        search_term = f'%{query}%'
+        # Filter across multiple columns using OR condition
+        base_query = base_query.filter(
+            db.or_(
+                AIBook.title.ilike(search_term),
+                AIBook.author.ilike(search_term),
+                AIBook.topic.ilike(search_term),
+                AIBook.summary.ilike(search_term)
+            )
+        )
+        
+    books = base_query.all()
+    # Pass the query object back to the template to pre-fill the search bar
+    # Note: I am still using the `apps` variable name in the render_template call 
+    # to maintain consistency with the existing template structure provided 
+    # in the previous book/media/gadget feature implementations, even though 'books' 
+    # is the more descriptive variable name here.
     return render_template('all_ai_books.html', apps=books, current_user=current_user)
+
+# ... (Rest of app.py) ...
 
 # ___app.py__ (New AI Gadget Admin and Public Routes - Insert near admin_library_ai_books)
 
