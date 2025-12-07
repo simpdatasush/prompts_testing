@@ -2465,12 +2465,34 @@ def delete_ai_app(app_id):
         app.logger.error(f"Error deleting AI App: {e}")
     return redirect(url_for('admin_library_ai_apps'))
 
-# --- Public Route for All AI Apps ---
+# ___app.py__ (Modified /all_ai_apps route)
+
+# ... (Insert near other public routes) ...
+
 @app.route('/all_ai_apps')
 def all_ai_apps():
-    # Fetch all apps, ordered by date_added (newest first)
-    apps = AIApp.query.order_by(AIApp.date_added.desc()).all()
+    query = request.args.get('query')
+    
+    # Start with the base query
+    base_query = AIApp.query.order_by(AIApp.date_added.desc())
+
+    if query:
+        search_term = f'%{query}%'
+        # Filter across multiple columns using OR condition
+        base_query = base_query.filter(
+            db.or_(
+                AIApp.name.ilike(search_term),
+                AIApp.developer.ilike(search_term),
+                AIApp.category.ilike(search_term),
+                AIApp.summary.ilike(search_term)
+            )
+        )
+        
+    apps = base_query.all()
+    # Pass the query object back to the template to pre-fill the search bar
     return render_template('all_ai_apps.html', apps=apps, current_user=current_user)
+
+# ... (Rest of app.py) ...
 
 # ___app.py__ (New AI Book Admin and Public Routes - Insert near admin_library_ai_apps)
 
