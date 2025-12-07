@@ -2716,11 +2716,36 @@ def delete_ai_media(media_id):
     return redirect(url_for('admin_library_ai_media'))
 
 # --- Public Route for All AI Media ---
+# ___app.py__ (Modified /all_ai_media route)
+
+# ... (Insert near other public routes) ...
+
 @app.route('/all_ai_media')
 def all_ai_media():
-    # Fetch all media items, ordered by date_added (newest first)
-    media = AIMedia.query.order_by(AIMedia.date_added.desc()).all()
-    return render_template('all_ai_media.html', apps=media, current_user=current_user) # Reusing 'apps' variable name for template simplicity
+    query = request.args.get('query')
+    
+    # Start with the base query
+    base_query = AIMedia.query.order_by(AIMedia.date_added.desc())
+
+    if query:
+        search_term = f'%{query}%'
+        # Filter across multiple columns using OR condition
+        base_query = base_query.filter(
+            db.or_(
+                AIMedia.title.ilike(search_term),
+                AIMedia.creator.ilike(search_term),
+                AIMedia.media_type.ilike(search_term),
+                AIMedia.summary.ilike(search_term)
+            )
+        )
+        
+    media = base_query.all()
+    # Pass the query object back to the template to pre-fill the search bar
+    # Note: The existing template uses 'apps' to loop through the items, so we keep 
+    # passing the list as 'apps' for consistency.
+    return render_template('all_ai_media.html', apps=media, current_user=current_user)
+
+# ... (Rest of app.py) ...
 
 # ___app.py__ (New AI Finance Admin and Public Routes - Insert near admin_library_ai_media)
 
