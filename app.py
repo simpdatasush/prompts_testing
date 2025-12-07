@@ -2633,12 +2633,35 @@ def delete_ai_gadget(gadget_id):
     return redirect(url_for('admin_library_ai_gadgets'))
 
 # --- Public Route for All AI Gadgets ---
+# ___app.py__ (Modified /all_ai_gadgets route)
+
+# ... (Insert near other public routes) ...
 @app.route('/all_ai_gadgets')
 def all_ai_gadgets():
-    # Fetch all gadgets, ordered by date_added (newest first)
-    gadgets = AIGadget.query.order_by(AIGadget.date_added.desc()).all()
-    return render_template('all_ai_gadgets.html', apps=gadgets, current_user=current_user) # Reusing 'apps' variable name for template simplicity
+    query = request.args.get('query')
+    
+    # Start with the base query
+    base_query = AIGadget.query.order_by(AIGadget.date_added.desc())
 
+    if query:
+        search_term = f'%{query}%'
+        # Filter across multiple columns using OR condition
+        base_query = base_query.filter(
+            db.or_(
+                AIGadget.name.ilike(search_term),
+                AIGadget.manufacturer.ilike(search_term),
+                AIGadget.category.ilike(search_term),
+                AIGadget.summary.ilike(search_term)
+            )
+        )
+        
+    gadgets = base_query.all()
+    # Pass the query object back to the template to pre-fill the search bar
+    # Note: The existing template uses 'apps' to loop through the items, so we keep 
+    # passing the list as 'apps' for consistency.
+    return render_template('all_ai_gadgets.html', apps=gadgets, current_user=current_user)
+
+# ... (Rest of app.py) ...
 
 # ___app.py__ (New AI Media Admin and Public Routes - Insert near admin_library_ai_gadgets)
 
