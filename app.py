@@ -2702,15 +2702,32 @@ def delete_ai_finance(finance_id):
         app.logger.error(f"Error deleting AI Finance item: {e}")
     return redirect(url_for('admin_library_ai_finance'))
 
-# --- Public Route for All AI Finance ---
+# ___app.py__ (Modified /all_ai_finance route)
+
 @app.route('/all_ai_finance')
 def all_ai_finance():
-    # Fetch all finance items, ordered by date_added (newest first)
-    finance = AIFinance.query.order_by(AIFinance.date_added.desc()).all()
-    return render_template('all_ai_finance.html', apps=finance, current_user=current_user) # Reusing 'apps' variable name for template simplicity
+    query = request.args.get('query')
+    
+    # Start with the base query
+    base_query = AIFinance.query.order_by(AIFinance.date_added.desc())
+
+    if query:
+        search_term = f'%{query}%'
+        # Filter across multiple columns using OR condition
+        base_query = base_query.filter(
+            db.or_(
+                AIFinance.headline.ilike(search_term),
+                AIFinance.firm.ilike(search_term),
+                AIFinance.focus_area.ilike(search_term),
+                AIFinance.summary.ilike(search_term)
+            )
+        )
+        
+    finance = base_query.all()
+    # Pass the query object back to the template to pre-fill the search bar
+    return render_template('all_ai_finance.html', apps=finance, current_user=current_user)
 
 ## Add new route here 
-
 
 # --- Change Password Route ---
 @app.route('/change_password', methods=['GET', 'POST'])
