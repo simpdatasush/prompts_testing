@@ -2511,13 +2511,16 @@ def delete_ai_app(app_id):
 
 # ___app.py__ (Modified /all_ai_apps route for ranking)
 
-from sqlalchemy import func, case
+# ___app.py__ (Modified /all_ai_apps route)
+
+from sqlalchemy import func, case, or_ 
 
 @app.route('/all_ai_apps')
 def all_ai_apps():
     query = request.args.get('query')
     
     # 1. Subquery to calculate the rank (total views) for all 'app' items
+    # This query groups visits by content_id and counts them.
     rank_subquery = db.session.query(
         ContentVisitLog.content_id, 
         func.count(ContentVisitLog.id).label('total_views')
@@ -2526,16 +2529,18 @@ def all_ai_apps():
     ).group_by(ContentVisitLog.content_id).subquery()
 
     # 2. Base Query and Join
-    base_query = db.session.query(AIApp, rank_subquery.c.total_views).outerjoin(
+    # Select the AIApp object and perform an OUTER JOIN with the rank subquery.
+    base_query = db.session.query(AIApp).outerjoin(
         rank_subquery,
         AIApp.id == rank_subquery.c.content_id
     )
 
-    # 3. Apply Search Filter (Filter on the main table, AIApp)
+    # 3. Apply Search Filter
     if query:
         search_term = f'%{query}%'
+        # Filter across multiple columns using OR condition
         base_query = base_query.filter(
-            db.or_(
+            or_(
                 AIApp.name.ilike(search_term),
                 AIApp.developer.ilike(search_term),
                 AIApp.category.ilike(search_term),
@@ -2544,21 +2549,17 @@ def all_ai_apps():
         )
         
     # 4. Apply Ranking Sort
-    # Sort by total_views DESC (using case/coalesce to handle NULLs from OUTER JOIN)
-    # Then fallback to date_added DESC
-    # 4. Apply Ranking Sort - **FIX APPLIED HERE**
+    # Sort primarily by total_views DESC (using case to treat NULL views as 0),
+    # then fallback to date_added DESC.
     base_query = base_query.order_by(
-        # The change: Pass the (when, then) tuple directly, without the outer list brackets 
         case((rank_subquery.c.total_views.isnot(None), rank_subquery.c.total_views), else_=0).desc(),
         AIApp.date_added.desc()
     )
         
     # 5. Execute and Format Results
-    ranked_results = base_query.all()
-
-    # The result is a list of tuples: [(AIApp object, total_views), ...]
-    # We convert it back to a list of AIApp objects (or dicts) for the template
-    apps = [item[0] for item in ranked_results]
+    # Since the query was modified (Step 2) to only select the AIApp object, 
+    # base_query.all() now returns a list of AIApp objects directly.
+    apps = base_query.all()
     
     return render_template('all_ai_apps.html', apps=apps, current_user=current_user)
 
