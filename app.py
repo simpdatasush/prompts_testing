@@ -2509,10 +2509,6 @@ def delete_ai_app(app_id):
 
 # ... (Insert near other public routes) ...
 
-# ___app.py__ (Modified /all_ai_apps route for ranking)
-
-# ___app.py__ (Modified /all_ai_apps route)
-
 from sqlalchemy import func, case, or_ 
 
 @app.route('/all_ai_apps')
