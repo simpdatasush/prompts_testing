@@ -82,6 +82,7 @@ margin-right: 15px;
 <a href="{{ url_for('all_prompts') }}" class="text-white mx-2">Prompts Library</a>
 <a href="{{ url_for('all_news') }}" class="text-white mx-2">AI News</a>
 <a href="{{ url_for('all_ai_apps') }}" class="text-white mx-2">AI Apps</a> </nav>
+<a href="{{ url_for('view_ai_app', app_id=app.id) }}" target="_blank" class="card-link">Visit App <i class="fas fa-external-link-alt"></i></a>
 </header>
 
 <div class="container">
