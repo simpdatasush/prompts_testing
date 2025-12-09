@@ -26,7 +26,6 @@ from perplexity import Perplexity, APIError as PerplexityAPIError
 # Fix for the Import Error
 from forms import AddLibraryPromptForm, RegistrationForm, AddNewsArticleForm, AddJobPostingForm, AddAIAppForm, AddAIBookForm, AddAIGadgetForm, AddAIMediaForm, AddAIFinanceForm  # Add all forms here
 from flask_login import login_required
-from sqlalchemy import func, case
 
 # --- NEW IMPORTS FOR AUTHENTICATION ---
 from flask_sqlalchemy import SQLAlchemy
@@ -498,24 +497,6 @@ class AIFinance(db.Model):
         return f"AIFinance('{self.headline}', '{self.firm}')"
 
 # ___app.py__ (Insert near other models, e.g., after AIFinance model)
-
-# Define a central table to track views/clicks for ALL content types
-class ContentVisitLog(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    # The type of content being viewed (e.g., 'app', 'book', 'gadget', 'finance')
-    content_type = db.Column(db.String(50), nullable=False)
-    # The ID of the item (e.g., AIApp.id, AIBook.id). 
-    # Use Integer for simplicity, relying on Python to join later.
-    content_id = db.Column(db.Integer, nullable=False) 
-    # Log the time of the visit
-    timestamp = db.Column(db.DateTime, default=datetime.utcnow)
-    # Optional: User ID if you want personalized rankings
-    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True) 
-
-    def __repr__(self):
-        return f"VisitLog('{self.content_type}_{self.content_id}', '{self.timestamp}')"
-
-# NOTE: You MUST run 'db.create_all()' once after adding this model.
 
 # --- Flask-Login User Loader ---
 @login_manager.user_loader
@@ -2507,36 +2488,18 @@ def delete_ai_app(app_id):
 
 # ___app.py__ (Modified /all_ai_apps route)
 
-# ... (Insert near other public routes) ...
-
-from sqlalchemy import func, case, or_ 
-
 @app.route('/all_ai_apps')
 def all_ai_apps():
     query = request.args.get('query')
     
-    # 1. Subquery to calculate the rank (total views) for all 'app' items
-    # This query groups visits by content_id and counts them.
-    rank_subquery = db.session.query(
-        ContentVisitLog.content_id, 
-        func.count(ContentVisitLog.id).label('total_views')
-    ).filter(
-        ContentVisitLog.content_type == 'app'
-    ).group_by(ContentVisitLog.content_id).subquery()
+    # Start with the base query
+    base_query = AIApp.query.order_by(AIApp.date_added.desc())
 
-    # 2. Base Query and Join
-    # Select the AIApp object and perform an OUTER JOIN with the rank subquery.
-    base_query = db.session.query(AIApp).outerjoin(
-        rank_subquery,
-        AIApp.id == rank_subquery.c.content_id
-    )
-
-    # 3. Apply Search Filter
     if query:
         search_term = f'%{query}%'
         # Filter across multiple columns using OR condition
         base_query = base_query.filter(
-            or_(
+            db.or_(
                 AIApp.name.ilike(search_term),
                 AIApp.developer.ilike(search_term),
                 AIApp.category.ilike(search_term),
@@ -2544,24 +2507,9 @@ def all_ai_apps():
             )
         )
         
-    # 4. Apply Ranking Sort
-    # Sort primarily by total_views DESC (using case to treat NULL views as 0),
-    # then fallback to date_added DESC.
-    base_query = base_query.order_by(
-        case((rank_subquery.c.total_views.isnot(None), rank_subquery.c.total_views), else_=0).desc(),
-        AIApp.date_added.desc()
-    )
-        
-    # 5. Execute and Format Results
-    # Since the query was modified (Step 2) to only select the AIApp object, 
-    # base_query.all() now returns a list of AIApp objects directly.
     apps = base_query.all()
-    
+    # Pass the query object back to the template to pre-fill the search bar
     return render_template('all_ai_apps.html', apps=apps, current_user=current_user)
-
-# ... (Rest of app.py) ...
-
-# ___app.py__ (New AI Book Admin and Public Routes - Insert near admin_library_ai_apps)
 
 # ... (admin_library_ai_apps and delete_ai_app routes) ...
 
@@ -2890,39 +2838,6 @@ def all_ai_finance():
     finance = base_query.all()
     # Pass the query object back to the template to pre-fill the search bar
     return render_template('all_ai_finance.html', apps=finance, current_user=current_user)
-
-# ___app.py__ (Insert these routes near other view routes, e.g., near /view_job/<int:job_id>)
-
-@app.route('/view_ai_app/<int:app_id>')
-def view_ai_app(app_id):
-    app_item = AIApp.query.get_or_404(app_id)
-    log_content_visit('app', app_id) # --- TRACK CLICK ---
-    # Redirect to the external URL since we don't have a dedicated view template
-    return redirect(app_item.app_url)
-
-@app.route('/view_ai_book/<int:book_id>')
-def view_ai_book(book_id):
-    book_item = AIBook.query.get_or_404(book_id)
-    log_content_visit('book', book_id) # --- TRACK CLICK ---
-    return redirect(book_item.purchase_url)
-
-@app.route('/view_ai_gadget/<int:gadget_id>')
-def view_ai_gadget(gadget_id):
-    gadget_item = AIGadget.query.get_or_404(gadget_id)
-    log_content_visit('gadget', gadget_id) # --- TRACK CLICK ---
-    return redirect(gadget_item.purchase_url)
-
-@app.route('/view_ai_media/<int:media_id>')
-def view_ai_media(media_id):
-    media_item = AIMedia.query.get_or_404(media_id)
-    log_content_visit('media', media_id) # --- TRACK CLICK ---
-    return redirect(media_item.media_url)
-
-@app.route('/view_ai_finance/<int:finance_id>')
-def view_ai_finance(finance_id):
-    finance_item = AIFinance.query.get_or_404(finance_id)
-    log_content_visit('finance', finance_id) # --- TRACK CLICK ---
-    return redirect(finance_item.source_url)
 
 ## Add new route here 
 
