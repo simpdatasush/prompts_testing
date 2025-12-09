@@ -2546,8 +2546,10 @@ def all_ai_apps():
     # 4. Apply Ranking Sort
     # Sort by total_views DESC (using case/coalesce to handle NULLs from OUTER JOIN)
     # Then fallback to date_added DESC
+    # 4. Apply Ranking Sort - **FIX APPLIED HERE**
     base_query = base_query.order_by(
-        case([(rank_subquery.c.total_views.isnot(None), rank_subquery.c.total_views)], else_=0).desc(),
+        # The change: Pass the (when, then) tuple directly, without the outer list brackets 
+        case((rank_subquery.c.total_views.isnot(None), rank_subquery.c.total_views), else_=0).desc(),
         AIApp.date_added.desc()
     )
         
