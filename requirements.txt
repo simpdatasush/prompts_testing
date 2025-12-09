@@ -16,7 +16,6 @@ Flask-Mail
 perplexityai
 asgiref
 Flask-WTF
-sqlalchemy
 
 ##Flask==2.3.2
 ##google-generativeai==0.7.0
