@@ -212,6 +212,10 @@ def get_dynamic_model_name(prompt_instruction: str) -> str:
     # Tier 2: Moderately Complex (900 to 4500 chars) -> Use Gemini 2.5 Flash
     elif prompt_length >= 1800:
         model_name = 'gemini-2.5-flash'
+
+    # Tier 2: Moderately Complex (900 to 4500 chars) -> Use gemini-3-flash-preview
+    elif prompt_length >= 2700:
+        model_name = 'gemini-3-flash-preview'
         
     # Tier 1: Simple/Cost-Effective (<300 chars) -> Use Gemini 2.5 Flash lite
     else:
