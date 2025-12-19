@@ -213,14 +213,16 @@ def get_dynamic_model_name(prompt_instruction: str) -> str:
     """
     length = len(prompt_instruction)
 
-    if length > 4500:
+    if length > 5400:
         return 'sonar-pro' # Perplexity Tier
     elif length >= 2700:
         return 'mimo-v2-flash' # Xiaomi Tier
     elif length >= 1800:
         return 'gemini-2.5-flash' # Gemini Mid-Tier
-    else:
+    elif length >= 1800:
         return 'gemini-2.5-flash-lite' # Gemini Lite-Tier
+    else:
+        return 'gemini-3-flash-preview' # Gemini Latest
 
 # --- 3. Individual API Call Functions ---
 
