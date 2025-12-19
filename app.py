@@ -22,6 +22,9 @@ import time # For latency tracking
 import requests # For Perplexity API HTTP calls (if we stick to that instead of the SDK) 
 # If using the provided SDK:
 from perplexity import Perplexity, APIError as PerplexityAPIError
+from openai import OpenAI
+from anthropic import Anthropic
+
 # app.py (Near the top of the file)
 # Fix for the Import Error
 from forms import AddLibraryPromptForm, RegistrationForm, AddNewsArticleForm, AddJobPostingForm, AddAIAppForm, AddAIBookForm, AddAIGadgetForm, AddAIMediaForm, AddAIFinanceForm  # Add all forms here
@@ -183,46 +186,72 @@ TONES = ["Professional", "Friendly", "Candid", "Quirky", "Efficient", "Nerdy", "
 
 # https://ai.google.dev/gemini-api/docs/pricing#gemini-2.5-flash
 
-# --- Configure Google Gemini API ---
-# Ensure your GOOGLE_API_KEY is set in your environment variables
+# Google Gemini
 genai.configure(api_key=os.environ.get("GOOGLE_API_KEY"))
 
-# --- NEW: Perplexity API Configuration ---
+# Perplexity
 PERPLEXITY_API_KEY = os.getenv("PERPLEXITY_API_KEY")
-# Initialize the Perplexity Client
-# This client will be used inside the new ask_perplexity function
-if PERPLEXITY_API_KEY:
-    PERPLEXITY_CLIENT = Perplexity(api_key=PERPLEXITY_API_KEY)
-else:
-    PERPLEXITY_CLIENT = None
-# --- End Perplexity Configuration ---
+# (Assuming Perplexity client is initialized similarly to OpenAI or via custom class)
+PERPLEXITY_CLIENT = OpenAI(api_key=PERPLEXITY_API_KEY, base_url="https://api.perplexity.ai") if PERPLEXITY_API_KEY else None
 
-# --- NEW: Three-Tier Dynamic Model Selection Logic ---
+# Xiaomi MiMo (Dual Protocol)
+MIMO_API_KEY = os.getenv("MIMO_API_KEY")
+if MIMO_API_KEY:
+    # Bound to base_url: /v1
+    MIMO_OPENAI_CLIENT = OpenAI(api_key=MIMO_API_KEY, base_url="https://api.xiaomimimo.com/v1")
+    # Bound to base_url: /anthropic
+    MIMO_ANTHROPIC_CLIENT = Anthropic(api_key=MIMO_API_KEY, base_url="https://api.xiaomimimo.com/anthropic")
+else:
+    MIMO_OPENAI_CLIENT = None
+    MIMO_ANTHROPIC_CLIENT = None
+
+# --- 2. Dynamic Model Selection Logic ---
+
 def get_dynamic_model_name(prompt_instruction: str) -> str:
     """
-    Selects the best model based on the complexity (length)
-    of the prompt instruction using character count thresholds.
+    Categorizes the request into a model tier based on prompt length.
     """
-    prompt_length = len(prompt_instruction)
-    
-    # Tier 3: Very Complex (>2700 chars) -> Use Perplexity Sonar Pro
-    if prompt_length > 4500:
-        model_name = 'sonar-pro'
-    
-    # Tier 2: Moderately Complex (900 to 4500 chars) -> Use Gemini 2.5 Flash
-    elif prompt_length >= 1800:
-        model_name = 'gemini-2.5-flash'
+    length = len(prompt_instruction)
 
-    # Tier 2: Moderately Complex (900 to 4500 chars) -> Use gemini-3-flash-preview
-    elif prompt_length >= 2700:
-        model_name = 'gemini-3-flash-preview'
-        
-    # Tier 1: Simple/Cost-Effective (<300 chars) -> Use Gemini 2.5 Flash lite
+    if length > 4500:
+        return 'sonar-pro' # Perplexity Tier
+    elif length >= 2700:
+        return 'mimo-v2-flash' # Xiaomi Tier
+    elif length >= 1800:
+        return 'gemini-2.5-flash' # Gemini Mid-Tier
     else:
-        model_name = 'gemini-2.5-flash-lite'
+        return 'gemini-2.5-flash-lite' # Gemini Lite-Tier
 
-    app.logger.info(f"LLM Selected: {model_name} (Prompt length: {prompt_length})")
-    return model_name
+# --- 3. Individual API Call Functions ---
+
+def ask_mimo_openai(instruction, model_name, max_tokens):
+    """Hits the OpenAI Base URL (/v1)"""
+    today = datetime.now().strftime("%A, %B %d, %Y")
+    completion = MIMO_OPENAI_CLIENT.chat.completions.create(
+        model=model_name,
+        messages=[
+            {"role": "system", "content": f"You are SuperPrompterAI. Today is {today}."},
+            {"role": "user", "content": instruction}
+        ],
+        max_completion_tokens=max_tokens,
+        temperature=0.3,
+        extra_body={"thinking": {"type": "disabled"}}
+    )
+    return completion.choices[0].message.content
+
+def ask_mimo_anthropic(instruction, model_name, max_tokens):
+    """Hits the Anthropic Base URL (/anthropic)"""
+    today = datetime.now().strftime("%A, %B %d, %Y")
+    message = MIMO_ANTHROPIC_CLIENT.messages.create(
+        model=model_name,
+        max_tokens=max_tokens,
+        system=f"You are SuperPrompterAI. Today is {today}.",
+        messages=[{"role": "user", "content": instruction}],
+        temperature=0.3
+    )
+    return message.content[0].text
+
+
 # --- END NEW: Three-Tier Dynamic Model Selection Logic ---
 
 vision_model = genai.GenerativeModel('gemini-2.5-flash') # KEEP this line
@@ -711,33 +740,47 @@ def ask_perplexity_for_text_prompt(prompt_instruction, model_name='sonar-pro', m
         app.logger.error(f"DEBUG: Unexpected Error calling Perplexity API: {e}", exc_info=True)
         return f"An unexpected error occurred: {str(e)}"
 
-# --- NEW: Master LLM Routing Function ---
+# --- 4. Master LLM Routing Function ---
+
 def route_and_call_llm(raw_input, prompt_mode, instruction, max_output_tokens=8192):
     """
-    Dispatches the LLM call based on the selected model name from the complexity check.
+    The brain of the program: Decides based on mode, model_name, and protocol requirements.
     """
     
-    # 1. Structured/Multimedia Modes MUST use Gemini's specialized structured generation
+    # Tier 0: Multimedia Logic
     if prompt_mode in ['image_gen', 'video_gen']:
         app.logger.info("Routing to Gemini: Structured/Multimedia Mode.")
-        # We enforce Gemini 2.5 Flash for structured tasks in its function
         return ask_gemini_for_structured_prompt(instruction, max_output_tokens=max_output_tokens)
 
-    # 2. Dynamic Routing for Text Mode
+    # Determine which model the tier logic suggests
     model_name = get_dynamic_model_name(instruction)
     
+    # Tier 1: Gemini Routing
     if model_name.startswith('gemini'):
-        # Route to Gemini API (using the selected model_name)
+        app.logger.info(f"Routing to Gemini API: {model_name}")
         return ask_gemini_for_text_prompt(instruction, model_name=model_name, max_output_tokens=max_output_tokens)
     
+    # Tier 2: Perplexity Routing
     elif model_name == 'sonar-pro':
-        # Route to Perplexity API
+        app.logger.info("Routing to Perplexity API: sonar-pro")
         return ask_perplexity_for_text_prompt(instruction, model_name=model_name, max_output_tokens=max_output_tokens)
     
+    # Tier 3: Xiaomi MiMo Routing (The Protocol Switch)
+    elif 'mimo' in model_name:
+        # LOGIC: If the prompt is near the top of the tier (>3800), use Anthropic protocol 
+        # for better long-context reasoning. Otherwise, use OpenAI protocol.
+        if len(instruction) > 3800:
+            app.logger.info(f"Routing to MiMo ({model_name}) via ANTHROPIC base_url")
+            return ask_mimo_anthropic(instruction, model_name=model_name, max_tokens=1024)
+        else:
+            app.logger.info(f"Routing to MiMo ({model_name}) via OPENAI base_url")
+            return ask_mimo_openai(instruction, model_name=model_name, max_tokens=1024)
+    
+    # Fallback
     else:
-        app.logger.error(f"Unknown model name selected: {model_name}. Defaulting to Gemini 2.5 Flash.")
-        return ask_gemini_for_text_prompt(instruction, model_name='gemini-2.5-flash-lite', max_output_tokens=max_output_tokens)
-# --- End Master LLM Routing Function —
+        app.logger.error(f"Unknown model: {model_name}. Defaulting to Gemini Lite.")
+        return ask_gemini_for_text_prompt(instruction, model_name='gemini-2.5-flash-lite')
+
 
 # --- CORRECTED: Perplexity Search API Function ---
 def perform_perplexity_search(query_text: str):
