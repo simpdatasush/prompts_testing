@@ -192,7 +192,7 @@ genai.configure(api_key=os.environ.get("GOOGLE_API_KEY"))
 # Perplexity
 PERPLEXITY_API_KEY = os.getenv("PERPLEXITY_API_KEY")
 # (Assuming Perplexity client is initialized similarly to OpenAI or via custom class)
-PERPLEXITY_CLIENT = OpenAI(api_key=PERPLEXITY_API_KEY, base_url="https://api.perplexity.ai") if PERPLEXITY_API_KEY else None
+PERPLEXITY_CLIENT = Perplexity(api_key=os.getenv("PERPLEXITY_API_KEY")) if os.getenv("PERPLEXITY_API_KEY") else None
 
 # Xiaomi MiMo (Dual Protocol)
 MIMO_API_KEY = os.getenv("MIMO_API_KEY")
