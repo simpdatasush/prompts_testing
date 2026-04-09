@@ -190,20 +190,20 @@ TONES = ["Professional", "Friendly", "Candid", "Quirky", "Efficient", "Nerdy", "
 genai.configure(api_key=os.environ.get("GOOGLE_API_KEY"))
 
 # Perplexity
-PERPLEXITY_API_KEY = os.getenv("PERPLEXITY_API_KEY")
+# PERPLEXITY_API_KEY = os.getenv("PERPLEXITY_API_KEY")
 # (Assuming Perplexity client is initialized similarly to OpenAI or via custom class)
-PERPLEXITY_CLIENT = Perplexity(api_key=os.getenv("PERPLEXITY_API_KEY")) if os.getenv("PERPLEXITY_API_KEY") else None
+# PERPLEXITY_CLIENT = Perplexity(api_key=os.getenv("PERPLEXITY_API_KEY")) if os.getenv("PERPLEXITY_API_KEY") else None
 
 # Xiaomi MiMo (Dual Protocol)
-MIMO_API_KEY = os.getenv("MIMO_API_KEY")
-if MIMO_API_KEY:
+# MIMO_API_KEY = os.getenv("MIMO_API_KEY")
+# if MIMO_API_KEY:
     # Bound to base_url: /v1
-    MIMO_OPENAI_CLIENT = OpenAI(api_key=MIMO_API_KEY, base_url="https://api.xiaomimimo.com/v1")
+#    MIMO_OPENAI_CLIENT = OpenAI(api_key=MIMO_API_KEY, base_url="https://api.xiaomimimo.com/v1")
     # Bound to base_url: /anthropic
-    MIMO_ANTHROPIC_CLIENT = Anthropic(api_key=MIMO_API_KEY, base_url="https://api.xiaomimimo.com/anthropic")
-else:
-    MIMO_OPENAI_CLIENT = None
-    MIMO_ANTHROPIC_CLIENT = None
+#    MIMO_ANTHROPIC_CLIENT = Anthropic(api_key=MIMO_API_KEY, base_url="https://api.xiaomimimo.com/anthropic")
+# else:
+#    MIMO_OPENAI_CLIENT = None
+#    MIMO_ANTHROPIC_CLIENT = None
 
 # --- 2. Dynamic Model Selection Logic ---
 
@@ -213,11 +213,11 @@ def get_dynamic_model_name(prompt_instruction: str) -> str:
     """
     length = len(prompt_instruction)
 
-    if length > 5400:
-        return 'sonar-pro' # Perplexity Tier
-    elif length >= 2700:
-        return 'mimo-v2-flash' # Xiaomi Tier
-    elif length >= 1800:
+  #  if length > 5400:
+  #      return 'sonar-pro' # Perplexity Tier
+  #  elif length >= 2700:
+  #      return 'mimo-v2-flash' # Xiaomi Tier
+    if length >= 1800:
         return 'gemini-2.5-flash' # Gemini Mid-Tier
     elif length >= 1800:
         return 'gemini-2.5-flash-lite' # Gemini Lite-Tier
@@ -226,32 +226,32 @@ def get_dynamic_model_name(prompt_instruction: str) -> str:
 
 # --- 3. Individual API Call Functions ---
 
-def ask_mimo_openai(instruction, model_name, max_tokens):
-    """Hits the OpenAI Base URL (/v1)"""
-    today = datetime.now().strftime("%A, %B %d, %Y")
-    completion = MIMO_OPENAI_CLIENT.chat.completions.create(
-        model=model_name,
-        messages=[
-            {"role": "system", "content": f"You are SuperPrompterAI. Today is {today}."},
-            {"role": "user", "content": instruction}
-        ],
-        max_completion_tokens=max_tokens,
-        temperature=0.3,
-        extra_body={"thinking": {"type": "disabled"}}
-    )
-    return completion.choices[0].message.content
+#def ask_mimo_openai(instruction, model_name, max_tokens):
+#    """Hits the OpenAI Base URL (/v1)"""
+#    today = datetime.now().strftime("%A, %B %d, %Y")
+#    completion = MIMO_OPENAI_CLIENT.chat.completions.create(
+#        model=model_name,
+#        messages=[
+#           {"role": "system", "content": f"You are SuperPrompterAI. Today is {today}."},
+#            {"role": "user", "content": instruction}
+#        ],
+#        max_completion_tokens=max_tokens,
+#        temperature=0.3,
+#        extra_body={"thinking": {"type": "disabled"}}
+#    )
+#   return completion.choices[0].message.content
 
-def ask_mimo_anthropic(instruction, model_name, max_tokens):
-    """Hits the Anthropic Base URL (/anthropic)"""
-    today = datetime.now().strftime("%A, %B %d, %Y")
-    message = MIMO_ANTHROPIC_CLIENT.messages.create(
-        model=model_name,
-        max_tokens=max_tokens,
-        system=f"You are SuperPrompterAI. Today is {today}.",
-        messages=[{"role": "user", "content": instruction}],
-        temperature=0.3
-    )
-    return message.content[0].text
+#def ask_mimo_anthropic(instruction, model_name, max_tokens):
+#    """Hits the Anthropic Base URL (/anthropic)"""
+#    today = datetime.now().strftime("%A, %B %d, %Y")
+#    message = MIMO_ANTHROPIC_CLIENT.messages.create(
+#        model=model_name,
+#        max_tokens=max_tokens,
+#        system=f"You are SuperPrompterAI. Today is {today}.",
+#        messages=[{"role": "user", "content": instruction}],
+#        temperature=0.3
+#    )
+#    return message.content[0].text
 
 
 # --- END NEW: Three-Tier Dynamic Model Selection Logic ---
@@ -713,34 +713,34 @@ def log_content_visit(content_type, content_id):
         app.logger.error(f"Error logging visit for {content_type} {content_id}: {e}")
 
 # --- NEW: Perplexity SDK interaction function ---
-def ask_perplexity_for_text_prompt(prompt_instruction, model_name='sonar-pro', max_output_tokens=8192):
-    if not PERPLEXITY_CLIENT:
-        app.logger.error("Perplexity Client not initialized. API Key is missing.")
-        return "Error: Perplexity API key is not configured."
+#def ask_perplexity_for_text_prompt(prompt_instruction, model_name='sonar-pro', max_output_tokens=8192):
+#    if not PERPLEXITY_CLIENT:
+#        app.logger.error("Perplexity Client not initialized. API Key is missing.")
+#        return "Error: Perplexity API key is not configured."
     
-    start_time = time.time()
-    try:
-        completion = PERPLEXITY_CLIENT.chat.completions.create(
-            model=model_name,
-            messages=[
-                {"role": "user", "content": prompt_instruction}
-            ],
-            max_tokens=max_output_tokens,
-            temperature=0.1
-        )
-        end_time = time.time()
-        latency = (end_time - start_time) * 1000 # Convert to milliseconds
+#    start_time = time.time()
+#    try:
+#        completion = PERPLEXITY_CLIENT.chat.completions.create(
+#            model=model_name,
+#            messages=[
+#                {"role": "user", "content": prompt_instruction}
+#            ],
+#            max_tokens=max_output_tokens,
+#            temperature=0.1
+#        )
+#        end_time = time.time()
+#        latency = (end_time - start_time) * 1000 # Convert to milliseconds
 
-        pplx_text = completion.choices[0].message.content
-        app.logger.info(f"Perplexity call succeeded. Model: {model_name}, Latency: {latency:.2f}ms")
-        return pplx_text
+#        pplx_text = completion.choices[0].message.content
+#        app.logger.info(f"Perplexity call succeeded. Model: {model_name}, Latency: {latency:.2f}ms")
+#        return pplx_text
 
-    except PerplexityAPIError as e:
-        app.logger.error(f"DEBUG: Perplexity API Error ({model_name}): {e}", exc_info=True)
-        return f"Error communicating with Perplexity API: {str(e)}"
-    except Exception as e:
-        app.logger.error(f"DEBUG: Unexpected Error calling Perplexity API: {e}", exc_info=True)
-        return f"An unexpected error occurred: {str(e)}"
+#    except PerplexityAPIError as e:
+#        app.logger.error(f"DEBUG: Perplexity API Error ({model_name}): {e}", exc_info=True)
+#        return f"Error communicating with Perplexity API: {str(e)}"
+#    except Exception as e:
+#        app.logger.error(f"DEBUG: Unexpected Error calling Perplexity API: {e}", exc_info=True)
+#        return f"An unexpected error occurred: {str(e)}"
 
 # --- 4. Master LLM Routing Function ---
 
@@ -763,20 +763,20 @@ def route_and_call_llm(raw_input, prompt_mode, instruction, max_output_tokens=81
         return ask_gemini_for_text_prompt(instruction, model_name=model_name, max_output_tokens=max_output_tokens)
     
     # Tier 2: Perplexity Routing
-    elif model_name == 'sonar-pro':
-        app.logger.info("Routing to Perplexity API: sonar-pro")
-        return ask_perplexity_for_text_prompt(instruction, model_name=model_name, max_output_tokens=max_output_tokens)
+    #elif model_name == 'sonar-pro':
+    #    app.logger.info("Routing to Perplexity API: sonar-pro")
+    #    return ask_perplexity_for_text_prompt(instruction, model_name=model_name, max_output_tokens=max_output_tokens)
     
     # Tier 3: Xiaomi MiMo Routing (The Protocol Switch)
-    elif 'mimo' in model_name:
-        # LOGIC: If the prompt is near the top of the tier (>3800), use Anthropic protocol 
-        # for better long-context reasoning. Otherwise, use OpenAI protocol.
-        if len(instruction) > 3800:
-            app.logger.info(f"Routing to MiMo ({model_name}) via ANTHROPIC base_url")
-            return ask_mimo_anthropic(instruction, model_name=model_name, max_tokens=1024)
-        else:
-            app.logger.info(f"Routing to MiMo ({model_name}) via OPENAI base_url")
-            return ask_mimo_openai(instruction, model_name=model_name, max_tokens=1024)
+    #elif 'mimo' in model_name:
+    #    # LOGIC: If the prompt is near the top of the tier (>3800), use Anthropic protocol 
+    #    # for better long-context reasoning. Otherwise, use OpenAI protocol.
+    #    if len(instruction) > 3800:
+    #        app.logger.info(f"Routing to MiMo ({model_name}) via ANTHROPIC base_url")
+    #        return ask_mimo_anthropic(instruction, model_name=model_name, max_tokens=1024)
+    #    else:
+    #        app.logger.info(f"Routing to MiMo ({model_name}) via OPENAI base_url")
+    #        return ask_mimo_openai(instruction, model_name=model_name, max_tokens=1024)
     
     # Fallback
     else:
